@@ -25,4 +25,6 @@ RUN dotnet publish "Application.csproj" -c $BUILD_CONFIGURATION -o /app/publish 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+# Copy the static files (wwwroot) into the container
+COPY wwwroot ./wwwroot
 ENTRYPOINT ["dotnet", "Application.dll"]

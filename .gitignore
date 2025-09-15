@@ -80,3 +80,14 @@ _ReSharper*/
 
 # MPEG-DASH sample data
 mpeg-dash-processor/Application/wwwroot/Static/*
+
+# Rust build artifacts
+load-balancer/target/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db

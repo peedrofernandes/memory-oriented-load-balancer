@@ -11,5 +11,5 @@ echo   - DASH Info: http://localhost:5073/dash-info
 echo.
 echo Press Ctrl+C to stop the server
 echo.
-cd Application
+cd /d "%~dp0\.."
 dotnet run

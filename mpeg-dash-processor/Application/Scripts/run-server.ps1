@@ -11,5 +11,6 @@ Write-Host ""
 Write-Host "Press Ctrl+C to stop the server" -ForegroundColor Red
 Write-Host ""
 
-Set-Location Application
-dotnet run --project Application
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+Set-Location (Join-Path $ScriptDir "..")
+dotnet run

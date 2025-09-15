@@ -40,9 +40,11 @@ provider.Mappings[".m4s"] = "video/iso.segment";   // many players also accept a
 provider.Mappings[".mp4"] = "video/mp4";
 provider.Mappings[".m4a"] = "audio/mp4";
 
-// Serve from wwwroot
+// Serve Static folder contents at /Static path
 app.UseStaticFiles(new StaticFileOptions
 {
+    FileProvider = new PhysicalFileProvider(Path.Combine(app.Environment.ContentRootPath, "wwwroot", "Static")),
+    RequestPath = "/Static",
     ContentTypeProvider = provider,
     OnPrepareResponse = ctx =>
     {
@@ -50,7 +52,7 @@ app.UseStaticFiles(new StaticFileOptions
         var logger = ctx.Context.RequestServices.GetRequiredService<ILogger<Program>>();
         
         // Log requests for debugging
-        logger.LogInformation("Serving file: {Path}", ctx.File.Name);
+        logger.LogInformation("Serving Static file: {Path}", ctx.File.Name);
         
         // Cache segments aggressively; keep manifest fresh
         if (path.EndsWith(".mpd"))
@@ -66,11 +68,11 @@ app.UseStaticFiles(new StaticFileOptions
     }
 });
 
-// Directory listing under /earth for easy inspection of the Earth video files
+// Optional: Directory listing for Static folder (accessible via /browse)
 app.UseDirectoryBrowser(new DirectoryBrowserOptions
 {
-    FileProvider = new PhysicalFileProvider(Path.Combine(app.Environment.ContentRootPath, "wwwroot", "Static", "Earth")),
-    RequestPath = "/earth"
+    FileProvider = new PhysicalFileProvider(Path.Combine(app.Environment.ContentRootPath, "wwwroot", "Static")),
+    RequestPath = "/browse"
 });
 
 // Note: StaticFileMiddleware + Kestrel support HTTP Range requests out of the box.

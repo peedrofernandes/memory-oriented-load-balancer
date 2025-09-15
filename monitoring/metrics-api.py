@@ -60,7 +60,7 @@ def parse_size_to_bytes(size_str):
         return 0
 
 def get_container_linux_metrics(container_name):
-    """Get metrics from Linux APIs using docker exec"""
+    """Get simplified metrics from Linux APIs using docker exec"""
     try:
         # Combine multiple commands into a single docker exec call for efficiency
         commands = [
@@ -73,11 +73,11 @@ def get_container_linux_metrics(container_name):
             # Memory limit from cgroup
             "cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null || cat /sys/fs/cgroup/memory.max 2>/dev/null || echo '0'",
             "echo '---SEPARATOR---'",
-            # Disk I/O stats
+            # Disk I/O stats for all devices
             "cat /proc/diskstats",
             "echo '---SEPARATOR---'",
-            # Load average and uptime
-            "cat /proc/loadavg",
+            # Get I/O statistics from /proc/stat for overall system disk activity
+            "grep '^cpu\\|^disk\\|^io' /proc/stat 2>/dev/null || echo 'cpu 0 0 0 0 0 0 0'",
         ]
         
         # Execute all commands in one docker exec call
@@ -98,9 +98,9 @@ def get_container_linux_metrics(container_name):
         mem_usage_raw = sections[1].strip()
         mem_limit_raw = sections[2].strip()
         diskstats_raw = sections[3].strip()
-        loadavg_raw = sections[4].strip()
+        stat_raw = sections[4].strip()
         
-        # Parse memory info
+        # Parse memory info from /proc/meminfo
         mem_total = 0
         for line in meminfo_raw.split('\n'):
             if line.startswith('MemTotal:'):
@@ -124,23 +124,33 @@ def get_container_linux_metrics(container_name):
         # Calculate memory percentage
         mem_percent = (mem_usage_bytes / mem_limit_bytes * 100) if mem_limit_bytes > 0 else 0
         
-        # Parse disk stats (simplified - sum all disk I/O)
-        read_bytes = write_bytes = 0
+        # Parse disk stats from /proc/diskstats
+        # Focus on actual storage devices (not loop, ram, etc.)
+        total_read_sectors = 0
+        total_read_ios = 0
         for line in diskstats_raw.split('\n'):
             if line.strip():
                 parts = line.split()
                 if len(parts) >= 14:
-                    # sectors read (field 5) and written (field 9), multiply by 512 for bytes
-                    read_bytes += int(parts[5]) * 512
-                    write_bytes += int(parts[9]) * 512
+                    device_name = parts[2]
+                    # Focus on real storage devices (exclude loop, ram, sr, etc.)
+                    if (device_name.startswith(('sd', 'nvme', 'vd', 'xvd', 'hd')) and 
+                        not device_name[-1].isdigit()):  # Exclude partitions
+                        # Read I/Os completed (field 3) and sectors read (field 5)
+                        read_ios = int(parts[3])
+                        read_sectors = int(parts[5])
+                        total_read_sectors += read_sectors
+                        total_read_ios += read_ios
+        
+        # Convert sectors to bytes (1 sector = 512 bytes)
+        read_bytes = total_read_sectors * 512
         
         return {
             'mem_usage_bytes': mem_usage_bytes,
             'mem_limit_bytes': mem_limit_bytes,
             'mem_percent': mem_percent,
             'read_bytes': read_bytes,
-            'write_bytes': write_bytes,
-            'loadavg': loadavg_raw.split()[0] if loadavg_raw else '0.0'
+            'read_ios': total_read_ios,
         }
         
     except Exception as e:
@@ -185,54 +195,54 @@ def get_batch_container_metrics():
                 })
                 continue
             
-            # Calculate rates using previous data if available
+            # Calculate disk read rate and percentage
             container_key = f"prev_{container_name}"
-            read_rate = write_rate = read_iops = write_iops = 0
+            read_rate_bytes_per_sec = 0
+            read_rate_percent = 0
             
-            if hasattr(get_batch_container_metrics, 'prev_data'):
-                prev_data = getattr(get_batch_container_metrics, 'prev_data')
-                if container_key in prev_data:
-                    prev_metrics = prev_data[container_key]
-                    time_diff = timestamp - prev_metrics['timestamp']
-                    if time_diff > 0:
-                        read_rate = max(0, (linux_metrics['read_bytes'] - prev_metrics['read_bytes']) // time_diff)
-                        write_rate = max(0, (linux_metrics['write_bytes'] - prev_metrics['write_bytes']) // time_diff)
-                        read_iops = read_rate // 4096  # Approximate IOps
-                        write_iops = write_rate // 4096
-            
-            # Store current data for next calculation
+            # Initialize previous data storage if not exists
             if not hasattr(get_batch_container_metrics, 'prev_data'):
                 get_batch_container_metrics.prev_data = {}
+            
+            # Calculate rate if we have previous data
+            if container_key in get_batch_container_metrics.prev_data:
+                prev_metrics = get_batch_container_metrics.prev_data[container_key]
+                time_diff = timestamp - prev_metrics['timestamp']
+                if time_diff > 0:
+                    read_diff = linux_metrics['read_bytes'] - prev_metrics['read_bytes']
+                    read_rate_bytes_per_sec = max(0, read_diff / time_diff)
+                    
+                    # Calculate read rate percentage based on a reasonable maximum
+                    # Assume max sustainable read rate of 100MB/s as 100%
+                    max_read_rate = 100 * 1024 * 1024  # 100 MB/s
+                    read_rate_percent = min(100, (read_rate_bytes_per_sec / max_read_rate) * 100)
+            
+            # Store current data for next calculation
             get_batch_container_metrics.prev_data[container_key] = {
                 'timestamp': timestamp,
-                'read_bytes': linux_metrics['read_bytes'],
-                'write_bytes': linux_metrics['write_bytes']
+                'read_bytes': linux_metrics['read_bytes']
             }
             
-            # Build container data
+            # Build simplified container data with only 4 metrics
             containers_data.append({
                 "name": container_name,
                 "status": "running",
                 "timestamp": timestamp,
-                "memory": {
-                    "usage_bytes": linux_metrics['mem_usage_bytes'],
-                    "limit_bytes": linux_metrics['mem_limit_bytes'],
-                    "usage_human": bytes_to_human(linux_metrics['mem_usage_bytes']),
-                    "limit_human": bytes_to_human(linux_metrics['mem_limit_bytes']),
-                    "percent": round(linux_metrics['mem_percent'], 1)
-                },
-                "disk_io": {
-                    "read_bytes": linux_metrics['read_bytes'],
-                    "write_bytes": linux_metrics['write_bytes'],
-                    "read_human": bytes_to_human(linux_metrics['read_bytes']),
-                    "write_human": bytes_to_human(linux_metrics['write_bytes']),
-                    "read_rate_human": bytes_to_human(read_rate) + "/s",
-                    "write_rate_human": bytes_to_human(write_rate) + "/s",
-                    "read_iops": int(read_iops),
-                    "write_iops": int(write_iops)
-                },
-                "system": {
-                    "load_average": linux_metrics['loadavg']
+                "metrics": {
+                    # 1. Memory absolute
+                    "memory_absolute": {
+                        "bytes": linux_metrics['mem_usage_bytes'],
+                        "human": bytes_to_human(linux_metrics['mem_usage_bytes'])
+                    },
+                    # 2. Memory percentage
+                    "memory_percent": round(linux_metrics['mem_percent'], 1),
+                    # 3. Disk read per second absolute
+                    "disk_read_absolute": {
+                        "bytes_per_sec": int(read_rate_bytes_per_sec),
+                        "human": bytes_to_human(int(read_rate_bytes_per_sec)) + "/s"
+                    },
+                    # 4. Disk read per second percentage
+                    "disk_read_percent": round(read_rate_percent, 1)
                 }
             })
         

@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MPEG-DASH Load Balancer Monitor</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .header {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .container-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .container-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-left: 4px solid #007acc;
+        }
+        .container-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-running { background-color: #28a745; }
+        .status-stopped { background-color: #dc3545; }
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            padding: 8px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        .metric-label {
+            font-weight: 500;
+            color: #666;
+        }
+        .metric-value {
+            color: #333;
+            font-weight: bold;
+        }
+        .metric-good { color: #28a745; }
+        .metric-warning { color: #ffc107; }
+        .metric-danger { color: #dc3545; }
+        .load-balancer {
+            border-left-color: #ff6b35;
+        }
+        .commands {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .command {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+        }
+        .refresh-btn {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .refresh-btn:hover {
+            background: #005a9e;
+        }
+        .api-status {
+            text-align: center;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .api-status.success { background: #d4edda; color: #155724; }
+        .api-status.error { background: #f8d7da; color: #721c24; }
+        .api-status.simulated { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎬 MPEG-DASH Load Balancer Monitor</h1>
+        <button class="refresh-btn" onclick="refreshData()">🔄 Refresh Data</button>
+    </div>
+
+    <div class="container-grid" id="containerGrid">
+        <!-- Container cards will be populated by JavaScript -->
+    </div>
+
+    <div class="commands">
+        <h2>📊 Monitoring Commands</h2>
+        
+        <h3>Real-time Container Stats</h3>
+        <div class="command">
+            docker stats --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}"
+        </div>
+
+        <h3>Check All Container Status</h3>
+        <div class="command">
+            docker-compose ps
+        </div>
+
+        <h3>View Load Balancer Logs</h3>
+        <div class="command">
+            docker-compose logs -f load-balancer
+        </div>
+
+        <h3>View Specific Processor Logs</h3>
+        <div class="command">
+            docker-compose logs -f mpeg-dash-processor-1
+        </div>
+
+        <h3>Monitor Network Traffic</h3>
+        <div class="command">
+            docker exec -it load-balancer ss -tuln
+        </div>
+
+        <h3>Resource Usage by Service</h3>
+        <div class="command">
+            docker system df && docker system events --since="1m"
+        </div>
+    </div>
+
+    <script>
+        const containers = [
+            { name: 'load-balancer', type: 'load-balancer', port: 8080 },
+            { name: 'mpeg-dash-processor-1', type: 'processor', port: 8100 },
+            { name: 'mpeg-dash-processor-2', type: 'processor', port: 8200 },
+            { name: 'mpeg-dash-processor-3', type: 'processor', port: 8300 },
+            { name: 'mpeg-dash-processor-4', type: 'processor', port: 8400 },
+            { name: 'mpeg-dash-processor-5', type: 'processor', port: 8500 },
+            { name: 'mpeg-dash-processor-6', type: 'processor', port: 8600 },
+            { name: 'mpeg-dash-processor-7', type: 'processor', port: 8700 },
+            { name: 'mpeg-dash-processor-8', type: 'processor', port: 8800 }
+        ];
+
+        function createContainerCard(container) {
+            const isLoadBalancer = container.type === 'load-balancer';
+            const cardClass = isLoadBalancer ? 'container-card load-balancer' : 'container-card';
+            
+            return `
+                <div class="${cardClass}" id="card-${container.name}">
+                    <div class="container-name">
+                        <span class="status-indicator" id="status-${container.name}"></span>
+                        ${container.name}
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Port:</span>
+                        <span class="metric-value">${container.port}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Type:</span>
+                        <span class="metric-value">${isLoadBalancer ? 'Load Balancer' : 'MPEG-DASH Processor'}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Memory Usage:</span>
+                        <span class="metric-value" id="memory-${container.name}">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Memory %:</span>
+                        <span class="metric-value" id="memory-percent-${container.name}">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Disk Read:</span>
+                        <span class="metric-value" id="disk-read-${container.name}">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Disk Write:</span>
+                        <span class="metric-value" id="disk-write-${container.name}">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Read IOps:</span>
+                        <span class="metric-value" id="read-iops-${container.name}">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Write IOps:</span>
+                        <span class="metric-value" id="write-iops-${container.name}">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Load Avg:</span>
+                        <span class="metric-value" id="load-avg-${container.name}">-</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function updateContainerMetrics() {
+            const statusDiv = document.getElementById('api-status') || createStatusDiv();
+            
+            try {
+                // Try to fetch from the metrics server
+                const response = await fetch('http://localhost:3002/metrics', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Received data:', data);
+                    
+                    if (data.error) {
+                        statusDiv.textContent = `⚠️ API Error: ${data.error}`;
+                        statusDiv.className = 'api-status error';
+                        console.error('API returned error:', data.error);
+                        return;
+                    }
+                    
+                    if (data.containers) {
+                        const updateTime = new Date().toLocaleTimeString();
+                        statusDiv.textContent = `✅ Live data (${data.containers.length} containers) - ${updateTime}`;
+                        statusDiv.className = 'api-status success';
+                        
+                        data.containers.forEach(container => {
+                            updateContainerCard(container);
+                        });
+                        return;
+                    }
+                }
+                
+                // Fallback to simulated data if server is not available
+                console.log('Metrics server not available, using simulated data');
+                statusDiv.textContent = '🎭 Using simulated data (API unavailable)';
+                statusDiv.className = 'api-status simulated';
+                
+                const data = await simulateMetricsEndpoint();
+                if (data.containers) {
+                    data.containers.forEach(container => {
+                        updateContainerCard(container);
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching metrics:', error);
+                
+                // Only update status, keep existing data visible
+                statusDiv.textContent = `⚠️ Connection issue (keeping last data) - ${new Date().toLocaleTimeString()}`;
+                statusDiv.className = 'api-status error';
+                
+                // Don't modify container cards when there's an error - keep showing last good data
+            }
+        }
+        
+        function createStatusDiv() {
+            const statusDiv = document.createElement('div');
+            statusDiv.id = 'api-status';
+            statusDiv.className = 'api-status';
+            
+            // Insert after the header
+            const header = document.querySelector('.header');
+            header.appendChild(statusDiv);
+            
+            return statusDiv;
+        }
+
+        function updateContainerCard(containerData) {
+            const name = containerData.name;
+            
+            // Update status indicator
+            const statusEl = document.getElementById(`status-${name}`);
+            if (statusEl) {
+                statusEl.className = `status-indicator ${containerData.status === 'running' ? 'status-running' : 'status-stopped'}`;
+            }
+            
+            if (containerData.status !== 'running') {
+                // Container is stopped, clear metrics
+                document.getElementById(`memory-${name}`).textContent = 'Stopped';
+                document.getElementById(`memory-percent-${name}`).textContent = '-';
+                document.getElementById(`disk-read-${name}`).textContent = '-';
+                document.getElementById(`disk-write-${name}`).textContent = '-';
+                document.getElementById(`read-iops-${name}`).textContent = '-';
+                document.getElementById(`write-iops-${name}`).textContent = '-';
+                document.getElementById(`load-avg-${name}`).textContent = '-';
+                return;
+            }
+            
+            // Update memory metrics
+            const memory = containerData.memory;
+            if (memory) {
+                const memoryEl = document.getElementById(`memory-${name}`);
+                const memoryPercentEl = document.getElementById(`memory-percent-${name}`);
+                
+                memoryEl.textContent = `${memory.usage_human} / ${memory.limit_human}`;
+                
+                const memPercent = memory.percent;
+                memoryPercentEl.textContent = `${memPercent}%`;
+                
+                // Color code memory percentage
+                if (memPercent > 85) {
+                    memoryPercentEl.className = 'metric-value metric-danger';
+                } else if (memPercent > 70) {
+                    memoryPercentEl.className = 'metric-value metric-warning';
+                } else {
+                    memoryPercentEl.className = 'metric-value metric-good';
+                }
+            }
+            
+            // Update disk I/O metrics
+            const diskIo = containerData.disk_io;
+            if (diskIo) {
+                document.getElementById(`disk-read-${name}`).textContent = diskIo.read_rate_human;
+                document.getElementById(`disk-write-${name}`).textContent = diskIo.write_rate_human;
+                document.getElementById(`read-iops-${name}`).textContent = diskIo.read_iops;
+                document.getElementById(`write-iops-${name}`).textContent = diskIo.write_iops;
+            }
+            
+            // Update system metrics
+            const system = containerData.system;
+            if (system) {
+                const loadAvgEl = document.getElementById(`load-avg-${name}`);
+                if (loadAvgEl) {
+                    loadAvgEl.textContent = system.load_average;
+                    
+                    // Color code load average
+                    const loadValue = parseFloat(system.load_average);
+                    if (loadValue > 2.0) {
+                        loadAvgEl.className = 'metric-value metric-danger';
+                    } else if (loadValue > 1.0) {
+                        loadAvgEl.className = 'metric-value metric-warning';
+                    } else {
+                        loadAvgEl.className = 'metric-value metric-good';
+                    }
+                }
+            }
+        }
+
+        function initializeCards() {
+            const grid = document.getElementById('containerGrid');
+            grid.innerHTML = containers.map(createContainerCard).join('');
+        }
+        
+        function refreshData() {
+            // Only update container metrics, don't recreate the cards
+            updateContainerMetrics();
+        }
+        
+        // Simulated metrics endpoint for testing (replace with actual server)
+        async function simulateMetricsEndpoint() {
+            // This is a fallback that directly calls the bash script
+            // In production, you'd have a proper web server
+            try {
+                const response = await fetch('/cgi-bin/collect-metrics.sh');
+                if (response.ok) {
+                    return await response.json();
+                }
+            } catch (error) {
+                console.log('Falling back to simulated data...');
+            }
+            
+            // Fallback: generate sample data for demonstration
+            const sampleData = {
+                timestamp: Math.floor(Date.now() / 1000),
+                containers: containers.map(container => ({
+                    name: container.name,
+                    status: 'running',
+                    timestamp: Math.floor(Date.now() / 1000),
+                    memory: {
+                        usage_bytes: Math.floor(Math.random() * 500000000) + 100000000,
+                        limit_bytes: 1073741824,
+                        usage_human: `${Math.floor(Math.random() * 400) + 100}MB`,
+                        limit_human: '1GB',
+                        percent: Math.floor(Math.random() * 60) + 10
+                    },
+                    disk_io: {
+                        read_bytes: Math.floor(Math.random() * 1000000000),
+                        write_bytes: Math.floor(Math.random() * 500000000),
+                        read_human: `${Math.floor(Math.random() * 900) + 100}MB`,
+                        write_human: `${Math.floor(Math.random() * 400) + 50}MB`,
+                        read_rate_human: `${Math.floor(Math.random() * 10)}MB/s`,
+                        write_rate_human: `${Math.floor(Math.random() * 5)}MB/s`,
+                        read_iops: Math.floor(Math.random() * 100),
+                        write_iops: Math.floor(Math.random() * 50)
+                    }
+                }))
+            };
+            return sampleData;
+        }
+
+        // Initialize the dashboard
+        initializeCards();
+        
+        // Start updating metrics immediately
+        updateContainerMetrics();
+
+        // Auto-refresh every 5 seconds (fast updates now possible!)
+        setInterval(refreshData, 1000);
+    </script>
+</body>
+</html>

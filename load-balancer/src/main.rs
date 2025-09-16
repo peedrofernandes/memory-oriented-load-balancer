@@ -4,7 +4,6 @@ use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Configuration - in a real application, this would come from config files or environment variables
     let bind_address = "0.0.0.0:8080";
     let servers = vec![
         "mpeg-dash-processor-1:8080".to_string(),
@@ -17,10 +16,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "mpeg-dash-processor-8:8080".to_string(),
     ];
 
-    // Create the server selection strategy
     let strategy: Arc<dyn ServerSelectionStrategy> = Arc::new(RoundRobinStrategy::new());
 
-    // Create and start the load balancer
     let load_balancer = LoadBalancer::new(servers, strategy);
     
     println!("Starting TCP Load Balancer...");

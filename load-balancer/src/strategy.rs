@@ -1,11 +1,9 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-/// Trait for abstracting server selection strategies
 pub trait ServerSelectionStrategy: Send + Sync {
     fn pick_server(&self, servers: &[String]) -> Option<String>;
 }
 
-/// Round-robin implementation of server selection strategy
 pub struct RoundRobinStrategy {
     counter: AtomicUsize,
 }

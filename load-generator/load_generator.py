@@ -93,13 +93,10 @@ class DashManifestParser:
         segments = []
         
         try:
-            # Parse XML with namespace handling
             root = ET.fromstring(manifest_content)
             
-            # Define namespace map for DASH
             ns = {'dash': 'urn:mpeg:dash:schema:mpd:2011'}
             
-            # Find all adaptation sets
             adaptation_sets = root.findall('.//dash:AdaptationSet', ns)
             
             for adaptation_set in adaptation_sets:
@@ -108,17 +105,14 @@ class DashManifestParser:
                 for representation in representations:
                     rep_id = representation.get('id', 'unknown')
                     
-                    # Find segment template
                     segment_template = representation.find('dash:SegmentTemplate', ns)
                     if segment_template is not None:
                         init_template = segment_template.get('initialization')
                         media_template = segment_template.get('media')
                         start_number = int(segment_template.get('startNumber', '1'))
                         
-                        # Calculate base URL for segments
                         base_segment_url = urljoin(manifest_url, './')
                         
-                        # Add initialization segment
                         if init_template:
                             init_url = init_template.replace('$RepresentationID$', rep_id)
                             segments.append(DashSegment(
@@ -127,7 +121,6 @@ class DashManifestParser:
                                 representation_id=rep_id
                             ))
                         
-                        # Find segment timeline to get number of segments
                         segment_timeline = segment_template.find('dash:SegmentTimeline', ns)
                         if segment_timeline is not None:
                             s_elements = segment_timeline.findall('dash:S', ns)
@@ -135,7 +128,6 @@ class DashManifestParser:
                             
                             for s_element in s_elements:
                                 repeat = int(s_element.get('r', '0'))
-                                # Add one segment for the base S element
                                 for _ in range(repeat + 1):
                                     if media_template:
                                         media_url = (media_template
@@ -187,15 +179,12 @@ class LoadGenerator:
         self.end_time = 0.0
         self.stop_event = threading.Event()
         
-        # DASH-specific attributes
         self.dash_segments: List[DashSegment] = []
         self.segments_lock = threading.Lock()
         self.manifest_parser = DashManifestParser(target_url)
         
-        # Setup logging
         self._setup_logging(log_level)
         
-        # Setup signal handlers for graceful shutdown
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
     
@@ -204,12 +193,10 @@ class LoadGenerator:
         parsed = urlparse(url)
         query_params = parse_qs(parsed.query)
         
-        # Add multiple cache-busting parameters
-        query_params['_cb'] = [str(int(time.time() * 1000))]  # Current timestamp in ms
-        query_params['_rnd'] = [str(random.randint(10000, 99999))]  # Random number
-        query_params['_uid'] = [str(uuid.uuid4())[:8]]  # Unique identifier
+        query_params['_cb'] = [str(int(time.time() * 1000))]
+        query_params['_rnd'] = [str(random.randint(10000, 99999))]
+        query_params['_uid'] = [str(uuid.uuid4())[:8]]
         
-        # Rebuild URL with cache-busting parameters
         new_query = urlencode(query_params, doseq=True)
         return urlunparse((
             parsed.scheme, parsed.netloc, parsed.path,
@@ -221,7 +208,6 @@ class LoadGenerator:
         self.logger = logging.getLogger('LoadGenerator')
         self.logger.setLevel(getattr(logging, log_level.upper()))
         
-        # Create console handler
         if not self.logger.handlers:
             handler = logging.StreamHandler()
             formatter = logging.Formatter(
@@ -243,10 +229,8 @@ class LoadGenerator:
         timestamp = start_time
         base_url = url if url else self.target_url
         
-        # Conditionally add cache-busting parameters and headers
         if self.disable_cache:
             request_url = self._add_cache_busting(base_url)
-            # Headers to disable all forms of caching
             no_cache_headers = {
                 'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
                 'Pragma': 'no-cache',
@@ -267,10 +251,9 @@ class LoadGenerator:
                 headers=no_cache_headers,
                 timeout=aiohttp.ClientTimeout(total=self.timeout)
             ) as response:
-                await response.read()  # Consume the response body
+                await response.read()
                 end_time = time.time()
                 
-                # Log successful requests at DEBUG level
                 self.logger.debug(f"Request {request_id}: SUCCESS - Status: {response.status}, "
                                 f"Time: {(end_time - start_time)*1000:.2f}ms - URL: {request_url} "
                                 f"Type: {segment_type or 'standard'}")
@@ -366,25 +349,20 @@ class LoadGenerator:
         request_count = 0
         
         while not self.stop_event.is_set():
-            # Check if we've reached the total request limit
             with self.results_lock:
                 if len(self.results) >= self.total_requests:
                     break
             
-            # Check if we've exceeded the duration limit
             if self.duration and (time.time() - self.start_time) >= self.duration:
                 break
             
-            # Make the request with unique ID per worker
             unique_request_id = f"{worker_id}-{request_count}"
             result = await self._make_request(session, unique_request_id)
             
-            # Store the result
             with self.results_lock:
                 self.results.append(result)
                 total_completed = len(self.results)
                 
-                # Log progress every 100 requests or on errors
                 if total_completed % 100 == 0 or not result.success:
                     elapsed = time.time() - self.start_time
                     rate = total_completed / elapsed if elapsed > 0 else 0
@@ -393,24 +371,20 @@ class LoadGenerator:
             
             request_count += 1
             
-            # Optional delay between requests
             if self.request_delay > 0:
                 await asyncio.sleep(self.request_delay)
     
     async def _dash_worker(self, worker_id: int, session: aiohttp.ClientSession):
         """DASH simulation worker that continuously fetches segments in a loop"""
-        # Randomly select an Earth directory (Earth1 to Earth{max_earth_directories})
         earth_number = random.randint(1, self.max_earth_directories)
         selected_earth_dir = f"Earth{earth_number}"
         
-        # Construct manifest path for the selected Earth directory
         manifest_path = f"/Static/{selected_earth_dir}/manifest.mpd"
         manifest_url = urljoin(self.target_url, manifest_path)
         
         self.logger.debug(f"Worker {worker_id}: Starting DASH client simulation for {selected_earth_dir}")
         self.logger.info(f"Worker {worker_id}: Selected Earth directory '{selected_earth_dir}'")
         
-        # Fetch manifest once at the beginning
         manifest_result = await self._make_request(session, f"{worker_id}-manifest", 
                                                  manifest_url, "manifest")
         with self.results_lock:
@@ -422,7 +396,6 @@ class LoadGenerator:
             self.logger.warning(f"Worker {worker_id}: Manifest request failed, worker stopping")
             return
         
-        # Get segments for this specific Earth directory (don't use global cache for multi-directory)
         try:
             segments = await self.manifest_parser.fetch_and_parse_manifest(session, manifest_url)
         except Exception as e:
@@ -433,11 +406,9 @@ class LoadGenerator:
             self.logger.error(f"Worker {worker_id}: No segments found in manifest")
             return
         
-        # Separate init and media segments
         init_segments = [s for s in segments if s.segment_type == 'init']
         media_segments = [s for s in segments if s.segment_type == 'media']
         
-        # Fetch initialization segments once
         for i, segment in enumerate(init_segments):
             if self.stop_event.is_set():
                 return
@@ -450,26 +421,21 @@ class LoadGenerator:
             with self.results_lock:
                 self.results.append(result)
         
-        # Now continuously loop through media segments
         segment_index = 0
         request_count = 0
         
         while not self.stop_event.is_set():
-            # Check if we've reached the total request limit
             with self.results_lock:
                 if len(self.results) >= self.total_requests:
                     break
             
-            # Check if we've exceeded the duration limit
             if self.duration and (time.time() - self.start_time) >= self.duration:
                 break
             
-            # Select current segment (cycle through all media segments)
             if media_segments:
                 current_segment = media_segments[segment_index % len(media_segments)]
                 segment_index += 1
                 
-                # Make request for current segment
                 result = await self._make_request(
                     session, 
                     f"{worker_id}-media-{request_count}", 
@@ -481,7 +447,6 @@ class LoadGenerator:
                     self.results.append(result)
                     total_completed = len(self.results)
                     
-                    # Log progress every 50 requests or on errors for DASH
                     if total_completed % 50 == 0 or not result.success:
                         elapsed = time.time() - self.start_time
                         rate = total_completed / elapsed if elapsed > 0 else 0
@@ -491,7 +456,6 @@ class LoadGenerator:
                 
                 request_count += 1
                 
-                # Simulate realistic segment download interval
                 segment_delay = max(0.5, self.request_delay) if self.request_delay > 0 else self.segment_interval
                 await asyncio.sleep(segment_delay)
             else:
@@ -504,11 +468,9 @@ class LoadGenerator:
         """Simulate a complete DASH client session"""
         session_id = f"{worker_id}-{session_count}"
         
-        # Step 1: Fetch manifest
         manifest_url = urljoin(self.target_url, self.manifest_path)
         self.logger.debug(f"Worker {worker_id}: Starting DASH session {session_count}")
         
-        # Request manifest
         manifest_result = await self._make_request(session, f"{session_id}-manifest", 
                                                  manifest_url, "manifest")
         with self.results_lock:
@@ -520,7 +482,6 @@ class LoadGenerator:
             self.logger.warning(f"Worker {worker_id}: Manifest request failed, skipping session")
             return
         
-        # Step 2: Get segments (use cached segments if available)
         segments = []
         with self.segments_lock:
             if not self.dash_segments:
@@ -531,11 +492,9 @@ class LoadGenerator:
                     return
             segments = self.dash_segments.copy()
         
-        # Step 3: Request segments (init segments first, then media segments)
         init_segments = [s for s in segments if s.segment_type == 'init']
         media_segments = [s for s in segments if s.segment_type == 'media']
         
-        # Request initialization segments
         for i, segment in enumerate(init_segments):
             if self.stop_event.is_set():
                 break
@@ -548,9 +507,7 @@ class LoadGenerator:
             with self.results_lock:
                 self.results.append(result)
         
-        # Request a subset of media segments (simulate progressive download)
-        # Take first few segments from each representation to simulate beginning of playback
-        segments_per_rep = 3  # Simulate downloading first 3 segments per representation
+        segments_per_rep = 3
         for rep_id in set(s.representation_id for s in media_segments):
             rep_segments = [s for s in media_segments if s.representation_id == rep_id][:segments_per_rep]
             
@@ -568,29 +525,24 @@ class LoadGenerator:
                     self.results.append(result)
                     total_completed = len(self.results)
                     
-                    # Log progress every 50 requests or on errors for DASH
                     if total_completed % 50 == 0 or not result.success:
                         elapsed = time.time() - self.start_time
                         rate = total_completed / elapsed if elapsed > 0 else 0
                         self.logger.info(f"Progress: {total_completed}/{self.total_requests} requests completed "
                                        f"({rate:.1f} req/s) - Errors: {sum(1 for r in self.results if not r.success)}")
-                
-                # Small delay between segments to simulate realistic client behavior
                 await asyncio.sleep(0.1)
     
     async def _run_async_load_test(self):
         """Run the asynchronous load test"""
-        # Configure session with connection pooling
         connector = aiohttp.TCPConnector(
-            limit=self.concurrent_users * 2,  # Total connection pool size
-            limit_per_host=self.concurrent_users * 2,  # Per-host limit
+            limit=self.concurrent_users * 2,
+            limit_per_host=self.concurrent_users * 2,
             keepalive_timeout=30,
             enable_cleanup_closed=True
         )
         
         timeout = aiohttp.ClientTimeout(total=self.timeout)
         
-        # Default headers - conditionally disable caching at session level
         default_headers = {'User-Agent': 'LoadGenerator/1.0'}
         if self.disable_cache:
             default_headers.update({
@@ -604,13 +556,11 @@ class LoadGenerator:
             timeout=timeout,
             headers=default_headers
         ) as session:
-            # Create worker tasks
             tasks = []
             for i in range(self.concurrent_users):
                 task = asyncio.create_task(self._worker(i, session))
                 tasks.append(task)
             
-            # Wait for all tasks to complete
             await asyncio.gather(*tasks, return_exceptions=True)
     
     def run_load_test(self) -> LoadTestResults:
@@ -634,7 +584,6 @@ class LoadGenerator:
         
         self.start_time = time.time()
         
-        # Run the async load test
         try:
             asyncio.run(self._run_async_load_test())
         except KeyboardInterrupt:
@@ -660,11 +609,9 @@ class LoadGenerator:
         failed_requests = total_requests - successful_requests
         total_time = self.end_time - self.start_time
         
-        # Calculate response time statistics
         response_times = [r.response_time for r in self.results]
         response_times.sort()
         
-        # Calculate percentiles
         def percentile(data, p):
             if not data:
                 return 0
@@ -676,7 +623,6 @@ class LoadGenerator:
             else:
                 return data[f]
         
-        # Count errors
         errors = {}
         for result in self.results:
             if not result.success and result.error_message:
@@ -850,7 +796,6 @@ def main():
     
     args = parser.parse_args()
     
-    # Construct full URL - for DASH mode, use base URL without endpoint
     if args.disable_dash:
         target_url = args.url.rstrip('/') + args.endpoint
         simulate_dash = False
@@ -858,12 +803,10 @@ def main():
         target_url = args.url.rstrip('/')
         simulate_dash = True
     
-    # If duration is specified, set requests to a very high number
     total_requests = args.requests
     if args.duration:
-        total_requests = 999999  # Effectively unlimited
+        total_requests = 999999
     
-    # Create and run load generator
     load_generator = LoadGenerator(
         target_url=target_url,
         concurrent_users=args.concurrent,
@@ -875,7 +818,7 @@ def main():
         manifest_path=args.manifest_path,
         simulate_dash=simulate_dash,
         segment_interval=args.segment_interval,
-        disable_cache=not args.enable_cache,  # Invert since we default to disable cache
+        disable_cache=not args.enable_cache,
         max_earth_directories=args.max_earth_dirs
     )
     
@@ -883,7 +826,6 @@ def main():
         results = load_generator.run_load_test()
         load_generator.print_results(results)
         
-        # Save results to file if requested
         if args.output:
             load_generator.save_results_json(results, args.output)
     

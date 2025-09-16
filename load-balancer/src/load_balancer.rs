@@ -24,7 +24,6 @@ impl LoadBalancer {
         println!("Load balancer listening on {}", bind_address);
         println!("Available servers: {:?}", self.servers);
 
-        // Start metrics logging task
         let metrics_counter = Arc::clone(&self.request_counter);
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(30));
@@ -59,40 +58,33 @@ async fn handle_connection(
     request_counter: Arc<AtomicU64>,
     client_addr: std::net::SocketAddr,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // Pick a server using the strategy
     let server_addr = strategy
         .pick_server(&servers)
         .ok_or("No available servers")?;
 
     println!("[{}] Forwarding connection to: {}", client_addr, server_addr);
 
-    // Connect to the selected server
     let server_stream = TcpStream::connect(&server_addr).await?;
 
-    // Split both streams into read and write halves
     let (mut client_read, mut client_write) = client_stream.into_split();
     let (mut server_read, mut server_write) = server_stream.into_split();
 
-    // Clone the request counter for use in the spawned tasks
     let request_counter_c2s = Arc::clone(&request_counter);
     let client_addr_c2s = client_addr;
     let server_addr_c2s = server_addr.clone();
     let server_addr_s2c = server_addr.clone();
 
-    // Spawn tasks to forward data in both directions
     let client_to_server = tokio::spawn(async move {
-        let mut buffer = vec![0; 8192]; // Increased buffer size for HTTP headers
+        let mut buffer = vec![0; 8192];
         let mut http_buffer = Vec::new();
         let mut in_request = false;
         
         loop {
             match client_read.read(&mut buffer).await {
-                Ok(0) => break, // Connection closed
+                Ok(0) => break,
                 Ok(n) => {
-                    // Check if this looks like an HTTP request start
                     let data = &buffer[..n];
                     
-                    // Look for HTTP request methods at the beginning of new requests
                     if !in_request && (data.starts_with(b"GET ") || 
                                       data.starts_with(b"POST ") || 
                                       data.starts_with(b"PUT ") || 
@@ -104,10 +96,8 @@ async fn handle_connection(
                         http_buffer.clear();
                         http_buffer.extend_from_slice(data);
                         
-                        // Log the request immediately for quick feedback
                         let req_id = request_counter_c2s.fetch_add(1, Ordering::Relaxed) + 1;
                         
-                        // Try to extract method and path from the first line
                         if let Some(first_line_end) = data.iter().position(|&b| b == b'\n') {
                             let request_line = String::from_utf8_lossy(&data[..first_line_end]).trim().to_string();
                             let parts: Vec<&str> = request_line.split_whitespace().collect();
@@ -124,7 +114,6 @@ async fn handle_connection(
                         http_buffer.extend_from_slice(data);
                     }
                     
-                    // Check if we've reached the end of headers (double CRLF)
                     if in_request && http_buffer.windows(4).any(|w| w == b"\r\n\r\n") {
                         in_request = false;
                     }
@@ -146,11 +135,10 @@ async fn handle_connection(
         
         loop {
             match server_read.read(&mut buffer).await {
-                Ok(0) => break, // Connection closed
+                Ok(0) => break,
                 Ok(n) => {
                     let data = &buffer[..n];
                     
-                    // Log response status if this is the start of an HTTP response
                     if !response_started && data.starts_with(b"HTTP/") {
                         response_started = true;
                         if let Some(first_line_end) = data.iter().position(|&b| b == b'\n') {
@@ -176,7 +164,6 @@ async fn handle_connection(
         println!("[{}] Server to client stream closed", client_addr);
     });
 
-    // Wait for either direction to close
     tokio::select! {
         _ = client_to_server => {
             println!("[{}] Client to server task completed", client_addr);

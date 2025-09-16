@@ -145,11 +145,10 @@
         
         // Storage for previous metrics to calculate deltas
         const previousMetrics = {};
-
+        const ioRateCache = {}; // Cache recent IO rates
+        
         function calculateIORate(containerName, currentIOBytes, currentTimestamp) {
-            // Calculate IO rate (MBps) based on previous reading
             let ioMbps = 0;
-            let ioPercent = 0;
             
             if (previousMetrics[containerName]) {
                 const prev = previousMetrics[containerName];
@@ -157,8 +156,32 @@
                 
                 if (timeDiff > 0) {
                     const bytesDiff = currentIOBytes - prev.ioBytes;
-                    if (bytesDiff >= 0) { // Ensure non-negative (in case of container restart)
+                    if (bytesDiff > 0) { // Only calculate if there's actual IO activity
                         ioMbps = (bytesDiff / (1024 * 1024)) / timeDiff; // Convert to MBps
+                        
+                        // Cache the calculated rate with timestamp
+                        ioRateCache[containerName] = {
+                            rate: ioMbps,
+                            calculatedAt: currentTimestamp
+                        };
+                        
+                        console.log(`${containerName}: New IO activity - ${bytesDiff} bytes in ${timeDiff.toFixed(2)}s = ${ioMbps.toFixed(2)} MB/s`);
+                    } else if (bytesDiff === 0) {
+                        // No new IO activity, check if we have a recent cached rate
+                        if (ioRateCache[containerName]) {
+                            const cached = ioRateCache[containerName];
+                            const cacheAge = currentTimestamp - cached.calculatedAt;
+                            
+                            // Use cached rate if it's less than 3 seconds old
+                            if (cacheAge < 3) {
+                                ioMbps = cached.rate * Math.max(0, (3 - cacheAge) / 3); // Decay over time
+                                console.log(`${containerName}: Using cached rate (${cacheAge.toFixed(1)}s old): ${ioMbps.toFixed(2)} MB/s`);
+                            } else {
+                                // Clear old cache
+                                delete ioRateCache[containerName];
+                                console.log(`${containerName}: Cache expired, rate = 0`);
+                            }
+                        }
                     }
                 }
             }
@@ -452,8 +475,9 @@
                     updateChartData(name, memPercent, ioPercent);
                     
                     // Debug logging
-                    if (ioMbps > 0) {
-                        console.log(`${name}: IO=${ioMbps.toFixed(2)} MB/s (${ioPercent.toFixed(1)}%), Raw bytes=${currentIOBytes}`);
+                    console.log(`${name}: Raw bytes=${currentIOBytes}, IO Rate=${ioMbps.toFixed(2)} MB/s (${ioPercent.toFixed(1)}%), Timestamp=${currentTimestamp}`);
+                    if (ioMbps > 0.1) { // Only log significant IO activity
+                        console.log(`${name}: 🔥 Significant IO activity detected!`);
                     }
                     
                 } catch (error) {

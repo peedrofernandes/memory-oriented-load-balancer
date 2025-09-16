@@ -6,6 +6,18 @@ var builder = WebApplication.CreateBuilder(args);
 // Add logging
 builder.Logging.AddConsole();
 
+// Read configuration for file caching behavior
+var disableFileCaching = builder.Configuration.GetValue<bool>("DISABLE_FILE_CACHING", false);
+
+if (disableFileCaching)
+{
+    // Configure Kestrel to avoid internal caching when disabled
+    builder.Services.Configure<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions>(options =>
+    {
+        options.AllowSynchronousIO = true; // Force synchronous I/O for immediate disk access
+    });
+}
+
 // CORS: allow browsers/players to fetch from anywhere (tighten if needed)
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
     .AllowAnyOrigin()
@@ -17,7 +29,7 @@ var app = builder.Build();
 
 app.UseCors();
 
-// Add middleware to handle HTTP Range requests for DASH segments
+// Add middleware to handle Range requests for DASH segments
 app.Use(async (context, next) =>
 {
     var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
@@ -29,8 +41,40 @@ app.Use(async (context, next) =>
             context.Request.Headers["Range"], context.Request.Path);
     }
     
+    // Add container identification header
+    context.Response.Headers["X-Container-ID"] = Environment.MachineName;
+    
     await next();
 });
+
+// Conditionally add middleware to force actual file system access (disable file caching)
+if (disableFileCaching)
+{
+    app.Use(async (context, next) =>
+    {
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        
+        // If this is a static file request, force file system access
+        if (context.Request.Path.StartsWithSegments("/Static"))
+        {
+            var filePath = Path.Combine(app.Environment.ContentRootPath, "private-storage", 
+                context.Request.Path.Value?.TrimStart('/') ?? "");
+            
+            if (File.Exists(filePath))
+            {
+                // Force a file system access to ensure disk I/O
+                var fileInfo = new FileInfo(filePath);
+                logger.LogInformation("FORCE DISK ACCESS: {Path}, Size: {Size} bytes", 
+                    context.Request.Path, fileInfo.Length);
+                
+                // Touch the file to ensure it's accessed from disk
+                _ = fileInfo.LastAccessTime;
+            }
+        }
+        
+        await next();
+    });
+}
 
 // Static files with DASH MIME types + caching rules
 var provider = new FileExtensionContentTypeProvider();
@@ -40,10 +84,10 @@ provider.Mappings[".m4s"] = "video/iso.segment";   // many players also accept a
 provider.Mappings[".mp4"] = "video/mp4";
 provider.Mappings[".m4a"] = "audio/mp4";
 
-// Serve Static folder contents at /Static path
+// Serve Static folder contents at /Static path from private storage
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new PhysicalFileProvider(Path.Combine(app.Environment.ContentRootPath, "wwwroot", "Static")),
+    FileProvider = new PhysicalFileProvider(Path.Combine(app.Environment.ContentRootPath, "wwwroot")),
     RequestPath = "/Static",
     ContentTypeProvider = provider,
     OnPrepareResponse = ctx =>
@@ -51,19 +95,21 @@ app.UseStaticFiles(new StaticFileOptions
         var path = ctx.File.PhysicalPath?.ToLowerInvariant() ?? "";
         var logger = ctx.Context.RequestServices.GetRequiredService<ILogger<Program>>();
         
-        // Log requests for debugging
-        logger.LogInformation("Serving Static file: {Path}", ctx.File.Name);
+        // Log requests for debugging with caching status
+        var cachingStatus = disableFileCaching ? "FILE CACHING DISABLED" : "FILE CACHING ENABLED";
+        logger.LogInformation("Serving Static file: {Path} ({Status})", ctx.File.Name, cachingStatus);
         
-        // Cache segments aggressively; keep manifest fresh
+        // Standard DASH content headers
+        ctx.Context.Response.Headers["Access-Control-Allow-Origin"] = "*";
+        
+        // Default HTTP caching behavior based on file type
         if (path.EndsWith(".mpd"))
         {
             ctx.Context.Response.Headers.CacheControl = "no-store, must-revalidate";
-            ctx.Context.Response.Headers["Access-Control-Allow-Origin"] = "*";
         }
         else if (path.EndsWith(".m4s") || path.EndsWith(".mp4") || path.EndsWith(".m4a"))
         {
             ctx.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
-            ctx.Context.Response.Headers["Access-Control-Allow-Origin"] = "*";
         }
     }
 });
@@ -71,7 +117,7 @@ app.UseStaticFiles(new StaticFileOptions
 // Optional: Directory listing for Static folder (accessible via /browse)
 app.UseDirectoryBrowser(new DirectoryBrowserOptions
 {
-    FileProvider = new PhysicalFileProvider(Path.Combine(app.Environment.ContentRootPath, "wwwroot", "Static")),
+    FileProvider = new PhysicalFileProvider(Path.Combine(app.Environment.ContentRootPath, "wwwroot")),
     RequestPath = "/browse"
 });
 

@@ -91,5 +91,9 @@ load-balancer/target/
 # OS files
 .DS_Store
 Thumbs.db
+<<<<<<< HEAD
 
 files
+=======
+files/*
+>>>>>>> 4966f7c (Temporary changes - Pending I/O zero error fix)

@@ -7,6 +7,9 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
+      - DISABLE_FILE_CACHING=false  # Set to true to force disk I/O on every request
+    volumes:
+      - ./files/Server1:/app/wwwroot/Static  # Individual storage for container 1
     restart: unless-stopped
     blkio_config:
       device_read_bps:
@@ -29,6 +32,9 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
+      - DISABLE_FILE_CACHING=true  # Set to true to force disk I/O on every request
+    volumes:
+      - ./files/Server2:/app/wwwroot/Static  # Individual storage for container 2
     restart: unless-stopped
     blkio_config:
       device_read_bps:
@@ -51,6 +57,9 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
+      - DISABLE_FILE_CACHING=false  # Set to true to force disk I/O on every request
+    volumes:
+      - ./files/Server3:/app/wwwroot/Static  # Individual storage for container 3
     restart: unless-stopped
     blkio_config:
       device_read_bps:
@@ -73,6 +82,9 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
+      - DISABLE_FILE_CACHING=false  # Set to true to force disk I/O on every request
+    volumes:
+      - ./files/Server4:/app/wwwroot/Static  # Individual storage for container 4
     restart: unless-stopped
     blkio_config:
       device_read_bps:
@@ -95,6 +107,9 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
+      - DISABLE_FILE_CACHING=false  # Set to true to force disk I/O on every request
+    volumes:
+      - ./files/Server5:/app/wwwroot/Static  # Individual storage for container 5
     restart: unless-stopped
     blkio_config:
       device_read_bps:
@@ -117,6 +132,9 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
+      - DISABLE_FILE_CACHING=false  # Set to true to force disk I/O on every request
+    volumes:
+      - ./files/Server6:/app/wwwroot/Static  # Individual storage for container 6
     restart: unless-stopped
     blkio_config:
       device_read_bps:
@@ -139,6 +157,9 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
+      - DISABLE_FILE_CACHING=false  # Set to true to force disk I/O on every request
+    volumes:
+      - ./files/Server7:/app/wwwroot/Static  # Individual storage for container 7
     restart: unless-stopped
     blkio_config:
       device_read_bps:
@@ -148,7 +169,7 @@ services:
       resources:
         limits:
           cpus: "1.0"        # Limit to 1 CPU core
-          memory: 32M       # Limit to 64MB RAM
+          memory: 16M       # Limit to 64MB RAM
         reservations:
           cpus: "0.25"       # Reserve 0.25 CPU cores
           memory: 6M       # Reserve 8MB RAM
@@ -161,6 +182,9 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
+      - DISABLE_FILE_CACHING=false  # Set to true to force disk I/O on every request
+    volumes:
+      - ./files/Server8:/app/wwwroot/Static  # Individual storage for container 8
     restart: unless-stopped
     blkio_config:
       device_read_bps:

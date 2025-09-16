@@ -54,7 +54,7 @@ CONTAINER_LIMITS = {
         "io_rate_mbps": 32
     },
     "mpeg-dash-processor-7": {
-        "memory_mb": 32,
+        "memory_mb": 16,
         "io_rate_mbps": 16
     },
     "mpeg-dash-processor-8": {
@@ -118,32 +118,48 @@ def bytes_to_human(bytes_val):
         return f"{bytes_val}B"
 
 def read_io_stat(container_id):
-    """Read io.stat file for a container"""
+    """Read io.stat file for a container and extract rbytes"""
     try:
-        # Try different cgroup paths (v1 and v2)
-        paths = [
-            f"/sys/fs/cgroup/docker/{container_id}/io.stat",  # cgroup v2 primary
-            f"/sys/fs/cgroup/blkio/docker/{container_id}/blkio.io_service_bytes",
-            f"/sys/fs/cgroup/system.slice/docker-{container_id}.scope/io.stat"
-        ]
+        path = f"/sys/fs/cgroup/docker/{container_id}/io.stat"  # cgroup v2 only
         
-        for path in paths:
-            try:
-                with open(path, 'r') as f:
-                    content = f.read().strip()
-                    if content:
-                        logger.info(f"Successfully read io.stat from {path}: {content}")
-                        return content
-            except Exception as e:
-                logger.debug(f"Failed to read {path}: {e}")
-                continue
-        
-        logger.warning(f"Could not read io.stat for container {container_id}")
-        return None
+        with open(path, 'r') as f:
+            content = f.read().strip()
             
+        if not content:
+            logger.warning(f"Empty io.stat content for container {container_id}")
+            return 0
+            
+        # Extract rbytes from cgroup v2 format - sum ALL devices
+        total_rbytes = 0
+        for line in content.split('\n'):
+            line = line.strip()
+            if not line:
+                continue
+                
+            # Handle lines with rbytes (actual I/O data)
+            if 'rbytes=' in line:
+                for part in line.split():
+                    if part.startswith('rbytes='):
+                        rbytes_value = int(part.split('=')[1])
+                        total_rbytes += rbytes_value
+                        device = line.split()[0] if line.split() else "unknown"
+                        logger.info(f"Found rbytes={rbytes_value} on device {device} for container {container_id}")
+                        break
+            else:
+                # Handle lines like "8:0" (device with no stats yet)
+                device = line.strip()
+                if device and ':' in device:
+                    logger.info(f"Device {device} has no I/O stats yet for container {container_id}")
+        
+        logger.info(f"Total rbytes for container {container_id}: {total_rbytes}")
+        return total_rbytes
+            
+    except FileNotFoundError:
+        logger.warning(f"io.stat file not found for container {container_id}")
+        return 0
     except Exception as e:
         logger.error(f"Error reading io.stat for {container_id}: {e}")
-        return None
+        return 0
             
 def read_memory_current(container_id):
     """Read memory.current file for a container (cgroup v2)"""
@@ -173,56 +189,6 @@ def read_memory_current(container_id):
         logger.error(f"Error reading memory.current for {container_id}: {e}")
         return None
 
-def parse_io_stat(io_stat_content):
-    """Parse io.stat content and extract read bytes"""
-    if not io_stat_content:
-        return 0
-    
-    try:
-        total_read_bytes = 0
-        logger.info(f"Parsing io.stat content: {io_stat_content}")
-        
-        # Handle different formats
-        for line in io_stat_content.split('\n'):
-            line = line.strip()
-            if not line:
-                continue
-            
-            # cgroup v2 format: "8:80 rbytes=90112 wbytes=0 rios=3 wios=0 dbytes=0 dios=0"
-            if 'rbytes=' in line:
-                for part in line.split():
-                    if part.startswith('rbytes='):
-                        bytes_value = int(part.split('=')[1])
-                        total_read_bytes += bytes_value
-                        logger.info(f"Found rbytes={bytes_value} in line: {line}")
-            
-            # cgroup v1 format: "8:0 Read 123456" (bytes)
-            elif 'Read' in line:
-                parts = line.split()
-                if len(parts) >= 3:
-                    bytes_value = int(parts[2])
-                    total_read_bytes += bytes_value
-                    logger.info(f"Found Read {bytes_value} in line: {line}")
-            
-            # Some systems report sectors instead of bytes
-            elif 'sectors' in line.lower() and any(x in line.lower() for x in ['read', 'r']):
-                parts = line.split()
-                for i, part in enumerate(parts):
-                    if 'read' in part.lower() or part.lower() == 'r':
-                        if i + 1 < len(parts):
-                            sectors = int(parts[i + 1])
-                            bytes_value = sectors * HW_SECTOR_SIZE
-                            total_read_bytes += bytes_value
-                            logger.info(f"Found {sectors} sectors = {bytes_value} bytes")
-        
-        logger.info(f"Total read bytes parsed: {total_read_bytes}")
-        return total_read_bytes
-        
-    except Exception as e:
-        logger.error(f"Error parsing io.stat: {e}")
-        logger.error(f"Content was: {io_stat_content}")
-        return 0
-
 def parse_memory_current(memory_current_content):
     """Parse memory.current content and extract current usage (cgroup v2)"""
     if not memory_current_content:
@@ -245,15 +211,19 @@ def metrics_background_thread():
         try:
             current_time = time.time()
             container_mapping = get_container_mapping()
-            
+
+            print(f"Container mapping: {container_mapping}")
+
             with data_lock:
                 for container_name, container_id in container_mapping.items():
                     # Read current stats
-                    io_stat_content = read_io_stat(container_id)
+                    current_io_bytes = read_io_stat(container_id)  # Now returns rbytes directly
                     memory_current_content = read_memory_current(container_id)
                     
-                    # Parse current values (raw values, no delta calculation)
-                    current_io_bytes = parse_io_stat(io_stat_content)
+                    print(f"IO rbytes for {container_name}: {current_io_bytes}")
+                    print(f"Memory current content for {container_name}: {memory_current_content}")
+
+                    # Parse memory content (io_bytes already parsed)
                     current_memory_bytes = parse_memory_current(memory_current_content)
                     
                     # Get container limits for relative calculations

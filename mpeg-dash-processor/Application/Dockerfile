@@ -26,5 +26,4 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 # Copy the static files (wwwroot) into the container
-COPY wwwroot ./wwwroot
 ENTRYPOINT ["dotnet", "Application.dll"]

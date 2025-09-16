@@ -8,6 +8,10 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
     restart: unless-stopped
+    blkio_config:
+      device_read_bps:
+        - path: /dev/sda
+          rate: '1024mb'
     deploy:
       resources:
         limits:
@@ -26,6 +30,10 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
     restart: unless-stopped
+    blkio_config:
+      device_read_bps:
+        - path: /dev/sda
+          rate: '512mb'
     deploy:
       resources:
         limits:
@@ -44,6 +52,10 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
     restart: unless-stopped
+    blkio_config:
+      device_read_bps:
+        - path: /dev/sda
+          rate: '256mb'
     deploy:
       resources:
         limits:
@@ -62,6 +74,10 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
     restart: unless-stopped
+    blkio_config:
+      device_read_bps:
+        - path: /dev/sda
+          rate: '128mb'
     deploy:
       resources:
         limits:
@@ -80,6 +96,10 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
     restart: unless-stopped
+    blkio_config:
+      device_read_bps:
+        - path: /dev/sda
+          rate: '64mb'
     deploy:
       resources:
         limits:
@@ -98,6 +118,10 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
     restart: unless-stopped
+    blkio_config:
+      device_read_bps:
+        - path: /dev/sda
+          rate: '32mb'
     deploy:
       resources:
         limits:
@@ -116,6 +140,10 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
     restart: unless-stopped
+    blkio_config:
+      device_read_bps:
+        - path: /dev/sda
+          rate: '16mb'
     deploy:
       resources:
         limits:
@@ -134,6 +162,10 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
     restart: unless-stopped
+    blkio_config:
+      device_read_bps:
+        - path: /dev/sda
+          rate: '8mb'
     deploy:
       resources:
         limits:
@@ -190,6 +222,7 @@ services:
     volumes:
       - ./monitoring:/app/monitoring
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
     working_dir: /app
     command: >
       sh -c "

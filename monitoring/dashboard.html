@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MPEG-DASH Simplified Monitor</title>
+    <title>MPEG-DASH Enhanced Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -89,11 +90,34 @@
         .api-status.success { background: #d4edda; color: #155724; }
         .api-status.error { background: #f8d7da; color: #721c24; }
         .api-status.simulated { background: #fff3cd; color: #856404; }
+        .charts-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .chart-wrapper {
+            flex: 1;
+            background: #f8f9fa;
+            border-radius: 4px;
+            padding: 10px;
+            text-align: center;
+        }
+        .chart-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 5px;
+        }
+        .chart-canvas {
+            max-height: 80px;
+            width: 100%;
+        }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>📊 MPEG-DASH Simplified Monitor</h1>
+        <h1>📊 MPEG-DASH Enhanced Monitor</h1>
+        <p style="margin: 5px 0; color: #666; font-size: 14px;">Real-time container metrics: Memory & IO (Absolute + Relative)</p>
         <button class="refresh-btn" onclick="refreshData()">🔄 Refresh Data</button>
     </div>
 
@@ -114,6 +138,47 @@
             { name: 'mpeg-dash-processor-8', type: 'processor' }
         ];
 
+        // Data storage for charts - stores historical data for each container
+        const chartData = {};
+        const MAX_DATA_POINTS = 20; // Keep last 20 data points
+        const chartInstances = {}; // Store chart instances
+        
+        // Storage for previous metrics to calculate deltas
+        const previousMetrics = {};
+
+        function calculateIORate(containerName, currentIOBytes, currentTimestamp) {
+            // Calculate IO rate (MBps) based on previous reading
+            let ioMbps = 0;
+            let ioPercent = 0;
+            
+            if (previousMetrics[containerName]) {
+                const prev = previousMetrics[containerName];
+                const timeDiff = currentTimestamp - prev.timestamp;
+                
+                if (timeDiff > 0) {
+                    const bytesDiff = currentIOBytes - prev.ioBytes;
+                    if (bytesDiff >= 0) { // Ensure non-negative (in case of container restart)
+                        ioMbps = (bytesDiff / (1024 * 1024)) / timeDiff; // Convert to MBps
+                    }
+                }
+            }
+            
+            // Store current values for next calculation
+            previousMetrics[containerName] = {
+                ioBytes: currentIOBytes,
+                timestamp: currentTimestamp
+            };
+            
+            return ioMbps;
+        }
+
+        function calculateIOPercent(ioMbps, limitMbps) {
+            if (limitMbps > 0) {
+                return Math.min(100, (ioMbps / limitMbps) * 100);
+            }
+            return 0;
+        }
+
         function createContainerCard(container) {
             const isLoadBalancer = container.type === 'load-balancer';
             const cardClass = isLoadBalancer ? 'container-card load-balancer' : 'container-card';
@@ -125,20 +190,30 @@
                         ${container.name}
                     </div>
                     <div class="metric">
-                        <span class="metric-label">Memory (Absolute):</span>
+                        <span class="metric-label">Memory Usage:</span>
                         <span class="metric-value" id="memory-absolute-${container.name}">-</span>
                     </div>
                     <div class="metric">
-                        <span class="metric-label">Memory (%):</span>
+                        <span class="metric-label">Memory %:</span>
                         <span class="metric-value metric-percent" id="memory-percent-${container.name}">-</span>
                     </div>
                     <div class="metric">
-                        <span class="metric-label">Disk Read/s (Absolute):</span>
+                        <span class="metric-label">IO Rate:</span>
                         <span class="metric-value" id="disk-read-absolute-${container.name}">-</span>
                     </div>
                     <div class="metric">
-                        <span class="metric-label">Disk Read/s (%):</span>
+                        <span class="metric-label">IO %:</span>
                         <span class="metric-value metric-percent" id="disk-read-percent-${container.name}">-</span>
+                    </div>
+                    <div class="charts-container">
+                        <div class="chart-wrapper">
+                            <div class="chart-title">Memory %</div>
+                            <canvas id="memory-chart-${container.name}" class="chart-canvas"></canvas>
+                        </div>
+                        <div class="chart-wrapper">
+                            <div class="chart-title">Disk I/O %</div>
+                            <canvas id="disk-chart-${container.name}" class="chart-canvas"></canvas>
+                        </div>
                     </div>
                 </div>
             `;
@@ -161,7 +236,13 @@
                 
                 if (response.ok) {
                     const data = await response.json();
-                    console.log('Received data:', data);
+                    console.log('Received API response:', data);
+                    console.log('Response has timestamp:', !!data.timestamp);
+                    console.log('Response has containers:', !!data.containers);
+                    if (data.containers) {
+                        console.log('Number of containers:', data.containers.length);
+                        console.log('First container sample:', data.containers[0]);
+                    }
                     
                     if (data.error) {
                         statusDiv.textContent = `⚠️ API Error: ${data.error}`;
@@ -170,14 +251,20 @@
                         return;
                     }
                     
-                    if (data.containers) {
+                    if (data.containers && data.containers.length > 0) {
                         const updateTime = new Date().toLocaleTimeString();
                         statusDiv.textContent = `✅ Live data (${data.containers.length} containers) - ${updateTime}`;
                         statusDiv.className = 'api-status success';
                         
-                        data.containers.forEach(container => {
+                        data.containers.forEach((container, index) => {
+                            console.log(`Processing container ${index}:`, container.name, container.metrics);
                             updateContainerCard(container);
                         });
+                        return;
+                    } else {
+                        console.warn('API response has no containers or empty container list');
+                        statusDiv.textContent = '⚠️ API returned no container data';
+                        statusDiv.className = 'api-status error';
                         return;
                     }
                 }
@@ -198,6 +285,9 @@
                 
                 statusDiv.textContent = `⚠️ Connection issue - ${new Date().toLocaleTimeString()}`;
                 statusDiv.className = 'api-status error';
+            } finally {
+                // Schedule next update after current one completes
+                setTimeout(fetchMetrics, 1000); // Update every second
             }
         }
         
@@ -212,8 +302,80 @@
             return statusDiv;
         }
 
+        function initializeChart(canvasId, label, color) {
+            const ctx = document.getElementById(canvasId);
+            if (!ctx) return null;
+            
+            return new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: label,
+                        data: [],
+                        borderColor: color,
+                        backgroundColor: color + '20',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: false
+                        },
+                        y: {
+                            display: false,
+                            min: 0,
+                            max: 100
+                        }
+                    },
+                    elements: {
+                        line: {
+                            borderWidth: 2
+                        }
+                    }
+                }
+            });
+        }
+
+        function initializeContainerCharts(containerName) {
+            // Initialize data storage for this container
+            chartData[containerName] = {
+                memory: [],
+                disk: [],
+                timestamps: []
+            };
+            
+            // Initialize charts
+            chartInstances[containerName] = {
+                memory: initializeChart(`memory-chart-${containerName}`, 'Memory %', '#007acc'),
+                disk: initializeChart(`disk-chart-${containerName}`, 'Disk I/O %', '#28a745')
+            };
+        }
+
         function updateContainerCard(containerData) {
             const name = containerData.name;
+            
+            // Debug logging for new metrics structure
+            if (containerData.metrics) {
+                console.log(`${name}:`, {
+                    memory_absolute: containerData.metrics.memory?.absolute,
+                    memory_relative: containerData.metrics.memory?.relative,
+                    io_absolute: containerData.metrics.io?.absolute,
+                    io_relative: containerData.metrics.io?.relative
+                });
+            }
             
             // Update status indicator
             const statusEl = document.getElementById(`status-${name}`);
@@ -230,73 +392,177 @@
                 return;
             }
             
-            // Update the four simplified metrics
+            // Update metrics using new API structure with frontend delta calculation
             const metrics = containerData.metrics;
             if (metrics) {
-                // 1. Memory Absolute
-                const memAbsoluteEl = document.getElementById(`memory-absolute-${name}`);
-                memAbsoluteEl.textContent = metrics.memory_absolute.human;
-                
-                // 2. Memory Percentage
-                const memPercentEl = document.getElementById(`memory-percent-${name}`);
-                const memPercent = metrics.memory_percent;
-                memPercentEl.textContent = `${memPercent}%`;
-                
-                // Color code memory percentage
-                if (memPercent > 85) {
-                    memPercentEl.className = 'metric-value metric-percent metric-danger';
-                } else if (memPercent > 70) {
-                    memPercentEl.className = 'metric-value metric-percent metric-warning';
-                } else {
-                    memPercentEl.className = 'metric-value metric-percent metric-success';
+                try {
+                    // 1. Memory Absolute
+                    const memAbsoluteEl = document.getElementById(`memory-absolute-${name}`);
+                    if (memAbsoluteEl) {
+                        const memHuman = metrics.memory?.absolute?.human || 'N/A';
+                        memAbsoluteEl.textContent = memHuman;
+                    }
+                    
+                    // 2. Memory Percentage
+                    const memPercentEl = document.getElementById(`memory-percent-${name}`);
+                    const memPercent = metrics.memory?.relative?.percent || 0;
+                    const memLimitMb = metrics.memory?.relative?.limit_mb || 0;
+                    if (memPercentEl) {
+                        memPercentEl.textContent = memLimitMb > 0 ? `${memPercent}% (${memLimitMb}MB limit)` : `${memPercent}%`;
+                        
+                        // Color code memory percentage
+                        if (memPercent > 85) {
+                            memPercentEl.className = 'metric-value metric-percent metric-danger';
+                        } else if (memPercent > 70) {
+                            memPercentEl.className = 'metric-value metric-percent metric-warning';
+                        } else {
+                            memPercentEl.className = 'metric-value metric-percent metric-success';
+                        }
+                    }
+                    
+                    // 3. IO Rate Calculation (Frontend Delta)
+                    const currentIOBytes = metrics.io?.absolute?.bytes_total || 0;
+                    const currentTimestamp = metrics.last_updated || containerData.timestamp;
+                    const ioMbps = calculateIORate(name, currentIOBytes, currentTimestamp);
+                    
+                    // Display IO Rate Absolute
+                    const diskReadAbsoluteEl = document.getElementById(`disk-read-absolute-${name}`);
+                    if (diskReadAbsoluteEl) {
+                        diskReadAbsoluteEl.textContent = `${ioMbps.toFixed(2)} MB/s`;
+                    }
+                    
+                    // 4. IO Rate Percentage
+                    const ioLimitMbps = metrics.io?.relative?.limit_mbps || 0;
+                    const ioPercent = calculateIOPercent(ioMbps, ioLimitMbps);
+                    const diskReadPercentEl = document.getElementById(`disk-read-percent-${name}`);
+                    if (diskReadPercentEl) {
+                        diskReadPercentEl.textContent = ioLimitMbps > 0 ? `${ioPercent.toFixed(1)}% (${ioLimitMbps}MB/s limit)` : `${ioPercent.toFixed(1)}%`;
+                        
+                        // Color code disk read percentage
+                        if (ioPercent > 80) {
+                            diskReadPercentEl.className = 'metric-value metric-percent metric-danger';
+                        } else if (ioPercent > 50) {
+                            diskReadPercentEl.className = 'metric-value metric-percent metric-warning';
+                        } else {
+                            diskReadPercentEl.className = 'metric-value metric-percent metric-success';
+                        }
+                    }
+                    
+                    // Update chart data
+                    updateChartData(name, memPercent, ioPercent);
+                    
+                    // Debug logging
+                    if (ioMbps > 0) {
+                        console.log(`${name}: IO=${ioMbps.toFixed(2)} MB/s (${ioPercent.toFixed(1)}%), Raw bytes=${currentIOBytes}`);
+                    }
+                    
+                } catch (error) {
+                    console.error(`Error updating container card for ${name}:`, error);
+                    console.log('Container data:', containerData);
+                    console.log('Metrics:', metrics);
                 }
+            } else {
+                console.warn(`No metrics found for container ${name}`);
+                // Set fallback values
+                const elements = [
+                    `memory-absolute-${name}`,
+                    `memory-percent-${name}`,
+                    `disk-read-absolute-${name}`,
+                    `disk-read-percent-${name}`
+                ];
+                elements.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.textContent = 'No data';
+                });
+            }
+        }
+
+        function updateChartData(containerName, memoryPercent, diskPercent) {
+            // Initialize chart data if it doesn't exist
+            if (!chartData[containerName]) {
+                initializeContainerCharts(containerName);
+            }
+            
+            const data = chartData[containerName];
+            const currentTime = new Date().toLocaleTimeString();
+            
+            // Add new data points
+            data.memory.push(memoryPercent);
+            data.disk.push(diskPercent);
+            data.timestamps.push(currentTime);
+            
+            // Keep only the last MAX_DATA_POINTS
+            if (data.memory.length > MAX_DATA_POINTS) {
+                data.memory.shift();
+                data.disk.shift();
+                data.timestamps.shift();
+            }
+            
+            // Update charts
+            const charts = chartInstances[containerName];
+            if (charts && charts.memory && charts.disk) {
+                // Update memory chart
+                charts.memory.data.labels = data.timestamps;
+                charts.memory.data.datasets[0].data = data.memory;
+                charts.memory.update('none'); // No animation for smoother updates
                 
-                // 3. Disk Read Absolute
-                const diskReadAbsoluteEl = document.getElementById(`disk-read-absolute-${name}`);
-                diskReadAbsoluteEl.textContent = metrics.disk_read_absolute.human;
-                
-                // 4. Disk Read Percentage
-                const diskReadPercentEl = document.getElementById(`disk-read-percent-${name}`);
-                const diskReadPercent = metrics.disk_read_percent;
-                diskReadPercentEl.textContent = `${diskReadPercent}%`;
-                
-                // Color code disk read percentage
-                if (diskReadPercent > 80) {
-                    diskReadPercentEl.className = 'metric-value metric-percent metric-danger';
-                } else if (diskReadPercent > 50) {
-                    diskReadPercentEl.className = 'metric-value metric-percent metric-warning';
-                } else {
-                    diskReadPercentEl.className = 'metric-value metric-percent metric-success';
-                }
+                // Update disk chart
+                charts.disk.data.labels = data.timestamps;
+                charts.disk.data.datasets[0].data = data.disk;
+                charts.disk.update('none'); // No animation for smoother updates
             }
         }
 
         async function simulateMetricsEndpoint() {
-            // Simulated data for when API is unavailable
-            const containers = [
-                'load-balancer', 'mpeg-dash-processor-1', 'mpeg-dash-processor-2',
-                'mpeg-dash-processor-3', 'mpeg-dash-processor-4', 'mpeg-dash-processor-5',
-                'mpeg-dash-processor-6', 'mpeg-dash-processor-7', 'mpeg-dash-processor-8'
+            // Simulated data for when API is unavailable - matching new API format
+            const containerConfigs = [
+                { name: 'mpeg-dash-processor-1', memLimit: 2048, ioLimit: 1024 },
+                { name: 'mpeg-dash-processor-2', memLimit: 1024, ioLimit: 512 },
+                { name: 'mpeg-dash-processor-3', memLimit: 512, ioLimit: 256 },
+                { name: 'mpeg-dash-processor-4', memLimit: 256, ioLimit: 128 },
+                { name: 'mpeg-dash-processor-5', memLimit: 128, ioLimit: 64 },
+                { name: 'mpeg-dash-processor-6', memLimit: 64, ioLimit: 32 },
+                { name: 'mpeg-dash-processor-7', memLimit: 32, ioLimit: 16 },
+                { name: 'mpeg-dash-processor-8', memLimit: 16, ioLimit: 8 }
             ];
             
             return {
                 timestamp: Math.floor(Date.now() / 1000),
-                containers: containers.map(name => ({
-                    name: name,
-                    status: 'running',
-                    metrics: {
-                        memory_absolute: {
-                            bytes: Math.floor(Math.random() * 500000000 + 100000000),
-                            human: `${Math.floor(Math.random() * 400 + 100)}MB`
-                        },
-                        memory_percent: Math.floor(Math.random() * 80 + 10),
-                        disk_read_absolute: {
-                            bytes_per_sec: Math.floor(Math.random() * 10000000),
-                            human: `${Math.floor(Math.random() * 10)}MB/s`
-                        },
-                        disk_read_percent: Math.floor(Math.random() * 60 + 5)
-                    }
-                }))
+                update_interval_ms: 500,
+                containers: containerConfigs.map(config => {
+                    const memBytes = Math.floor(Math.random() * (config.memLimit * 0.8 * 1024 * 1024) + (config.memLimit * 0.1 * 1024 * 1024));
+                    const memPercent = Math.floor(Math.random() * 80 + 10);
+                    const ioMbps = Math.random() * (config.ioLimit * 0.6) + (config.ioLimit * 0.05);
+                    const ioPercent = Math.floor(Math.random() * 60 + 5);
+                    
+                    return {
+                        name: config.name,
+                        status: 'running',
+                        timestamp: Math.floor(Date.now() / 1000),
+                        metrics: {
+                            memory: {
+                                absolute: {
+                                    bytes: memBytes,
+                                    human: `${Math.floor(memBytes / 1024 / 1024)}MB`
+                                },
+                                relative: {
+                                    percent: memPercent,
+                                    limit_mb: config.memLimit
+                                }
+                            },
+                            io: {
+                                absolute: {
+                                    bytes_total: Math.floor(Math.random() * 1000000000 + 100000000), // Random total bytes
+                                    human: `${Math.floor(Math.random() * 500 + 50)}MB`
+                                },
+                                relative: {
+                                    limit_mbps: config.ioLimit
+                                }
+                            },
+                            last_updated: Date.now() / 1000
+                        }
+                    };
+                })
             };
         }
 
@@ -309,9 +575,13 @@
             const grid = document.getElementById('containerGrid');
             grid.innerHTML = containers.map(createContainerCard).join('');
             
-            // Start periodic updates
+            // Initialize charts for all containers
+            containers.forEach(container => {
+                initializeContainerCharts(container.name);
+            });
+            
+            // Start periodic updates (no setInterval needed, fetchMetrics handles its own scheduling)
             fetchMetrics();
-            setInterval(fetchMetrics, 2000); // Update every 2 seconds
         }
 
         // Start the dashboard when page loads

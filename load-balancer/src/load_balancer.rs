@@ -1,21 +1,30 @@
 use crate::strategy::ServerSelectionStrategy;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::Mutex;
 
 pub struct LoadBalancer {
     servers: Vec<String>,
     strategy: Arc<dyn ServerSelectionStrategy>,
     request_counter: Arc<AtomicU64>,
+    per_server_connection_counts: Arc<Mutex<HashMap<String, u64>>>,
 }
 
 impl LoadBalancer {
     pub fn new(servers: Vec<String>, strategy: Arc<dyn ServerSelectionStrategy>) -> Self {
+        let mut counts = HashMap::new();
+        for s in &servers {
+            counts.insert(s.clone(), 0u64);
+        }
+
         Self { 
             servers, 
             strategy,
             request_counter: Arc::new(AtomicU64::new(0)),
+            per_server_connection_counts: Arc::new(Mutex::new(counts)),
         }
     }
 
@@ -25,12 +34,19 @@ impl LoadBalancer {
         println!("Available servers: {:?}", self.servers);
 
         let metrics_counter = Arc::clone(&self.request_counter);
+        let per_server_counts = Arc::clone(&self.per_server_connection_counts);
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(30));
             loop {
                 interval.tick().await;
                 let total_requests = metrics_counter.load(Ordering::Relaxed);
                 println!("[METRICS] Total requests processed: {}", total_requests);
+                if let Ok(map) = per_server_counts.try_lock() {
+                    println!("[METRICS] Per-server connection counts:");
+                    for (server, count) in map.iter() {
+                        println!("    {} => {} connections", server, count);
+                    }
+                }
             }
         });
 
@@ -41,9 +57,17 @@ impl LoadBalancer {
             let servers = self.servers.clone();
             let strategy = Arc::clone(&self.strategy);
             let request_counter = Arc::clone(&self.request_counter);
+            let per_server_counts = Arc::clone(&self.per_server_connection_counts);
 
             tokio::spawn(async move {
-                if let Err(e) = handle_connection(client_stream, servers, strategy, request_counter, client_addr).await {
+                if let Err(e) = handle_connection(
+                    client_stream, 
+                    servers, 
+                    strategy, 
+                    request_counter, 
+                    per_server_counts,
+                    client_addr
+                ).await {
                     eprintln!("Error handling connection from {}: {}", client_addr, e);
                 }
             });
@@ -56,6 +80,7 @@ async fn handle_connection(
     servers: Vec<String>,
     strategy: Arc<dyn ServerSelectionStrategy>,
     request_counter: Arc<AtomicU64>,
+    per_server_counts: Arc<Mutex<HashMap<String, u64>>>,
     client_addr: std::net::SocketAddr,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let server_addr = strategy
@@ -63,6 +88,16 @@ async fn handle_connection(
         .ok_or("No available servers")?;
 
     println!("[{}] Forwarding connection to: {}", client_addr, server_addr);
+
+    // Increment per-server connection counter
+    {
+        let mut map = per_server_counts.lock().await;
+        if let Some(entry) = map.get_mut(&server_addr) {
+            *entry += 1;
+        } else {
+            map.insert(server_addr.clone(), 1);
+        }
+    }
 
     let server_stream = TcpStream::connect(&server_addr).await?;
 
@@ -78,6 +113,9 @@ async fn handle_connection(
         let mut buffer = vec![0; 8192];
         let mut http_buffer = Vec::new();
         let mut in_request = false;
+        let mut headers_complete = false;
+        let mut request_path: Option<String> = None;
+        let mut host_header: Option<String> = None;
         
         loop {
             match client_read.read(&mut buffer).await {
@@ -102,6 +140,7 @@ async fn handle_connection(
                             let request_line = String::from_utf8_lossy(&data[..first_line_end]).trim().to_string();
                             let parts: Vec<&str> = request_line.split_whitespace().collect();
                             if parts.len() >= 2 {
+                                request_path = Some(parts[1].to_string());
                                 println!("[REQ:{}] {} {} {} -> {}", 
                                         req_id, 
                                         client_addr_c2s,
@@ -114,6 +153,24 @@ async fn handle_connection(
                         http_buffer.extend_from_slice(data);
                     }
                     
+                    if in_request && !headers_complete {
+                        if http_buffer.windows(4).any(|w| w == b"\r\n\r\n") {
+                            headers_complete = true;
+                            if let Ok(text) = String::from_utf8(http_buffer.clone()) {
+                                for line in text.lines() {
+                                    if let Some(rest) = line.strip_prefix("Host:") {
+                                        host_header = Some(rest.trim().to_string());
+                                        break;
+                                    }
+                                }
+                            }
+                            println!("[HDR] {} Host={} Path={}", 
+                                    client_addr_c2s,
+                                    host_header.as_deref().unwrap_or("<none>"),
+                                    request_path.as_deref().unwrap_or("<unknown>"));
+                        }
+                    }
+
                     if in_request && http_buffer.windows(4).any(|w| w == b"\r\n\r\n") {
                         in_request = false;
                     }

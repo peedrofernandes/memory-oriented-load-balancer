@@ -158,9 +158,10 @@ class LoadGenerator:
     def __init__(self, target_url: str, concurrent_users: int = 10, 
                  total_requests: int = 100, duration: Optional[int] = None,
                  request_delay: float = 0.0, timeout: float = 30.0, 
-                 log_level: str = "INFO", manifest_path: str = "/Static/Earth/manifest.mpd",
+                 log_level: str = "INFO", manifest_path: str = "/Earth/manifest.mpd",
                  simulate_dash: bool = True, segment_interval: float = 2.0,
-                 disable_cache: bool = True, max_earth_directories: int = 100):
+                 disable_cache: bool = True, max_earth_directories: int = 100,
+                 no_keepalive: bool = False):
         self.target_url = target_url
         self.concurrent_users = concurrent_users
         self.total_requests = total_requests
@@ -172,6 +173,7 @@ class LoadGenerator:
         self.segment_interval = segment_interval
         self.disable_cache = disable_cache
         self.max_earth_directories = max_earth_directories
+        self.no_keepalive = no_keepalive
         
         self.results: List[RequestResult] = []
         self.results_lock = threading.Lock()
@@ -379,7 +381,7 @@ class LoadGenerator:
         earth_number = random.randint(1, self.max_earth_directories)
         selected_earth_dir = f"Earth{earth_number}"
         
-        manifest_path = f"/Static/{selected_earth_dir}/manifest.mpd"
+        manifest_path = f"/{selected_earth_dir}/manifest.mpd"
         manifest_url = urljoin(self.target_url, manifest_path)
         
         self.logger.debug(f"Worker {worker_id}: Starting DASH client simulation for {selected_earth_dir}")
@@ -538,7 +540,8 @@ class LoadGenerator:
             limit=self.concurrent_users * 2,
             limit_per_host=self.concurrent_users * 2,
             keepalive_timeout=30,
-            enable_cleanup_closed=True
+            enable_cleanup_closed=True,
+            force_close=self.no_keepalive
         )
         
         timeout = aiohttp.ClientTimeout(total=self.timeout)
@@ -764,7 +767,7 @@ def main():
     
     parser.add_argument(
         '--manifest-path',
-        default='/Static/Earth/manifest.mpd',
+        default='/Earth/manifest.mpd',
         help='Path to DASH manifest file (for DASH simulation) - Note: In DASH mode, random Earth directories are automatically selected'
     )
     
@@ -788,11 +791,18 @@ def main():
     )
     
     parser.add_argument(
+        '--no-keepalive',
+        action='store_true',
+        help='Disable HTTP keep-alive so each request opens a new TCP connection'
+    )
+    
+    parser.add_argument(
         '--max-earth-dirs',
         type=int,
         default=100,
         help='Maximum number of Earth directories to randomly select from (Earth1 to EarthN)'
     )
+    
     
     args = parser.parse_args()
     
@@ -819,7 +829,8 @@ def main():
         simulate_dash=simulate_dash,
         segment_interval=args.segment_interval,
         disable_cache=not args.enable_cache,
-        max_earth_directories=args.max_earth_dirs
+        max_earth_directories=args.max_earth_dirs,
+        no_keepalive=args.no_keepalive
     )
     
     try:

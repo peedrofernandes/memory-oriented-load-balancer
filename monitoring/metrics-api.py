@@ -7,6 +7,7 @@ Uses host machine io.stat and memory.stat files via bind mounts
 from flask import Flask, jsonify
 from flask_cors import CORS
 import subprocess
+import os
 import time
 import logging
 import threading
@@ -30,36 +31,40 @@ UPDATE_INTERVAL = 0.5  # 500ms
 # Container limits from docker-compose.yml (parametrized)
 CONTAINER_LIMITS = {
     "mpeg-dash-processor-1": {
-        "memory_mb": 2048,
-        "io_rate_mbps": 1024
+        "memory_mb": 1024,
+        "io_rate_mbps": 16
     },
     "mpeg-dash-processor-2": {
         "memory_mb": 1024,
-        "io_rate_mbps": 512
+        "io_rate_mbps": 16
     },
     "mpeg-dash-processor-3": {
-        "memory_mb": 512,
-        "io_rate_mbps": 256
+        "memory_mb": 1024,
+        "io_rate_mbps": 16
     },
     "mpeg-dash-processor-4": {
-        "memory_mb": 256,
-        "io_rate_mbps": 128
+        "memory_mb": 1024,
+        "io_rate_mbps": 16
     },
     "mpeg-dash-processor-5": {
-        "memory_mb": 128,
-        "io_rate_mbps": 64
+        "memory_mb": 1024,
+        "io_rate_mbps": 16
     },
     "mpeg-dash-processor-6": {
-        "memory_mb": 64,
-        "io_rate_mbps": 32
+        "memory_mb": 1024,
+        "io_rate_mbps": 16
     },
     "mpeg-dash-processor-7": {
-        "memory_mb": 16,
+        "memory_mb": 1024,
         "io_rate_mbps": 16
     },
     "mpeg-dash-processor-8": {
-        "memory_mb": 16,
-        "io_rate_mbps": 8
+        "memory_mb": 1024,
+        "io_rate_mbps": 16
+    },
+    "load-balancer": {
+        "memory_mb": 256,
+        "io_rate_mbps": 256
     }
 }
 
@@ -97,9 +102,7 @@ def get_container_mapping():
                 if len(parts) == 2:
                     container_id, container_name = parts
                     mapping[container_name] = container_id
-                    logger.info(f"Mapped {container_name} -> {container_id}")
         
-        logger.info(f"Found {len(mapping)} mpeg-dash-processor containers")
         return mapping
             
     except Exception as e:
@@ -118,48 +121,43 @@ def bytes_to_human(bytes_val):
         return f"{bytes_val}B"
 
 def read_io_stat(container_id):
-    """Read io.stat file for a container and extract rbytes"""
+    """Read cumulative read bytes using best-effort across cgroup variants or docker stats."""
+    # Try cgroup v2 paths first
+    possible_paths = [
+        f"/sys/fs/cgroup/docker/{container_id}/io.stat",
+        f"/sys/fs/cgroup/system.slice/docker-{container_id}.scope/io.stat",
+        f"/sys/fs/cgroup/{container_id}/io.stat",
+    ]
+    for path in possible_paths:
+        try:
+            if os.path.exists(path):
+                with open(path, 'r') as f:
+                    content = f.read().strip()
+                if content:
+                    total_rbytes = 0
+                    for line in content.split('\n'):
+                        if 'rbytes=' in line:
+                            for part in line.split():
+                                if part.startswith('rbytes='):
+                                    total_rbytes += int(part.split('=')[1])
+                                    break
+                    return total_rbytes
+        except Exception as e:
+            logger.debug(f"Failed reading {path}: {e}")
+
+    # Fallback: parse docker stats --no-stream BlockIO (read/ write cumulative)
     try:
-        path = f"/sys/fs/cgroup/docker/{container_id}/io.stat"  # cgroup v2 only
-        
-        with open(path, 'r') as f:
-            content = f.read().strip()
-            
-        if not content:
-            logger.warning(f"Empty io.stat content for container {container_id}")
-            return 0
-            
-        # Extract rbytes from cgroup v2 format - sum ALL devices
-        total_rbytes = 0
-        for line in content.split('\n'):
-            line = line.strip()
-            if not line:
-                continue
-                
-            # Handle lines with rbytes (actual I/O data)
-            if 'rbytes=' in line:
-                for part in line.split():
-                    if part.startswith('rbytes='):
-                        rbytes_value = int(part.split('=')[1])
-                        total_rbytes += rbytes_value
-                        device = line.split()[0] if line.split() else "unknown"
-                        logger.info(f"Found rbytes={rbytes_value} on device {device} for container {container_id}")
-                        break
-            else:
-                # Handle lines like "8:0" (device with no stats yet)
-                device = line.strip()
-                if device and ':' in device:
-                    logger.info(f"Device {device} has no I/O stats yet for container {container_id}")
-        
-        logger.info(f"Total rbytes for container {container_id}: {total_rbytes}")
-        return total_rbytes
-            
-    except FileNotFoundError:
-        logger.warning(f"io.stat file not found for container {container_id}")
-        return 0
+        result = subprocess.run([
+            'docker', 'stats', '--no-stream', '--format', '{{.BlockIO}}', container_id
+        ], capture_output=True, text=True, timeout=5)
+        if result.returncode == 0 and result.stdout:
+            blockio = result.stdout.strip()
+            # Format like: "12.3MB / 4.5MB" -> take read part
+            read_part = blockio.split('/')[0].strip()
+            return parse_size_to_bytes_cli(read_part)
     except Exception as e:
-        logger.error(f"Error reading io.stat for {container_id}: {e}")
-        return 0
+        logger.debug(f"docker stats fallback failed for {container_id}: {e}")
+    return 0
             
 def read_memory_current(container_id):
     """Read memory.current file for a container (cgroup v2)"""
@@ -176,7 +174,6 @@ def read_memory_current(container_id):
                 with open(path, 'r') as f:
                     content = f.read().strip()
                     if content:
-                        logger.info(f"Successfully read memory.current from {path}: {content}")
                         return content
             except Exception as e:
                 logger.debug(f"Failed to read {path}: {e}")
@@ -193,15 +190,57 @@ def parse_memory_current(memory_current_content):
     """Parse memory.current content and extract current usage (cgroup v2)"""
     if not memory_current_content:
         return 0
-    
     try:
-        # cgroup v2 memory.current is just a single number (bytes)
         memory_bytes = int(memory_current_content.strip())
-        logger.info(f"Parsed memory usage: {memory_bytes} bytes")
         return memory_bytes
     except Exception as e:
         logger.error(f"Error parsing memory.current: {e}")
         return 0
+
+def read_memory_limit_bytes(container_id):
+    """Read memory.limit_in_bytes or memory.max; return integer bytes or None."""
+    paths = [
+        f"/sys/fs/cgroup/docker/{container_id}/memory.max",
+        f"/sys/fs/cgroup/system.slice/docker-{container_id}.scope/memory.max",
+        f"/sys/fs/cgroup/memory/docker/{container_id}/memory.limit_in_bytes",
+    ]
+    for path in paths:
+        try:
+            if os.path.exists(path):
+                with open(path, 'r') as f:
+                    content = f.read().strip()
+                if content and content != 'max':
+                    return int(content)
+        except Exception:
+            continue
+    # Fallback to docker inspect
+    try:
+        result = subprocess.run([
+            'docker', 'inspect', '-f', '{{.HostConfig.Memory}}', container_id
+        ], capture_output=True, text=True, timeout=5)
+        if result.returncode == 0:
+            val = result.stdout.strip()
+            if val.isdigit():
+                return int(val)
+    except Exception:
+        pass
+    return None
+
+def parse_size_to_bytes_cli(size_str: str) -> int:
+    try:
+        s = size_str.strip().upper()
+        if s.endswith('GB'):
+            return int(float(s[:-2]) * 1024 * 1024 * 1024)
+        if s.endswith('MB'):
+            return int(float(s[:-2]) * 1024 * 1024)
+        if s.endswith('KB'):
+            return int(float(s[:-2]) * 1024)
+        if s.endswith('B'):
+            return int(float(s[:-1]))
+        return int(float(s))
+    except Exception:
+        return 0
+    
 
 def metrics_background_thread():
     """Background thread to collect metrics at high frequency"""
@@ -212,47 +251,43 @@ def metrics_background_thread():
             current_time = time.time()
             container_mapping = get_container_mapping()
 
-            print(f"Container mapping: {container_mapping}")
+            desired_names = set(CONTAINER_LIMITS.keys())
 
             with data_lock:
-                for container_name, container_id in container_mapping.items():
-                    # Read current stats
-                    current_io_bytes = read_io_stat(container_id)  # Now returns rbytes directly
-                    memory_current_content = read_memory_current(container_id)
-                    
-                    print(f"IO rbytes for {container_name}: {current_io_bytes}")
-                    print(f"Memory current content for {container_name}: {memory_current_content}")
+                for container_name in desired_names:
+                    container_id = container_mapping.get(container_name)
 
-                    # Parse memory content (io_bytes already parsed)
-                    current_memory_bytes = parse_memory_current(memory_current_content)
-                    
-                    # Get container limits for relative calculations
-                    container_limits = CONTAINER_LIMITS.get(container_name, {})
-                    memory_limit_mb = container_limits.get('memory_mb', 0)
-                    io_limit_mbps = container_limits.get('io_rate_mbps', 0)
-                    
-                    # Calculate memory percentage (no delta needed for memory)
-                    memory_percent = 0
-                    if memory_limit_mb > 0:
-                        memory_limit_bytes = memory_limit_mb * 1024 * 1024
-                        memory_percent = min(100, (current_memory_bytes / memory_limit_bytes) * 100)
-                    
-                    # Store raw metrics (frontend will handle delta calculations)
-                    metrics_data[container_name] = {
-                        # Raw IO bytes (cumulative since container start)
-                        'io_bytes_total': current_io_bytes,
-                        'memory_bytes': current_memory_bytes,
-                        'memory_human': bytes_to_human(current_memory_bytes),
-                        # Memory percentage (can be calculated immediately)
-                        'memory_percent': round(memory_percent, 1),
-                        # Limits for reference
-                        'memory_limit_mb': memory_limit_mb,
-                        'io_limit_mbps': io_limit_mbps,
-                        'timestamp': current_time
-                    }
-            
-            logger.info(f"Updated metrics for {len(container_mapping)} containers")
-            
+                    if container_id:
+                        current_io_bytes = read_io_stat(container_id)
+                        memory_current_content = read_memory_current(container_id)
+                        current_memory_bytes = parse_memory_current(memory_current_content)
+
+                        container_limits = CONTAINER_LIMITS.get(container_name, {})
+                        memory_limit_bytes_dynamic = read_memory_limit_bytes(container_id)
+                        if memory_limit_bytes_dynamic and memory_limit_bytes_dynamic > 0:
+                            memory_limit_mb = int(memory_limit_bytes_dynamic / (1024 * 1024))
+                        else:
+                            memory_limit_mb = container_limits.get('memory_mb', 0)
+                        io_limit_mbps = container_limits.get('io_rate_mbps', 0)
+
+                        memory_percent = 0
+                        if memory_limit_mb > 0:
+                            memory_limit_bytes = memory_limit_mb * 1024 * 1024
+                            memory_percent = min(100, (current_memory_bytes / memory_limit_bytes) * 100)
+
+                        metrics_data[container_name] = {
+                            'status': 'running',
+                            'io_bytes_total': current_io_bytes,
+                            'memory_bytes': current_memory_bytes,
+                            'memory_human': bytes_to_human(current_memory_bytes),
+                            'memory_percent': round(memory_percent, 1),
+                            'memory_limit_mb': memory_limit_mb,
+                            'io_limit_mbps': io_limit_mbps,
+                            'timestamp': current_time
+                        }
+                    else:
+                        if container_name != "load-balancer":
+                            logger.error(f"Container {container_name} not found")
         except Exception as e:
             logger.error(f"Error in background metrics collection: {e}")
         
@@ -266,7 +301,6 @@ def start_background_thread():
         stop_background = False
         background_thread = threading.Thread(target=metrics_background_thread, daemon=True)
         background_thread.start()
-        logger.info("Started background metrics collection thread")
 
 def get_current_metrics():
     """Get current metrics from the background thread data"""
@@ -278,7 +312,7 @@ def get_current_metrics():
         for container_name, data in metrics_data.items():
             containers_data.append({
                 "name": container_name,
-                "status": "running",
+                "status": data.get('status', 'running'),
                 "timestamp": current_time,
                 "metrics": {
                     # Memory metrics (absolute and relative)

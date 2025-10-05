@@ -8,21 +8,19 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
       - DISABLE_FILE_CACHING=false  # Set to true to force disk I/O on every request
-    volumes:
-      - ./files/Server1:/app/wwwroot/Static  # Individual storage for container 1
     restart: unless-stopped
     blkio_config:
       device_read_bps:
         - path: /dev/sda
-          rate: '1024mb'
+          rate: '16mb'
     deploy:
       resources:
         limits:
           cpus: "1.0"        # Limit to 1 CPU core
-          memory: 2048M       # Limit to 64MB RAM
+          memory: 1024M       # Limit to 64MB RAM
         reservations:
           cpus: "0.25"       # Reserve 0.25 CPU cores
-          memory: 256M       # Reserve 8MB RAM
+          memory: 128M       # Reserve 8MB RAM
 
   mpeg-dash-processor-2:
     build: ./mpeg-dash-processor/Application
@@ -33,13 +31,11 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
       - DISABLE_FILE_CACHING=true  # Set to true to force disk I/O on every request
-    volumes:
-      - ./files/Server2:/app/wwwroot/Static  # Individual storage for container 2
     restart: unless-stopped
     blkio_config:
       device_read_bps:
         - path: /dev/sda
-          rate: '512mb'
+          rate: '16mb'
     deploy:
       resources:
         limits:
@@ -58,21 +54,19 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
       - DISABLE_FILE_CACHING=false  # Set to true to force disk I/O on every request
-    volumes:
-      - ./files/Server3:/app/wwwroot/Static  # Individual storage for container 3
     restart: unless-stopped
     blkio_config:
       device_read_bps:
         - path: /dev/sda
-          rate: '256mb'
+          rate: '16mb'
     deploy:
       resources:
         limits:
           cpus: "1.0"        # Limit to 1 CPU core
-          memory: 512M       # Limit to 64MB RAM
+          memory: 1024M       # Limit to 64MB RAM
         reservations:
           cpus: "0.25"       # Reserve 0.25 CPU cores
-          memory: 64M       # Reserve 8MB RAM
+          memory: 128M       # Reserve 8MB RAM
 
   mpeg-dash-processor-4:
     build: ./mpeg-dash-processor/Application
@@ -83,21 +77,19 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
       - DISABLE_FILE_CACHING=false  # Set to true to force disk I/O on every request
-    volumes:
-      - ./files/Server4:/app/wwwroot/Static  # Individual storage for container 4
     restart: unless-stopped
     blkio_config:
       device_read_bps:
         - path: /dev/sda
-          rate: '128mb'
+          rate: '16mb'
     deploy:
       resources:
         limits:
           cpus: "1.0"        # Limit to 1 CPU core
-          memory: 256M       # Limit to 64MB RAM
+          memory: 1024M       # Limit to 64MB RAM
         reservations:
           cpus: "0.25"       # Reserve 0.25 CPU cores
-          memory: 32M       # Reserve 8MB RAM
+          memory: 128M       # Reserve 8MB RAM
 
   mpeg-dash-processor-5:
     build: ./mpeg-dash-processor/Application
@@ -108,21 +100,19 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
       - DISABLE_FILE_CACHING=false  # Set to true to force disk I/O on every request
-    volumes:
-      - ./files/Server5:/app/wwwroot/Static  # Individual storage for container 5
     restart: unless-stopped
     blkio_config:
       device_read_bps:
         - path: /dev/sda
-          rate: '64mb'
+          rate: '16mb'
     deploy:
       resources:
         limits:
           cpus: "1.0"        # Limit to 1 CPU core
-          memory: 128M       # Limit to 512MB RAM
+          memory: 1024M       # Limit to 512MB RAM
         reservations:
           cpus: "0.25"       # Reserve 0.25 CPU cores
-          memory: 16M       # Reserve 8MB RAM
+          memory: 128M       # Reserve 8MB RAM
 
   mpeg-dash-processor-6:
     build: ./mpeg-dash-processor/Application
@@ -133,21 +123,19 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
       - DISABLE_FILE_CACHING=false  # Set to true to force disk I/O on every request
-    volumes:
-      - ./files/Server6:/app/wwwroot/Static  # Individual storage for container 6
     restart: unless-stopped
     blkio_config:
       device_read_bps:
         - path: /dev/sda
-          rate: '32mb'
+          rate: '16mb'
     deploy:
       resources:
         limits:
           cpus: "1.0"        # Limit to 1 CPU core
-          memory: 64M       # Limit to 64MB RAM
+          memory: 1024M       # Limit to 64MB RAM
         reservations:
           cpus: "0.25"       # Reserve 0.25 CPU cores
-          memory: 8M       # Reserve 8MB RAM
+          memory: 128M       # Reserve 8MB RAM
 
   mpeg-dash-processor-7:
     build: ./mpeg-dash-processor/Application
@@ -158,8 +146,6 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
       - DISABLE_FILE_CACHING=false  # Set to true to force disk I/O on every request
-    volumes:
-      - ./files/Server7:/app/wwwroot/Static  # Individual storage for container 7
     restart: unless-stopped
     blkio_config:
       device_read_bps:
@@ -169,10 +155,10 @@ services:
       resources:
         limits:
           cpus: "1.0"        # Limit to 1 CPU core
-          memory: 16M       # Limit to 64MB RAM
+          memory: 1024M       # Limit to 64MB RAM
         reservations:
           cpus: "0.25"       # Reserve 0.25 CPU cores
-          memory: 6M       # Reserve 8MB RAM
+          memory: 128M       # Reserve 8MB RAM
 
   mpeg-dash-processor-8:
     build: ./mpeg-dash-processor/Application
@@ -183,18 +169,16 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
       - DISABLE_FILE_CACHING=false  # Set to true to force disk I/O on every request
-    volumes:
-      - ./files/Server8:/app/wwwroot/Static  # Individual storage for container 8
     restart: unless-stopped
     blkio_config:
       device_read_bps:
         - path: /dev/sda
-          rate: '8mb'
+          rate: '16mb'
     deploy:
       resources:
         limits:
           cpus: "1.0"        # Limit to 1 CPU core
-          memory: 16M       # Limit to 64MB RAM
+          memory: 1024M       # Limit to 64MB RAM
         reservations:
           cpus: "0.25"       # Reserve 0.25 CPU cores
           memory: 6M       # Reserve 8MB RAM

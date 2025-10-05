@@ -25,6 +25,13 @@ import re
 from urllib.parse import urljoin, urlparse, urlunparse, parse_qs, urlencode
 import random
 import uuid
+import socket
+import platform
+from contextlib import suppress
+try:
+    import resource  # Unix only
+except Exception:  # pragma: no cover
+    resource = None
 
 
 @dataclass
@@ -161,7 +168,9 @@ class LoadGenerator:
                  log_level: str = "INFO", manifest_path: str = "/Earth/manifest.mpd",
                  simulate_dash: bool = True, segment_interval: float = 2.0,
                  disable_cache: bool = True, max_earth_directories: int = 100,
-                 no_keepalive: bool = False):
+                 no_keepalive: bool = False, blast_mode: bool = False,
+                 conn_limit: Optional[int] = None, per_host_limit: Optional[int] = None,
+                 diag: bool = False, host_header: Optional[str] = None):
         self.target_url = target_url
         self.concurrent_users = concurrent_users
         self.total_requests = total_requests
@@ -174,6 +183,11 @@ class LoadGenerator:
         self.disable_cache = disable_cache
         self.max_earth_directories = max_earth_directories
         self.no_keepalive = no_keepalive
+        self.blast_mode = blast_mode
+        self.conn_limit = conn_limit
+        self.per_host_limit = per_host_limit
+        self.diag = diag
+        self.host_header = host_header
         
         self.results: List[RequestResult] = []
         self.results_lock = threading.Lock()
@@ -248,9 +262,13 @@ class LoadGenerator:
             }
         
         try:
+            headers = no_cache_headers
+            if self.host_header:
+                headers = {**headers, 'Host': self.host_header}
+
             async with session.get(
                 request_url,
-                headers=no_cache_headers,
+                headers=headers,
                 timeout=aiohttp.ClientTimeout(total=self.timeout)
             ) as response:
                 await response.read()
@@ -283,12 +301,16 @@ class LoadGenerator:
             )
         except aiohttp.ClientConnectorError as e:
             end_time = time.time()
-            error_msg = f"Connection error: {str(e)}"
+            os_err = getattr(e, 'os_error', None)
+            errno_val = getattr(os_err, 'errno', None)
+            error_msg = f"Connection error: {type(e).__name__}: {str(e)}"
+            if errno_val is not None:
+                error_msg += f" (errno={errno_val})"
             self.logger.error(f"Request {request_id}: {error_msg} - URL: {request_url}")
             return RequestResult(
                 success=False,
                 response_time=end_time - start_time,
-                error_message=f"Connection Error: {str(e)}",
+                error_message=error_msg,
                 timestamp=timestamp,
                 url=request_url,
                 segment_type=segment_type
@@ -373,7 +395,7 @@ class LoadGenerator:
             
             request_count += 1
             
-            if self.request_delay > 0:
+            if not self.blast_mode and self.request_delay > 0:
                 await asyncio.sleep(self.request_delay)
     
     async def _dash_worker(self, worker_id: int, session: aiohttp.ClientSession):
@@ -449,7 +471,7 @@ class LoadGenerator:
                     self.results.append(result)
                     total_completed = len(self.results)
                     
-                    if total_completed % 50 == 0 or not result.success:
+                    if total_completed % 500 == 0 or not result.success:
                         elapsed = time.time() - self.start_time
                         rate = total_completed / elapsed if elapsed > 0 else 0
                         self.logger.info(f"Progress: {total_completed}/{self.total_requests} requests completed "
@@ -458,8 +480,12 @@ class LoadGenerator:
                 
                 request_count += 1
                 
-                segment_delay = max(0.5, self.request_delay) if self.request_delay > 0 else self.segment_interval
-                await asyncio.sleep(segment_delay)
+                if self.blast_mode:
+                    # No throttling in blast mode
+                    pass
+                else:
+                    segment_delay = max(0.5, self.request_delay) if self.request_delay > 0 else self.segment_interval
+                    await asyncio.sleep(segment_delay)
             else:
                 self.logger.warning(f"Worker {worker_id}: No media segments available")
                 break
@@ -536,9 +562,18 @@ class LoadGenerator:
     
     async def _run_async_load_test(self):
         """Run the asynchronous load test"""
+        # Determine connector limits
+        if self.blast_mode:
+            computed_limit = 0 if self.conn_limit is None else self.conn_limit
+            computed_per_host = 0 if self.per_host_limit is None else self.per_host_limit
+        else:
+            computed_limit = (self.conn_limit if self.conn_limit is not None 
+                              else self.concurrent_users * 2)
+            computed_per_host = (self.per_host_limit if self.per_host_limit is not None 
+                                 else self.concurrent_users * 2)
         connector = aiohttp.TCPConnector(
-            limit=self.concurrent_users * 2,
-            limit_per_host=self.concurrent_users * 2,
+            limit=computed_limit,
+            limit_per_host=computed_per_host,
             keepalive_timeout=30,
             enable_cleanup_closed=True,
             force_close=self.no_keepalive
@@ -574,6 +609,8 @@ class LoadGenerator:
         if self.duration:
             self.logger.info(f"Duration: {self.duration} seconds")
         self.logger.info(f"Request timeout: {self.timeout} seconds")
+        if self.diag:
+            self._log_diagnostics()
         
         print(f"Starting load test...")
         print(f"Target URL: {self.target_url}")
@@ -595,6 +632,36 @@ class LoadGenerator:
         self.end_time = time.time()
         
         return self._calculate_results()
+
+    def _log_diagnostics(self):
+        """Log environment and networking diagnostics to aid investigations"""
+        print("Diagnostics:")
+        print(f"  Platform: {platform.platform()}")
+        print(f"  Python: {platform.python_version()}")
+        print(f"  Keep-Alive: {not self.no_keepalive}")
+        print(f"  Blast Mode: {self.blast_mode}")
+        print(f"  Simulate DASH: {self.simulate_dash}")
+        print(f"  Concurrency: {self.concurrent_users}")
+        print(f"  Conn Limit: {self.conn_limit if self.conn_limit is not None else '(default)'}")
+        print(f"  Per-Host Limit: {self.per_host_limit if self.per_host_limit is not None else '(default)'}")
+        # File descriptor limits (Unix)
+        if resource is not None:
+            with suppress(Exception):
+                soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+                print(f"  RLIMIT_NOFILE (soft/hard): {soft}/{hard}")
+        # Ephemeral port range (Linux)
+        with suppress(Exception):
+            with open('/proc/sys/net/ipv4/ip_local_port_range', 'r') as f:
+                pr = f.read().strip()
+                print(f"  Ephemeral port range: {pr}")
+        # DNS resolution for target host
+        with suppress(Exception):
+            parsed = urlparse(self.target_url)
+            host = parsed.hostname
+            if host:
+                infos = socket.getaddrinfo(host, parsed.port or (443 if parsed.scheme == 'https' else 80))
+                addrs = sorted({sa[0] for _family, _type, _proto, _canon, sa in infos})
+                print(f"  DNS '{host}': {', '.join(addrs)}")
     
     def _calculate_results(self) -> LoadTestResults:
         """Calculate and return test results"""
@@ -802,6 +869,41 @@ def main():
         default=100,
         help='Maximum number of Earth directories to randomly select from (Earth1 to EarthN)'
     )
+
+    parser.add_argument(
+        '--blast',
+        action='store_true',
+        help='Enable blast mode: no client-side throttling, unlimited connector limits by default'
+    )
+
+    parser.add_argument(
+        '--conn-limit',
+        type=int,
+        help='Override total connection limit (0 means unlimited). Defaults to unlimited in --blast, else 2x concurrent'
+    )
+
+    parser.add_argument(
+        '--per-host-limit',
+        type=int,
+        help='Override per-host connection limit (0 means unlimited). Defaults to unlimited in --blast, else 2x concurrent'
+    )
+
+    parser.add_argument(
+        '--blast-concurrency',
+        type=int,
+        help='Override --concurrent when --blast is enabled to push higher RPS'
+    )
+
+    parser.add_argument(
+        '--diag',
+        action='store_true',
+        help='Print environment and networking diagnostics to aid troubleshooting'
+    )
+
+    parser.add_argument(
+        '--host-header',
+        help='Override Host header (useful when targeting IP/host.docker.internal)'
+    )
     
     
     args = parser.parse_args()
@@ -817,9 +919,13 @@ def main():
     if args.duration:
         total_requests = 999999
     
+    effective_concurrency = args.concurrent
+    if args.blast and args.blast_concurrency:
+        effective_concurrency = args.blast_concurrency
+
     load_generator = LoadGenerator(
         target_url=target_url,
-        concurrent_users=args.concurrent,
+        concurrent_users=effective_concurrency,
         total_requests=total_requests,
         duration=args.duration,
         request_delay=args.delay,
@@ -830,10 +936,17 @@ def main():
         segment_interval=args.segment_interval,
         disable_cache=not args.enable_cache,
         max_earth_directories=args.max_earth_dirs,
-        no_keepalive=args.no_keepalive
+        no_keepalive=args.no_keepalive,
+        blast_mode=args.blast,
+        conn_limit=args.conn_limit,
+        per_host_limit=args.per_host_limit,
+        diag=args.diag,
+        host_header=args.host_header
     )
     
     try:
+        if args.blast:
+            print("Blast mode enabled: no throttling, aggressive connector settings.")
         results = load_generator.run_load_test()
         load_generator.print_results(results)
         

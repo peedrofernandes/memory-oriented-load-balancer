@@ -1,0 +1,117 @@
+services:
+  load-generator-1:
+    image: python:3.11
+    container_name: load-generator-1
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: >
+      sh -c "pip install --no-cache-dir -r requirements.txt || true && python3 load_generator.py --url http://load-balancer:8080 --concurrent 1000 --duration 60 --log-level INFO"
+    networks:
+      - mpeg-dash-network
+
+  load-generator-2:
+    image: python:3.11
+    container_name: load-generator-2
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: >
+      sh -c "pip install --no-cache-dir -r requirements.txt || true && python3 load_generator.py --url http://load-balancer:8080 --concurrent 1000 --duration 60 --log-level INFO"
+    networks:
+      - mpeg-dash-network
+
+  load-generator-3:
+    image: python:3.11
+    container_name: load-generator-3
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: >
+      sh -c "pip install --no-cache-dir -r requirements.txt || true && python3 load_generator.py --url http://load-balancer:8080 --concurrent 1000 --duration 60 --log-level INFO"
+    networks:
+      - mpeg-dash-network
+
+  load-generator-4:
+    image: python:3.11
+    container_name: load-generator-4
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: >
+      sh -c "pip install --no-cache-dir -r requirements.txt || true && python3 load_generator.py --url http://load-balancer:8080 --concurrent 1000 --duration 60 --log-level INFO"
+    networks:
+      - mpeg-dash-network
+
+  load-generator-5:
+    image: python:3.11
+    container_name: load-generator-5
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: >
+      sh -c "pip install --no-cache-dir -r requirements.txt || true && python3 load_generator.py --url http://load-balancer:8080 --concurrent 1000 --duration 60 --log-level INFO"
+    networks:
+      - mpeg-dash-network
+
+  load-generator-6:
+    image: python:3.11
+    container_name: load-generator-6
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: >
+      sh -c "pip install --no-cache-dir -r requirements.txt || true && python3 load_generator.py --url http://load-balancer:8080 --concurrent 1000 --duration 60 --log-level INFO"
+    networks:
+      - mpeg-dash-network
+
+  load-generator-7:
+    image: python:3.11
+    container_name: load-generator-7
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: >
+      sh -c "pip install --no-cache-dir -r requirements.txt || true && python3 load_generator.py --url http://load-balancer:8080 --concurrent 1000 --duration 60 --log-level INFO"
+    networks:
+      - mpeg-dash-network
+
+  load-generator-8:
+    image: python:3.11
+    container_name: load-generator-8
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: >
+      sh -c "pip install --no-cache-dir -r requirements.txt || true && python3 load_generator.py --url http://load-balancer:8080 --concurrent 1000 --duration 60 --log-level INFO"
+    networks:
+      - mpeg-dash-network
+
+  load-generator-9:
+    image: python:3.11
+    container_name: load-generator-9
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: >
+      sh -c "pip install --no-cache-dir -r requirements.txt || true && python3 load_generator.py --url http://load-balancer:8080 --concurrent 1000 --duration 60 --log-level INFO"
+    networks:
+      - mpeg-dash-network
+
+  load-generator-10:
+    image: python:3.11
+    container_name: load-generator-10
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: >
+      sh -c "pip install --no-cache-dir -r requirements.txt || true && python3 load_generator.py --url http://load-balancer:8080 --concurrent 1000 --duration 60 --log-level INFO"
+    networks:
+      - mpeg-dash-network
+
+networks:
+  mpeg-dash-network:
+    external: true
+    name: mpeg-dash-network
+
+

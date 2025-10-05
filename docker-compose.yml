@@ -191,25 +191,27 @@ services:
     environment:
       - RUST_LOG=info
     restart: unless-stopped
+    # ulimits:
+    #   nofile:
+    #     soft: 200000
+    #     hard: 200000
+    # sysctls:
+    #   net.core.somaxconn: 65535
+    #   net.ipv4.tcp_max_syn_backlog: 262144
     deploy:
       resources:
         limits:
-          cpus: "1.0"        # Limit to 1 CPU core
-          memory: 256M       # Limit to 256MB RAM
+          cpus: "1.0"
+          memory: 2048M
         reservations:
-          cpus: "0.25"       # Reserve 0.25 CPU cores
-          memory: 32M       # Reserve 32MB RAM
+          cpus: "1.0"
+          memory: 512M
     logging:
       driver: "json-file"
       options:
         max-size: "100m"        # Maximum size per log file
         max-file: "3"           # Keep 3 log files (300MB total)
         compress: "true"        # Compress rotated logs
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   # Monitoring dashboard (web interface)
   monitoring-dashboard:

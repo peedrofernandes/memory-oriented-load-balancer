@@ -1,37 +1,25 @@
 #!/usr/bin/env python3
 """
-Load Generator for TCP/HTTP Load Balancer
+DASH Load Generator (Blast-only)
 
-This script generates configurable concurrent load on the load balancer
-to test performance and distribution capabilities.
+This script blasts a target load balancer with MPEG-DASH traffic using
+concurrent clients. It is designed to sustain very high loads without
+storing per-request results in memory.
 """
 
 import asyncio
 import aiohttp
 import argparse
-import json
 import time
-import statistics
 import logging
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from typing import List, Dict, Optional
-from concurrent.futures import ThreadPoolExecutor
 import threading
 import signal
 import sys
-from datetime import datetime, timedelta
 import xml.etree.ElementTree as ET
-import re
-from urllib.parse import urljoin, urlparse, urlunparse, parse_qs, urlencode
+from urllib.parse import urljoin
 import random
-import uuid
-import socket
-import platform
-from contextlib import suppress
-try:
-    import resource  # Unix only
-except Exception:  # pragma: no cover
-    resource = None
 
 
 @dataclass
@@ -41,18 +29,6 @@ class DashSegment:
     segment_type: str  # 'init' or 'media'
     representation_id: str
     segment_number: Optional[int] = None
-
-@dataclass
-class RequestResult:
-    """Result of a single request"""
-    success: bool
-    response_time: float
-    status_code: Optional[int] = None
-    error_message: Optional[str] = None
-    timestamp: float = 0.0
-    url: Optional[str] = None
-    segment_type: Optional[str] = None
-
 
 @dataclass
 class LoadTestResults:
@@ -71,6 +47,17 @@ class LoadTestResults:
     error_rate: float
     errors: Dict[str, int]
 
+
+# Constants
+DEFAULT_TIMEOUT_SECONDS = 15.0
+DEFAULT_ENDPOINT = "/"
+DEFAULT_MANIFEST_PATH = "/Earth/manifest.mpd"
+MAX_EARTH_DIRECTORIES = 100
+
+# Fixed-memory histogram for response times (ms)
+# Covers 0..HISTOGRAM_MAX_MS with HISTOGRAM_BUCKET_MS resolution
+HISTOGRAM_BUCKET_MS = 5
+HISTOGRAM_MAX_MS = 20000
 
 class DashManifestParser:
     """Parser for MPEG-DASH manifest files"""
@@ -160,64 +147,48 @@ class DashManifestParser:
 
 
 class LoadGenerator:
-    """Main load generator class"""
+    """Main load generator class (blast-only DASH)."""
     
-    def __init__(self, target_url: str, concurrent_users: int = 10, 
-                 total_requests: int = 100, duration: Optional[int] = None,
-                 request_delay: float = 0.0, timeout: float = 30.0, 
-                 log_level: str = "INFO", manifest_path: str = "/Earth/manifest.mpd",
-                 simulate_dash: bool = True, segment_interval: float = 2.0,
-                 disable_cache: bool = True, max_earth_directories: int = 100,
-                 no_keepalive: bool = False, blast_mode: bool = False,
-                 conn_limit: Optional[int] = None, per_host_limit: Optional[int] = None,
-                 diag: bool = False, host_header: Optional[str] = None):
+    def __init__(self, target_url: str, concurrent_users: int = 10,
+                 duration: Optional[int] = None, log_level: str = "INFO",
+                 no_keepalive: bool = False):
         self.target_url = target_url
         self.concurrent_users = concurrent_users
-        self.total_requests = total_requests
         self.duration = duration
-        self.request_delay = request_delay
-        self.timeout = timeout
-        self.manifest_path = manifest_path
-        self.simulate_dash = simulate_dash
-        self.segment_interval = segment_interval
-        self.disable_cache = disable_cache
-        self.max_earth_directories = max_earth_directories
         self.no_keepalive = no_keepalive
-        self.blast_mode = blast_mode
-        self.conn_limit = conn_limit
-        self.per_host_limit = per_host_limit
-        self.diag = diag
-        self.host_header = host_header
         
-        self.results: List[RequestResult] = []
-        self.results_lock = threading.Lock()
+        # Timing
+        self.timeout = DEFAULT_TIMEOUT_SECONDS
         self.start_time = 0.0
         self.end_time = 0.0
         self.stop_event = threading.Event()
         
-        self.dash_segments: List[DashSegment] = []
-        self.segments_lock = threading.Lock()
+        # DASH
+        self.max_earth_directories = MAX_EARTH_DIRECTORIES
+        self.manifest_path = DEFAULT_MANIFEST_PATH
         self.manifest_parser = DashManifestParser(target_url)
+        
+        # Aggregated counters (thread-safe)
+        self.metrics_lock = threading.Lock()
+        self.total_requests = 0
+        self.successful_requests = 0
+        self.failed_requests = 0
+        self.response_time_sum = 0.0
+        self.response_time_min = float('inf')
+        self.response_time_max = 0.0
+        self.errors: Dict[str, int] = {}
+        
+        # Fixed-memory histogram
+        self.bucket_ms = HISTOGRAM_BUCKET_MS
+        self.max_ms = HISTOGRAM_MAX_MS
+        self.num_buckets = int(self.max_ms // self.bucket_ms) + 1  # includes overflow edge
+        self.histogram: List[int] = [0] * self.num_buckets
+        self.overflow_count = 0
         
         self._setup_logging(log_level)
         
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
-    
-    def _add_cache_busting(self, url: str) -> str:
-        """Add cache-busting parameters to URL to ensure fresh requests"""
-        parsed = urlparse(url)
-        query_params = parse_qs(parsed.query)
-        
-        query_params['_cb'] = [str(int(time.time() * 1000))]
-        query_params['_rnd'] = [str(random.randint(10000, 99999))]
-        query_params['_uid'] = [str(uuid.uuid4())[:8]]
-        
-        new_query = urlencode(query_params, doseq=True)
-        return urlunparse((
-            parsed.scheme, parsed.netloc, parsed.path,
-            parsed.params, new_query, parsed.fragment
-        ))
     
     def _setup_logging(self, log_level: str):
         """Setup logging configuration"""
@@ -231,6 +202,26 @@ class LoadGenerator:
             )
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
+
+    def _record_result(self, success: bool, response_time: float, error_message: Optional[str] = None):
+        """Record a single request outcome into aggregated metrics."""
+        duration_ms = int(response_time * 1000)
+        bucket_index = min(duration_ms // self.bucket_ms, self.num_buckets - 1)
+        with self.metrics_lock:
+            self.total_requests += 1
+            if success:
+                self.successful_requests += 1
+            else:
+                self.failed_requests += 1
+                if error_message:
+                    key = error_message.split(':')[0] if ':' in error_message else error_message
+                    self.errors[key] = self.errors.get(key, 0) + 1
+            self.response_time_sum += response_time
+            if response_time < self.response_time_min:
+                self.response_time_min = response_time
+            if response_time > self.response_time_max:
+                self.response_time_max = response_time
+            self.histogram[bucket_index] += 1
     
     def _signal_handler(self, signum, frame):
         """Handle shutdown signals"""
@@ -239,33 +230,17 @@ class LoadGenerator:
         self.stop_event.set()
     
     async def _make_request(self, session: aiohttp.ClientSession, request_id: int, 
-                           url: Optional[str] = None, segment_type: Optional[str] = None) -> RequestResult:
-        """Make a single HTTP request with cache-busting"""
+                           url: Optional[str] = None, segment_type: Optional[str] = None) -> None:
+        """Make a single HTTP GET request and update aggregated metrics."""
         start_time = time.time()
         timestamp = start_time
         base_url = url if url else self.target_url
-        
-        if self.disable_cache:
-            request_url = self._add_cache_busting(base_url)
-            no_cache_headers = {
-                'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
-                'Pragma': 'no-cache',
-                'Expires': '0',
-                'If-Modified-Since': 'Thu, 01 Jan 1970 00:00:00 GMT',
-                'If-None-Match': '*',
-                'User-Agent': f'LoadGenerator-{request_id}-{int(time.time())}'
-            }
-        else:
-            request_url = base_url
-            no_cache_headers = {
-                'User-Agent': f'LoadGenerator-{request_id}'
-            }
+        request_url = base_url
+        headers = {
+            'User-Agent': f'LoadGenerator-{request_id}'
+        }
         
         try:
-            headers = no_cache_headers
-            if self.host_header:
-                headers = {**headers, 'Host': self.host_header}
-
             async with session.get(
                 request_url,
                 headers=headers,
@@ -277,28 +252,13 @@ class LoadGenerator:
                 self.logger.debug(f"Request {request_id}: SUCCESS - Status: {response.status}, "
                                 f"Time: {(end_time - start_time)*1000:.2f}ms - URL: {request_url} "
                                 f"Type: {segment_type or 'standard'}")
-                
-                return RequestResult(
-                    success=True,
-                    response_time=end_time - start_time,
-                    status_code=response.status,
-                    timestamp=timestamp,
-                    url=request_url,
-                    segment_type=segment_type
-                )
+                self._record_result(True, end_time - start_time)
                 
         except asyncio.TimeoutError:
             end_time = time.time()
-            error_msg = f"Request timeout after {self.timeout}s"
+            error_msg = "Timeout"
             self.logger.warning(f"Request {request_id}: {error_msg} - URL: {request_url}")
-            return RequestResult(
-                success=False,
-                response_time=end_time - start_time,
-                error_message="Timeout",
-                timestamp=timestamp,
-                url=request_url,
-                segment_type=segment_type
-            )
+            self._record_result(False, end_time - start_time, error_msg)
         except aiohttp.ClientConnectorError as e:
             end_time = time.time()
             os_err = getattr(e, 'os_error', None)
@@ -307,96 +267,30 @@ class LoadGenerator:
             if errno_val is not None:
                 error_msg += f" (errno={errno_val})"
             self.logger.error(f"Request {request_id}: {error_msg} - URL: {request_url}")
-            return RequestResult(
-                success=False,
-                response_time=end_time - start_time,
-                error_message=error_msg,
-                timestamp=timestamp,
-                url=request_url,
-                segment_type=segment_type
-            )
+            self._record_result(False, end_time - start_time, error_msg)
         except aiohttp.ClientResponseError as e:
             end_time = time.time()
             error_msg = f"HTTP {e.status} error: {str(e)}"
             self.logger.error(f"Request {request_id}: {error_msg} - URL: {request_url}")
-            return RequestResult(
-                success=False,
-                response_time=end_time - start_time,
-                error_message=f"HTTP Error {e.status}: {str(e)}",
-                timestamp=timestamp,
-                url=request_url,
-                segment_type=segment_type
-            )
+            self._record_result(False, end_time - start_time, f"HTTP Error {e.status}")
         except aiohttp.ClientError as e:
             end_time = time.time()
             error_msg = f"Client error: {type(e).__name__}: {str(e)}"
             self.logger.error(f"Request {request_id}: {error_msg} - URL: {request_url}")
-            return RequestResult(
-                success=False,
-                response_time=end_time - start_time,
-                error_message=f"Client Error: {type(e).__name__}: {str(e)}",
-                timestamp=timestamp,
-                url=request_url,
-                segment_type=segment_type
-            )
+            self._record_result(False, end_time - start_time, f"Client Error: {type(e).__name__}")
         except Exception as e:
             end_time = time.time()
             error_msg = f"Unexpected error: {type(e).__name__}: {str(e)}"
             self.logger.error(f"Request {request_id}: {error_msg} - URL: {request_url}")
-            return RequestResult(
-                success=False,
-                response_time=end_time - start_time,
-                error_message=f"Unexpected Error: {str(e)}",
-                timestamp=timestamp,
-                url=request_url,
-                segment_type=segment_type
-            )
+            self._record_result(False, end_time - start_time, f"Unexpected Error: {type(e).__name__}")
     
     async def _worker(self, worker_id: int, session: aiohttp.ClientSession):
-        """Worker coroutine that makes requests"""
-        request_count = 0
+        """DASH worker that continuously fetches segments with no throttling."""
         worker_start_time = time.time()
-        
         self.logger.debug(f"Worker {worker_id}: Started")
-        
-        if self.simulate_dash:
-            await self._dash_worker(worker_id, session)
-        else:
-            await self._standard_worker(worker_id, session)
-        
+        await self._dash_worker(worker_id, session)
         worker_end_time = time.time()
-        self.logger.debug(f"Worker {worker_id}: Completed {request_count} requests in "
-                         f"{worker_end_time - worker_start_time:.2f}s")
-    
-    async def _standard_worker(self, worker_id: int, session: aiohttp.ClientSession):
-        """Standard worker that makes simple requests to target URL"""
-        request_count = 0
-        
-        while not self.stop_event.is_set():
-            with self.results_lock:
-                if len(self.results) >= self.total_requests:
-                    break
-            
-            if self.duration and (time.time() - self.start_time) >= self.duration:
-                break
-            
-            unique_request_id = f"{worker_id}-{request_count}"
-            result = await self._make_request(session, unique_request_id)
-            
-            with self.results_lock:
-                self.results.append(result)
-                total_completed = len(self.results)
-                
-                if total_completed % 100 == 0 or not result.success:
-                    elapsed = time.time() - self.start_time
-                    rate = total_completed / elapsed if elapsed > 0 else 0
-                    self.logger.info(f"Progress: {total_completed}/{self.total_requests} requests completed "
-                                   f"({rate:.1f} req/s) - Errors: {sum(1 for r in self.results if not r.success)}")
-            
-            request_count += 1
-            
-            if not self.blast_mode and self.request_delay > 0:
-                await asyncio.sleep(self.request_delay)
+        self.logger.debug(f"Worker {worker_id}: Stopped after {worker_end_time - worker_start_time:.2f}s")
     
     async def _dash_worker(self, worker_id: int, session: aiohttp.ClientSession):
         """DASH simulation worker that continuously fetches segments in a loop"""
@@ -409,16 +303,7 @@ class LoadGenerator:
         self.logger.debug(f"Worker {worker_id}: Starting DASH client simulation for {selected_earth_dir}")
         self.logger.info(f"Worker {worker_id}: Selected Earth directory '{selected_earth_dir}'")
         
-        manifest_result = await self._make_request(session, f"{worker_id}-manifest", 
-                                                 manifest_url, "manifest")
-        with self.results_lock:
-            self.results.append(manifest_result)
-            if len(self.results) >= self.total_requests:
-                return
-        
-        if not manifest_result.success:
-            self.logger.warning(f"Worker {worker_id}: Manifest request failed, worker stopping")
-            return
+        await self._make_request(session, f"{worker_id}-manifest", manifest_url, "manifest")
         
         try:
             segments = await self.manifest_parser.fetch_and_parse_manifest(session, manifest_url)
@@ -436,23 +321,13 @@ class LoadGenerator:
         for i, segment in enumerate(init_segments):
             if self.stop_event.is_set():
                 return
-            with self.results_lock:
-                if len(self.results) >= self.total_requests:
-                    return
-            
-            result = await self._make_request(session, f"{worker_id}-init-{i}", 
-                                            segment.url, f"init-{segment.representation_id}")
-            with self.results_lock:
-                self.results.append(result)
+            await self._make_request(session, f"{worker_id}-init-{i}", 
+                                     segment.url, f"init-{segment.representation_id}")
         
         segment_index = 0
         request_count = 0
         
         while not self.stop_event.is_set():
-            with self.results_lock:
-                if len(self.results) >= self.total_requests:
-                    break
-            
             if self.duration and (time.time() - self.start_time) >= self.duration:
                 break
             
@@ -460,117 +335,25 @@ class LoadGenerator:
                 current_segment = media_segments[segment_index % len(media_segments)]
                 segment_index += 1
                 
-                result = await self._make_request(
+                await self._make_request(
                     session, 
-                    f"{worker_id}-media-{request_count}", 
+                    f"{worker_id}-media-{segment_index}", 
                     current_segment.url, 
                     f"media-{current_segment.representation_id}-{current_segment.segment_number}"
                 )
-                
-                with self.results_lock:
-                    self.results.append(result)
-                    total_completed = len(self.results)
-                    
-                    if total_completed % 500 == 0 or not result.success:
-                        elapsed = time.time() - self.start_time
-                        rate = total_completed / elapsed if elapsed > 0 else 0
-                        self.logger.info(f"Progress: {total_completed}/{self.total_requests} requests completed "
-                                       f"({rate:.1f} req/s) - Errors: {sum(1 for r in self.results if not r.success)} "
-                                       f"- Worker {worker_id} on segment {segment_index}")
-                
-                request_count += 1
-                
-                if self.blast_mode:
-                    # No throttling in blast mode
-                    pass
-                else:
-                    segment_delay = max(0.5, self.request_delay) if self.request_delay > 0 else self.segment_interval
-                    await asyncio.sleep(segment_delay)
             else:
                 self.logger.warning(f"Worker {worker_id}: No media segments available")
                 break
         
-        self.logger.debug(f"Worker {worker_id}: Completed {request_count} segment requests")
+        self.logger.debug(f"Worker {worker_id}: Completed segment requests")
     
-    async def _simulate_dash_session(self, worker_id: int, session: aiohttp.ClientSession, session_count: int):
-        """Simulate a complete DASH client session"""
-        session_id = f"{worker_id}-{session_count}"
-        
-        manifest_url = urljoin(self.target_url, self.manifest_path)
-        self.logger.debug(f"Worker {worker_id}: Starting DASH session {session_count}")
-        
-        manifest_result = await self._make_request(session, f"{session_id}-manifest", 
-                                                 manifest_url, "manifest")
-        with self.results_lock:
-            self.results.append(manifest_result)
-            if len(self.results) >= self.total_requests:
-                return
-        
-        if not manifest_result.success:
-            self.logger.warning(f"Worker {worker_id}: Manifest request failed, skipping session")
-            return
-        
-        segments = []
-        with self.segments_lock:
-            if not self.dash_segments:
-                try:
-                    self.dash_segments = await self.manifest_parser.fetch_and_parse_manifest(session, manifest_url)
-                except Exception as e:
-                    self.logger.error(f"Worker {worker_id}: Failed to parse manifest: {e}")
-                    return
-            segments = self.dash_segments.copy()
-        
-        init_segments = [s for s in segments if s.segment_type == 'init']
-        media_segments = [s for s in segments if s.segment_type == 'media']
-        
-        for i, segment in enumerate(init_segments):
-            if self.stop_event.is_set():
-                break
-            with self.results_lock:
-                if len(self.results) >= self.total_requests:
-                    break
-            
-            result = await self._make_request(session, f"{session_id}-init-{i}", 
-                                            segment.url, f"init-{segment.representation_id}")
-            with self.results_lock:
-                self.results.append(result)
-        
-        segments_per_rep = 3
-        for rep_id in set(s.representation_id for s in media_segments):
-            rep_segments = [s for s in media_segments if s.representation_id == rep_id][:segments_per_rep]
-            
-            for i, segment in enumerate(rep_segments):
-                if self.stop_event.is_set():
-                    break
-                with self.results_lock:
-                    if len(self.results) >= self.total_requests:
-                        break
-                
-                result = await self._make_request(session, f"{session_id}-media-{rep_id}-{i}", 
-
-                                                segment.url, f"media-{segment.representation_id}")
-                with self.results_lock:
-                    self.results.append(result)
-                    total_completed = len(self.results)
-                    
-                    if total_completed % 50 == 0 or not result.success:
-                        elapsed = time.time() - self.start_time
-                        rate = total_completed / elapsed if elapsed > 0 else 0
-                        self.logger.info(f"Progress: {total_completed}/{self.total_requests} requests completed "
-                                       f"({rate:.1f} req/s) - Errors: {sum(1 for r in self.results if not r.success)}")
-                await asyncio.sleep(0.1)
+    # Non-blast simulation helper removed in blast-only refactor
     
     async def _run_async_load_test(self):
-        """Run the asynchronous load test"""
-        # Determine connector limits
-        if self.blast_mode:
-            computed_limit = 0 if self.conn_limit is None else self.conn_limit
-            computed_per_host = 0 if self.per_host_limit is None else self.per_host_limit
-        else:
-            computed_limit = (self.conn_limit if self.conn_limit is not None 
-                              else self.concurrent_users * 2)
-            computed_per_host = (self.per_host_limit if self.per_host_limit is not None 
-                                 else self.concurrent_users * 2)
+        """Run the asynchronous load test (blast-only)."""
+        # Unlimited connector limits
+        computed_limit = 0
+        computed_per_host = 0
         connector = aiohttp.TCPConnector(
             limit=computed_limit,
             limit_per_host=computed_per_host,
@@ -580,14 +363,7 @@ class LoadGenerator:
         )
         
         timeout = aiohttp.ClientTimeout(total=self.timeout)
-        
         default_headers = {'User-Agent': 'LoadGenerator/1.0'}
-        if self.disable_cache:
-            default_headers.update({
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache',
-                'Expires': '0'
-            })
         
         async with aiohttp.ClientSession(
             connector=connector,
@@ -605,17 +381,13 @@ class LoadGenerator:
         """Run the load test and return results"""
         self.logger.info(f"Starting load test with {self.concurrent_users} concurrent users")
         self.logger.info(f"Target URL: {self.target_url}")
-        self.logger.info(f"Total requests: {self.total_requests}")
         if self.duration:
             self.logger.info(f"Duration: {self.duration} seconds")
         self.logger.info(f"Request timeout: {self.timeout} seconds")
-        if self.diag:
-            self._log_diagnostics()
         
         print(f"Starting load test...")
         print(f"Target URL: {self.target_url}")
         print(f"Concurrent users: {self.concurrent_users}")
-        print(f"Total requests: {self.total_requests}")
         if self.duration:
             print(f"Duration: {self.duration} seconds")
         print(f"Request timeout: {self.timeout} seconds")
@@ -633,39 +405,12 @@ class LoadGenerator:
         
         return self._calculate_results()
 
-    def _log_diagnostics(self):
-        """Log environment and networking diagnostics to aid investigations"""
-        print("Diagnostics:")
-        print(f"  Platform: {platform.platform()}")
-        print(f"  Python: {platform.python_version()}")
-        print(f"  Keep-Alive: {not self.no_keepalive}")
-        print(f"  Blast Mode: {self.blast_mode}")
-        print(f"  Simulate DASH: {self.simulate_dash}")
-        print(f"  Concurrency: {self.concurrent_users}")
-        print(f"  Conn Limit: {self.conn_limit if self.conn_limit is not None else '(default)'}")
-        print(f"  Per-Host Limit: {self.per_host_limit if self.per_host_limit is not None else '(default)'}")
-        # File descriptor limits (Unix)
-        if resource is not None:
-            with suppress(Exception):
-                soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
-                print(f"  RLIMIT_NOFILE (soft/hard): {soft}/{hard}")
-        # Ephemeral port range (Linux)
-        with suppress(Exception):
-            with open('/proc/sys/net/ipv4/ip_local_port_range', 'r') as f:
-                pr = f.read().strip()
-                print(f"  Ephemeral port range: {pr}")
-        # DNS resolution for target host
-        with suppress(Exception):
-            parsed = urlparse(self.target_url)
-            host = parsed.hostname
-            if host:
-                infos = socket.getaddrinfo(host, parsed.port or (443 if parsed.scheme == 'https' else 80))
-                addrs = sorted({sa[0] for _family, _type, _proto, _canon, sa in infos})
-                print(f"  DNS '{host}': {', '.join(addrs)}")
+    # Diagnostics removed in blast-only refactor
     
     def _calculate_results(self) -> LoadTestResults:
         """Calculate and return test results"""
-        if not self.results:
+        total_requests = self.total_requests
+        if total_requests == 0:
             return LoadTestResults(
                 total_requests=0, successful_requests=0, failed_requests=0,
                 total_time=0, requests_per_second=0, avg_response_time=0,
@@ -674,45 +419,40 @@ class LoadGenerator:
                 error_rate=0, errors={}
             )
         
-        total_requests = len(self.results)
-        successful_requests = sum(1 for r in self.results if r.success)
-        failed_requests = total_requests - successful_requests
+        successful_requests = self.successful_requests
+        failed_requests = self.failed_requests
         total_time = self.end_time - self.start_time
         
-        response_times = [r.response_time for r in self.results]
-        response_times.sort()
-        
-        def percentile(data, p):
-            if not data:
-                return 0
-            k = (len(data) - 1) * p / 100
-            f = int(k)
-            c = k - f
-            if f + 1 < len(data):
-                return data[f] * (1 - c) + data[f + 1] * c
-            else:
-                return data[f]
-        
-        errors = {}
-        for result in self.results:
-            if not result.success and result.error_message:
-                error_type = result.error_message.split(':')[0] if ':' in result.error_message else result.error_message
-                errors[error_type] = errors.get(error_type, 0) + 1
-        
+        # Compute percentiles from histogram
+        def percentile_from_histogram(pct: float) -> float:
+            if total_requests == 0:
+                return 0.0
+            target = max(1, int((pct / 100.0) * total_requests))
+            cumulative = 0
+            for idx, count in enumerate(self.histogram):
+                cumulative += count
+                if cumulative >= target:
+                    # Return bucket mid-point in seconds
+                    bucket_start_ms = idx * self.bucket_ms
+                    bucket_mid_ms = bucket_start_ms + (self.bucket_ms / 2.0)
+                    return bucket_mid_ms / 1000.0
+            # Fallback to max
+            return self.response_time_max
+
         return LoadTestResults(
             total_requests=total_requests,
             successful_requests=successful_requests,
             failed_requests=failed_requests,
             total_time=total_time,
             requests_per_second=total_requests / total_time if total_time > 0 else 0,
-            avg_response_time=statistics.mean(response_times) if response_times else 0,
-            min_response_time=min(response_times) if response_times else 0,
-            max_response_time=max(response_times) if response_times else 0,
-            p50_response_time=percentile(response_times, 50),
-            p95_response_time=percentile(response_times, 95),
-            p99_response_time=percentile(response_times, 99),
-            error_rate=(failed_requests / total_requests * 100) if total_requests > 0 else 0,
-            errors=errors
+            avg_response_time=(self.response_time_sum / total_requests) if total_requests > 0 else 0.0,
+            min_response_time=(0.0 if self.response_time_min == float('inf') else self.response_time_min),
+            max_response_time=self.response_time_max,
+            p50_response_time=percentile_from_histogram(50.0),
+            p95_response_time=percentile_from_histogram(95.0),
+            p99_response_time=percentile_from_histogram(99.0),
+            error_rate=(failed_requests / total_requests * 100.0) if total_requests > 0 else 0.0,
+            errors=self.errors.copy()
         )
     
     def print_results(self, results: LoadTestResults):
@@ -744,40 +484,21 @@ class LoadGenerator:
         print("=" * 60)
     
     def save_results_json(self, results: LoadTestResults, filename: str):
-        """Save results to JSON file"""
-        results_dict = asdict(results)
-        results_dict['test_config'] = {
-            'target_url': self.target_url,
-            'concurrent_users': self.concurrent_users,
-            'total_requests': self.total_requests,
-            'duration': self.duration,
-            'request_delay': self.request_delay,
-            'timeout': self.timeout,
-            'manifest_path': self.manifest_path,
-            'simulate_dash': self.simulate_dash,
-            'segment_interval': self.segment_interval,
-            'disable_cache': self.disable_cache,
-            'max_earth_directories': self.max_earth_directories
-        }
-        results_dict['timestamp'] = datetime.now().isoformat()
-        
-        with open(filename, 'w') as f:
-            json.dump(results_dict, f, indent=2)
-        
-        print(f"\nResults saved to: {filename}")
+        """Intentionally removed: JSON output not supported in blast-only refactor."""
+        raise NotImplementedError("JSON output has been removed in the blast-only refactor.")
 
 
 def main():
     """Main function with command line argument parsing"""
     parser = argparse.ArgumentParser(
-        description="Load Generator for TCP/HTTP Load Balancer",
+        description="Blast-only MPEG-DASH Load Generator",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     
     parser.add_argument(
         '--url', '-u',
-        default='http://host.docker.internal:8080',
-        help='Target URL to load test'
+        default='http://load-balancer:8080',
+        help='Target base URL (e.g., http://host.docker.internal:8080)'
     )
     
     parser.add_argument(
@@ -797,7 +518,7 @@ def main():
     parser.add_argument(
         '--duration', '-d',
         type=int,
-        help='Test duration in seconds (overrides --requests if specified)'
+        help='Test duration in seconds (blast runs until duration or Ctrl+C)'
     )
     
     parser.add_argument(
@@ -819,11 +540,6 @@ def main():
         help='Output file for JSON results'
     )
     
-    parser.add_argument(
-        '--endpoint',
-        default='/',
-        help='Endpoint path to append to URL'
-    )
     
     parser.add_argument(
         '--log-level',
@@ -833,125 +549,30 @@ def main():
     )
     
     parser.add_argument(
-        '--manifest-path',
-        default='/Earth/manifest.mpd',
-        help='Path to DASH manifest file (for DASH simulation) - Note: In DASH mode, random Earth directories are automatically selected'
-    )
-    
-    parser.add_argument(
-        '--disable-dash',
-        action='store_true',
-        help='Disable DASH simulation and use standard HTTP requests'
-    )
-    
-    parser.add_argument(
-        '--segment-interval',
-        type=float,
-        default=2.0,
-        help='Interval between DASH segment requests in seconds (default: 2.0)'
-    )
-    
-    parser.add_argument(
-        '--enable-cache',
-        action='store_true',
-        help='Enable HTTP caching (by default, caching is disabled for realistic load testing)'
-    )
-    
-    parser.add_argument(
         '--no-keepalive',
         action='store_true',
         help='Disable HTTP keep-alive so each request opens a new TCP connection'
     )
     
-    parser.add_argument(
-        '--max-earth-dirs',
-        type=int,
-        default=100,
-        help='Maximum number of Earth directories to randomly select from (Earth1 to EarthN)'
-    )
-
-    parser.add_argument(
-        '--blast',
-        action='store_true',
-        help='Enable blast mode: no client-side throttling, unlimited connector limits by default'
-    )
-
-    parser.add_argument(
-        '--conn-limit',
-        type=int,
-        help='Override total connection limit (0 means unlimited). Defaults to unlimited in --blast, else 2x concurrent'
-    )
-
-    parser.add_argument(
-        '--per-host-limit',
-        type=int,
-        help='Override per-host connection limit (0 means unlimited). Defaults to unlimited in --blast, else 2x concurrent'
-    )
-
-    parser.add_argument(
-        '--blast-concurrency',
-        type=int,
-        help='Override --concurrent when --blast is enabled to push higher RPS'
-    )
-
-    parser.add_argument(
-        '--diag',
-        action='store_true',
-        help='Print environment and networking diagnostics to aid troubleshooting'
-    )
-
-    parser.add_argument(
-        '--host-header',
-        help='Override Host header (useful when targeting IP/host.docker.internal)'
-    )
     
     
     args = parser.parse_args()
     
-    if args.disable_dash:
-        target_url = args.url.rstrip('/') + args.endpoint
-        simulate_dash = False
-    else:
-        target_url = args.url.rstrip('/')
-        simulate_dash = True
-    
-    total_requests = args.requests
-    if args.duration:
-        total_requests = 999999
-    
+    # Always simulate DASH; ensure trailing slash per DEFAULT_ENDPOINT
+    target_url = args.url.rstrip('/') + DEFAULT_ENDPOINT
     effective_concurrency = args.concurrent
-    if args.blast and args.blast_concurrency:
-        effective_concurrency = args.blast_concurrency
 
     load_generator = LoadGenerator(
         target_url=target_url,
         concurrent_users=effective_concurrency,
-        total_requests=total_requests,
         duration=args.duration,
-        request_delay=args.delay,
-        timeout=args.timeout,
         log_level=args.log_level,
-        manifest_path=args.manifest_path,
-        simulate_dash=simulate_dash,
-        segment_interval=args.segment_interval,
-        disable_cache=not args.enable_cache,
-        max_earth_directories=args.max_earth_dirs,
-        no_keepalive=args.no_keepalive,
-        blast_mode=args.blast,
-        conn_limit=args.conn_limit,
-        per_host_limit=args.per_host_limit,
-        diag=args.diag,
-        host_header=args.host_header
+        no_keepalive=args.no_keepalive
     )
     
     try:
-        if args.blast:
-            print("Blast mode enabled: no throttling, aggressive connector settings.")
         results = load_generator.run_load_test()
         load_generator.print_results(results)
-        
-        if args.output:
-            load_generator.save_results_json(results, args.output)
     
     except KeyboardInterrupt:
         print("\nLoad test interrupted by user")

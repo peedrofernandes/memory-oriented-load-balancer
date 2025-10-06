@@ -52,7 +52,7 @@ class LoadTestResults:
 DEFAULT_TIMEOUT_SECONDS = 15.0
 DEFAULT_ENDPOINT = "/"
 DEFAULT_MANIFEST_PATH = "/Earth/manifest.mpd"
-MAX_EARTH_DIRECTORIES = 100
+MAX_EARTH_DIRECTORIES = 200
 
 # Fixed-memory histogram for response times (ms)
 # Covers 0..HISTOGRAM_MAX_MS with HISTOGRAM_BUCKET_MS resolution

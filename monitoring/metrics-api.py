@@ -31,36 +31,36 @@ UPDATE_INTERVAL = 0.5  # 500ms
 # Container limits from docker-compose.yml (parametrized)
 CONTAINER_LIMITS = {
     "mpeg-dash-processor-1": {
-        "memory_mb": 2048,
-        "io_rate_mbps": 64
+        "memory_mb": 1024,
+        "io_rate_mbps": 16
     },
     "mpeg-dash-processor-2": {
-        "memory_mb": 2048,
-        "io_rate_mbps": 64
+        "memory_mb": 1024,
+        "io_rate_mbps": 16
     },
     "mpeg-dash-processor-3": {
-        "memory_mb": 2048,
-        "io_rate_mbps": 64
+        "memory_mb": 1024,
+        "io_rate_mbps": 16
     },
     "mpeg-dash-processor-4": {
-        "memory_mb": 2048,
-        "io_rate_mbps": 64
+        "memory_mb": 1024,
+        "io_rate_mbps": 16
     },
     "mpeg-dash-processor-5": {
-        "memory_mb": 2048,
-        "io_rate_mbps": 64
+        "memory_mb": 1024,
+        "io_rate_mbps": 16
     },
     "mpeg-dash-processor-6": {
-        "memory_mb": 2048,
-        "io_rate_mbps": 64
+        "memory_mb": 1024,
+        "io_rate_mbps": 16
     },
     "mpeg-dash-processor-7": {
-        "memory_mb": 2048,
-        "io_rate_mbps": 64
+        "memory_mb": 1024,
+        "io_rate_mbps": 16
     },
     "mpeg-dash-processor-8": {
-        "memory_mb": 2048,
-        "io_rate_mbps": 64
+        "memory_mb": 1024,
+        "io_rate_mbps": 16
     },
     "load-balancer": {
         "memory_mb": 256,

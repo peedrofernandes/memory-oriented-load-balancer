@@ -12,12 +12,12 @@ services:
     blkio_config:
       device_read_bps:
         - path: /dev/sdd
-          rate: '64mb'
+          rate: '16mb'
     deploy:
       resources:
         limits:
           cpus: "1.0"
-          memory: 2048M
+          memory: 1024M
         reservations:
           cpus: "0.25"
           memory: 128M
@@ -37,12 +37,12 @@ services:
     blkio_config:
       device_read_bps:
         - path: /dev/sdd
-          rate: '64mb'
+          rate: '16mb'
     deploy:
       resources:
         limits:
           cpus: "1.0"
-          memory: 2048M
+          memory: 1024M
         reservations:
           cpus: "0.25"
           memory: 128M
@@ -62,12 +62,12 @@ services:
     blkio_config:
       device_read_bps:
         - path: /dev/sdd
-          rate: '64mb'
+          rate: '16mb'
     deploy:
       resources:
         limits:
           cpus: "1.0"
-          memory: 2048M
+          memory: 1024M
         reservations:
           cpus: "0.25"
           memory: 128M
@@ -87,12 +87,12 @@ services:
     blkio_config:
       device_read_bps:
         - path: /dev/sdd
-          rate: '64mb'
+          rate: '16mb'
     deploy:
       resources:
         limits:
           cpus: "1.0"
-          memory: 2048M
+          memory: 1024M
         reservations:
           cpus: "0.25"
           memory: 128M
@@ -112,12 +112,12 @@ services:
     blkio_config:
       device_read_bps:
         - path: /dev/sdd
-          rate: '64mb'
+          rate: '16mb'
     deploy:
       resources:
         limits:
           cpus: "1.0"
-          memory: 2048M
+          memory: 1024M
         reservations:
           cpus: "0.25"
           memory: 128M
@@ -137,12 +137,12 @@ services:
     blkio_config:
       device_read_bps:
         - path: /dev/sdd
-          rate: '64mb'
+          rate: '16mb'
     deploy:
       resources:
         limits:
           cpus: "1.0"
-          memory: 2048M
+          memory: 1024M
         reservations:
           cpus: "0.25"
           memory: 128M
@@ -162,12 +162,12 @@ services:
     blkio_config:
       device_read_bps:
         - path: /dev/sdd
-          rate: '64mb'
+          rate: '16mb'
     deploy:
       resources:
         limits:
           cpus: "1.0"
-          memory: 2048M
+          memory: 1024M
         reservations:
           cpus: "0.25"
           memory: 128M
@@ -187,12 +187,12 @@ services:
     blkio_config:
       device_read_bps:
         - path: /dev/sdd
-          rate: '64mb'
+          rate: '16mb'
     deploy:
       resources:
         limits:
           cpus: "1.0"
-          memory: 2048M
+          memory: 1024M
         reservations:
           cpus: "0.25"
           memory: 6M
@@ -210,8 +210,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "8.0"
-          memory: 8192M
+          cpus: "4.0"
+          memory: 4096M
         reservations:
           cpus: "1.0"
           memory: 512M

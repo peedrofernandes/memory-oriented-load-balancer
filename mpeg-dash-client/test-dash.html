@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>MPEG-DASH Earth Video Player</title>
+    <title>MPEG-DASH Video Player</title>
     <style>
         body { 
             font-family: Arial, sans-serif; 
@@ -25,13 +25,6 @@
             width: 100%; 
             height: auto;
             background: #000;
-        }
-        .info { 
-            background: #e8f4fd; 
-            padding: 15px; 
-            border-radius: 5px; 
-            margin: 10px 0;
-            border-left: 4px solid #2196F3;
         }
         .controls {
             margin: 15px 0;
@@ -80,16 +73,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>🌍 MPEG-DASH Earth Video Player</h1>
-        
-        <div class="info">
-            <h3>Stream Information</h3>
-            <p><strong>Manifest:</strong> <a href="/Static/Earth/manifest.mpd" target="_blank">/Static/Earth/manifest.mpd</a></p>
-            <p><strong>Duration:</strong> 30 seconds</p>
-            <p><strong>Video:</strong> 1920x1080 H.264</p>
-            <p><strong>Audio:</strong> 48kHz Stereo AAC</p>
-            <p><strong>Segments:</strong> 7 video segments, 8 audio segments</p>
-        </div>
+        <h1>MPEG-DASH Video Player</h1>
 
         <div class="controls">
             <button onclick="loadStream()">Load Stream</button>
@@ -193,9 +177,9 @@
                 });
 
                 // Initialize the player with the manifest
-                player.initialize(document.getElementById('videoPlayer'), 'http://localhost:8080/Static/Earth/manifest.mpd', false);
+                player.initialize(document.getElementById('videoPlayer'), 'http://localhost:8080/video-1/manifest.mpd', false);
                 
-                log('Player initialized with manifest: /Static/Earth/manifest.mpd');
+                log('Player initialized with manifest: /video-1/manifest.mpd');
 
             } catch (error) {
                 log(`Failed to load stream: ${error.message}`);

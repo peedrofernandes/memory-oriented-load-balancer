@@ -51,8 +51,8 @@ class LoadTestResults:
 # Constants
 DEFAULT_TIMEOUT_SECONDS = 15.0
 DEFAULT_ENDPOINT = "/"
-DEFAULT_MANIFEST_PATH = "/Earth/manifest.mpd"
-MAX_EARTH_DIRECTORIES = 200
+DEFAULT_MANIFEST_PATH = "/video-1/manifest.mpd"
+MAX_VIDEO_DIRECTORIES = 50
 
 # Fixed-memory histogram for response times (ms)
 # Covers 0..HISTOGRAM_MAX_MS with HISTOGRAM_BUCKET_MS resolution
@@ -164,7 +164,7 @@ class LoadGenerator:
         self.stop_event = threading.Event()
         
         # DASH
-        self.max_earth_directories = MAX_EARTH_DIRECTORIES
+        self.max_video_directories = MAX_VIDEO_DIRECTORIES
         self.manifest_path = DEFAULT_MANIFEST_PATH
         self.manifest_parser = DashManifestParser(target_url)
         
@@ -294,21 +294,21 @@ class LoadGenerator:
     
     async def _dash_worker(self, worker_id: int, session: aiohttp.ClientSession):
         """DASH simulation worker that continuously fetches segments in a loop"""
-        earth_number = random.randint(1, self.max_earth_directories)
-        selected_earth_dir = f"Earth{earth_number}"
+        video_number = random.randint(1, self.max_video_directories)
+        selected_video_dir = f"video-{video_number}"
         
-        manifest_path = f"/{selected_earth_dir}/manifest.mpd"
+        manifest_path = f"/{selected_video_dir}/manifest.mpd"
         manifest_url = urljoin(self.target_url, manifest_path)
         
-        self.logger.debug(f"Worker {worker_id}: Starting DASH client simulation for {selected_earth_dir}")
-        self.logger.info(f"Worker {worker_id}: Selected Earth directory '{selected_earth_dir}'")
+        self.logger.debug(f"Worker {worker_id}: Starting DASH client simulation for {selected_video_dir}")
+        self.logger.info(f"Worker {worker_id}: Selected video directory '{selected_video_dir}'")
         
         await self._make_request(session, f"{worker_id}-manifest", manifest_url, "manifest")
         
         try:
             segments = await self.manifest_parser.fetch_and_parse_manifest(session, manifest_url)
         except Exception as e:
-            self.logger.error(f"Worker {worker_id}: Failed to parse manifest for {selected_earth_dir}: {e}")
+            self.logger.error(f"Worker {worker_id}: Failed to parse manifest for {selected_video_dir}: {e}")
             return
         
         if not segments:

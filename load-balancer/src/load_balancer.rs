@@ -1,16 +1,16 @@
 use crate::strategy::ServerSelectionStrategy;
 use std::collections::HashMap;
+use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::Mutex;
+use hyper::{Body, Client, Request, Response, Uri};
+use hyper::service::{make_service_fn, service_fn};
+use http::{HeaderMap, HeaderValue};
 
 pub struct LoadBalancer {
     servers: Vec<String>,
     strategy: Arc<dyn ServerSelectionStrategy>,
     request_counter: Arc<AtomicU64>,
-    per_server_connection_counts: Arc<Mutex<HashMap<String, u64>>>,
 }
 
 impl LoadBalancer {
@@ -24,97 +24,126 @@ impl LoadBalancer {
             servers, 
             strategy,
             request_counter: Arc::new(AtomicU64::new(0)),
-            per_server_connection_counts: Arc::new(Mutex::new(counts)),
         }
     }
 
     pub async fn start(&self, bind_address: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let listener = TcpListener::bind(bind_address).await?;
-        println!("Load balancer listening on {}", bind_address);
+        let addr: SocketAddr = bind_address.parse()?;
+        println!("HTTP load balancer listening on {}", bind_address);
         println!("Available servers: {:?}", self.servers);
 
-        // Metrics logging removed to reduce per-connection overhead
+        let servers = self.servers.clone();
+        let strategy = Arc::clone(&self.strategy);
+        let request_counter = Arc::clone(&self.request_counter);
 
-        loop {
-            let (client_stream, client_addr) = listener.accept().await?;
+        // Shared HTTP client for outbound requests
+        let client: Client<hyper::client::HttpConnector, Body> = Client::new();
+        let client = Arc::new(client);
 
-            let servers = self.servers.clone();
-            let strategy = Arc::clone(&self.strategy);
-            let request_counter = Arc::clone(&self.request_counter);
-            let per_server_counts = Arc::clone(&self.per_server_connection_counts);
+        let make_svc = make_service_fn(move |_conn| {
+            let servers = servers.clone();
+            let strategy = Arc::clone(&strategy);
+            let request_counter = Arc::clone(&request_counter);
+            let client = Arc::clone(&client);
 
-            tokio::spawn(async move {
-                if let Err(e) = handle_connection(
-                    client_stream, 
-                    servers, 
-                    strategy, 
-                    request_counter, 
-                    per_server_counts,
-                    client_addr
-                ).await {
-                    eprintln!("Error handling connection from {}: {}", client_addr, e);
-                }
-            });
-        }
+            async move {
+                Ok::<_, hyper::Error>(service_fn(move |req: Request<Body>| {
+                    let servers = servers.clone();
+                    let strategy = Arc::clone(&strategy);
+                    let request_counter = Arc::clone(&request_counter);
+                    let client = Arc::clone(&client);
+
+                    async move {
+                        // Increment per-request counter
+                        let _ = request_counter.fetch_add(1, Ordering::Relaxed);
+
+                        // Pick backend per HTTP request
+                        let backend = match strategy.pick_server(&servers) {
+                            Some(s) => s,
+                            None => {
+                                return Ok::<_, hyper::Error>(response_with_status(
+                                    http::StatusCode::BAD_GATEWAY,
+                                    "No available servers",
+                                ));
+                            }
+                        };
+                        println!("Picking backend for request: {}", backend);
+                        
+                        // Build new URI with backend authority
+                        let path_and_query = req
+                            .uri()
+                            .path_and_query()
+                            .map(|pq| pq.as_str().to_string())
+                            .unwrap_or_else(|| "/".to_string());
+
+                        let new_uri: Uri = match Uri::builder()
+                            .scheme("http")
+                            .authority(backend.as_str())
+                            .path_and_query(path_and_query.as_str())
+                            .build() {
+                                Ok(u) => u,
+                                Err(_) => {
+                                    return Ok::<_, hyper::Error>(response_with_status(
+                                        http::StatusCode::BAD_GATEWAY,
+                                        "Invalid backend URI",
+                                    ));
+                                }
+                            };
+
+                        // Rewrite request to target backend
+                        let (mut parts, body) = req.into_parts();
+                        parts.uri = new_uri;
+                        sanitize_hop_by_hop_headers(&mut parts.headers);
+                        parts.headers.insert(
+                            http::header::HOST,
+                            HeaderValue::from_str(backend.as_str()).unwrap_or(HeaderValue::from_static("")),
+                        );
+
+                        let outbound_req = Request::from_parts(parts, body);
+
+                        // Forward
+                        match client.request(outbound_req).await {
+                            Ok(mut resp) => {
+                                sanitize_hop_by_hop_headers(resp.headers_mut());
+                                Ok::<_, hyper::Error>(resp)
+                            }
+                            Err(_e) => {
+                                Ok::<_, hyper::Error>(response_with_status(
+                                    http::StatusCode::BAD_GATEWAY,
+                                    "Upstream request failed",
+                                ))
+                            }
+                        }
+                    }
+                }))
+            }
+        });
+
+        hyper::Server::bind(&addr).serve(make_svc).await?;
+        Ok(())
     }
 }
 
-async fn handle_connection(
-    client_stream: TcpStream,
-    servers: Vec<String>,
-    strategy: Arc<dyn ServerSelectionStrategy>,
-    request_counter: Arc<AtomicU64>,
-    per_server_counts: Arc<Mutex<HashMap<String, u64>>>,
-    _client_addr: std::net::SocketAddr,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let server_addr = strategy
-        .pick_server(&servers)
-        .ok_or("No available servers")?;
+fn sanitize_hop_by_hop_headers(headers: &mut HeaderMap) {
+    // Remove hop-by-hop headers per RFC 7230
+    static HOP_HEADERS: &[&str] = &[
+        "connection",
+        "proxy-connection",
+        "keep-alive",
+        "transfer-encoding",
+        "upgrade",
+        "te",
+        "trailer",
+    ];
+    for name in HOP_HEADERS {
+        headers.remove(*name);
+    }
+}
 
-    // Forward connection to selected backend server
-
-    // Per-server connection accounting removed to reduce overhead
-
-    let server_stream = TcpStream::connect(&server_addr).await?;
-
-    let (mut client_read, mut client_write) = client_stream.into_split();
-    let (mut server_read, mut server_write) = server_stream.into_split();
-
-    let _request_counter_c2s = Arc::clone(&request_counter);
-
-    let client_to_server = tokio::spawn(async move {
-        let mut buffer = vec![0; 16384];
-        loop {
-            match client_read.read(&mut buffer).await {
-                Ok(0) => break,
-                Ok(n) => {
-                    if server_write.write_all(&buffer[..n]).await.is_err() {
-                        break;
-                    }
-                }
-                Err(_) => break,
-            }
-        }
-        let _ = server_write.shutdown().await;
-    });
-
-    let server_to_client = tokio::spawn(async move {
-        let mut buffer = vec![0; 16384];
-        loop {
-            match server_read.read(&mut buffer).await {
-                Ok(0) => break,
-                Ok(n) => {
-                    if client_write.write_all(&buffer[..n]).await.is_err() {
-                        break;
-                    }
-                }
-                Err(_) => break,
-            }
-        }
-        let _ = client_write.shutdown().await;
-    });
-
-    tokio::select! { _ = client_to_server => {}, _ = server_to_client => {} }
-
-    Ok(())
+fn response_with_status(status: http::StatusCode, msg: &str) -> Response<Body> {
+    Response::builder()
+        .status(status)
+        .header(http::header::CONTENT_TYPE, "text/plain; charset=utf-8")
+        .body(Body::from(msg.to_string()))
+        .unwrap_or_else(|_| Response::new(Body::from(msg.to_string())))
 }

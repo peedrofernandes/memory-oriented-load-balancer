@@ -1,6 +1,6 @@
 services:
   mpeg-dash-processor-1:
-    build: ./mpeg-dash-processor/Application
+    build: ./modules/mpeg-dash-processor/Application
     container_name: mpeg-dash-processor-1
     ports:
       - "8100:8080"
@@ -25,7 +25,7 @@ services:
       - /var/lib/data/server-1:/app/wwwroot/Static
 
   mpeg-dash-processor-2:
-    build: ./mpeg-dash-processor/Application
+    build: ./modules/mpeg-dash-processor/Application
     container_name: mpeg-dash-processor-2
     ports:
       - "8200:8080"
@@ -50,7 +50,7 @@ services:
       - /var/lib/data/server-2:/app/wwwroot/Static
 
   mpeg-dash-processor-3:
-    build: ./mpeg-dash-processor/Application
+    build: ./modules/mpeg-dash-processor/Application
     container_name: mpeg-dash-processor-3
     ports:
       - "8300:8080"
@@ -75,7 +75,7 @@ services:
       - /var/lib/data/server-3:/app/wwwroot/Static
 
   mpeg-dash-processor-4:
-    build: ./mpeg-dash-processor/Application
+    build: ./modules/mpeg-dash-processor/Application
     container_name: mpeg-dash-processor-4
     ports:
       - "8400:8080"
@@ -100,7 +100,7 @@ services:
       - /var/lib/data/server-4:/app/wwwroot/Static
 
   mpeg-dash-processor-5:
-    build: ./mpeg-dash-processor/Application
+    build: ./modules/mpeg-dash-processor/Application
     container_name: mpeg-dash-processor-5
     ports:
       - "8500:8080"
@@ -125,7 +125,7 @@ services:
       - /var/lib/data/server-5:/app/wwwroot/Static
 
   mpeg-dash-processor-6:
-    build: ./mpeg-dash-processor/Application
+    build: ./modules/mpeg-dash-processor/Application
     container_name: mpeg-dash-processor-6
     ports:
       - "8600:8080"
@@ -150,7 +150,7 @@ services:
       - /var/lib/data/server-6:/app/wwwroot/Static
 
   mpeg-dash-processor-7:
-    build: ./mpeg-dash-processor/Application
+    build: ./modules/mpeg-dash-processor/Application
     container_name: mpeg-dash-processor-7
     ports:
       - "8700:8080"
@@ -175,7 +175,7 @@ services:
       - /var/lib/data/server-7:/app/wwwroot/Static
 
   mpeg-dash-processor-8:
-    build: ./mpeg-dash-processor/Application
+    build: ./modules/mpeg-dash-processor/Application
     container_name: mpeg-dash-processor-8
     ports:
       - "8800:8080"
@@ -200,7 +200,7 @@ services:
       - /var/lib/data/server-8:/app/wwwroot/Static
 
   load-balancer:
-    build: ./load-balancer
+    build: ./modules/load-balancer
     container_name: load-balancer
     ports:
       - "8080:8080"

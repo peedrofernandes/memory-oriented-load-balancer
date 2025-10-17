@@ -6,6 +6,9 @@ var builder = WebApplication.CreateBuilder(args);
 // Add logging
 builder.Logging.AddConsole();
 
+// Add background publisher service for metrics
+builder.Services.AddHostedService<MetricsPublisher>();
+
 // CORS: allow browsers/players to fetch from anywhere (tighten if needed)
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
     .AllowAnyOrigin()

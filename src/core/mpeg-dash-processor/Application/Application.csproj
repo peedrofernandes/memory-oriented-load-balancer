@@ -12,6 +12,8 @@
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.19" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.1" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <PackageReference Include="MQTTnet" Version="4.3.4.1084" />
+    <PackageReference Include="MQTTnet.Extensions.ManagedClient" Version="4.3.4.1084" />
   </ItemGroup>
 
   <ItemGroup>

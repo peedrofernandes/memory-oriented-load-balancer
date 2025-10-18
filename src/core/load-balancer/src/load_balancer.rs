@@ -1,4 +1,4 @@
-use crate::strategy::ServerSelectionStrategy;
+use crate::strategies::strategy::ServerSelectionStrategy;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -67,6 +67,9 @@ impl LoadBalancer {
                                 ));
                             }
                         };
+                        if let Some(snapshot) = strategy.debug_snapshot() {
+                            println!("Scores snapshot: {}", snapshot);
+                        }
                         println!("Picking backend for request: {}", backend);
                         
                         // Build new URI with backend authority

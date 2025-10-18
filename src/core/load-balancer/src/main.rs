@@ -1,5 +1,6 @@
 use load_balancer::{LoadBalancer, ServerSelectionStrategy};
-use load_balancer::strategy::RoundRobinStrategy;
+use load_balancer::strategies::memory_monitoring::MemoryMonitoringStrategy;
+// use load_balancer::strategies::round_robin::RoundRobinStrategy;
 use std::sync::Arc;
 
 #[tokio::main]
@@ -16,11 +17,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "mpeg-dash-processor-8:8080".to_string(),
     ];
 
-    let strategy: Arc<dyn ServerSelectionStrategy> = Arc::new(RoundRobinStrategy::new());
+    // MQTT broker location from env, fallback to nanomq-broker:1883 inside docker network
+    let broker_host = std::env::var("MQTT_BROKER_HOST").unwrap_or_else(|_| "nanomq-broker".to_string());
+    let broker_port: u16 = std::env::var("MQTT_BROKER_PORT").ok().and_then(|s| s.parse().ok()).unwrap_or(1883);
+    let strategy: Arc<dyn ServerSelectionStrategy> = Arc::new(MemoryMonitoringStrategy::new(broker_host, broker_port));
 
     let load_balancer = LoadBalancer::new(servers, strategy);
     
-    println!("Starting TCP Load Balancer...");
+    println!("Starting HTTP Load Balancer with MemoryMonitoring strategy...");
     load_balancer.start(bind_address).await?;
 
     Ok(())

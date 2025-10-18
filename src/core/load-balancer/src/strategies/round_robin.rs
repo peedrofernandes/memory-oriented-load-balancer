@@ -1,8 +1,6 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-pub trait ServerSelectionStrategy: Send + Sync {
-    fn pick_server(&self, servers: &[String]) -> Option<String>;
-}
+use super::strategy::ServerSelectionStrategy;
 
 pub struct RoundRobinStrategy {
     counter: AtomicUsize,
@@ -27,8 +25,10 @@ impl ServerSelectionStrategy for RoundRobinStrategy {
         if servers.is_empty() {
             return None;
         }
-        
+
         let index = self.counter.fetch_add(1, Ordering::Relaxed) % servers.len();
         Some(servers[index].clone())
     }
 }
+
+

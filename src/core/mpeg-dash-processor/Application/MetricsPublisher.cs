@@ -118,17 +118,9 @@ public sealed class MetricsPublisher : BackgroundService
                 var payload = new
                 {
                     server_socket = _serverSocket,
-                    absolute_values = new
-                    {
-                        memory_current_bytes = memoryCurrentBytes,
-                        disk_read_bytes_per_sec = readBytesPerSec,
-                        active_request_count = _requestCounter.Get(),
-                    },
-                    normalized_values = new
-                    {
-                        memory_current_bytes = normalized_memory_current_bytes,
-                        disk_read_bytes_per_sec = normalized_read_bytes_per_sec,
-                    },
+                    memory_current = normalized_memory_current_bytes,
+                    disk_read = normalized_read_bytes_per_sec,
+                    active_request_count = _requestCounter.Get(),
                     timestamp_unix = now.ToUnixTimeSeconds(),
                 };
 

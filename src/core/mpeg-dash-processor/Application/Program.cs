@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,7 +25,20 @@ var app = builder.Build();
 app.UseCors();
 
 // Count active requests
-app.UseMiddleware<RequestCountingMiddleware>();
+// Inline active request counting middleware (replaces RequestCountingMiddleware)
+app.Use(async (context, next) =>
+{
+    var requestCounter = context.RequestServices.GetRequiredService<RequestCounter>();
+    requestCounter.Increment();
+    try
+    {
+        await next();
+    }
+    finally
+    {
+        requestCounter.Decrement();
+    }
+});
 
 // Add middleware to handle Range requests for DASH segments
 app.Use(async (context, next) =>

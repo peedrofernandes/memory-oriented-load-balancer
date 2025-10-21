@@ -13,30 +13,18 @@ use super::strategy::ServerSelectionStrategy;
 #[derive(Debug, Clone, Copy, Default)]
 struct ServerInfo {
     // Stores LMi, LDi, Ti for server i
-    lmi: f64,
-    ldi: f64,
-    ti: i64,
-}
-
-#[derive(Debug, Clone, Copy, Default, Deserialize)]
-struct AbsoluteValues {
-    memory_current_bytes: u64,
-    disk_read_bytes_per_sec: f64,
-}
-
-#[derive(Debug, Clone, Copy, Default, Deserialize)]
-struct NormalizedValues {
-    #[serde(rename = "memory_current_bytes")] // publisher uses this name for normalized memory
-    memory_current_consumption: f64,
-    #[serde(rename = "disk_read_bytes_per_sec")] // publisher uses this name for normalized disk
-    disk_read_consumption: f64,
+    lmi: f64, // memory usage
+    ldi: f64, // current disk read rate
+    ti: i64, // timestamp
+    ar: u64, // active requests
 }
 
 #[derive(Debug, Deserialize)]
 struct MetricsPayload {
     server_socket: String,
-    absolute_values: AbsoluteValues,
-    normalized_values: NormalizedValues,
+    memory_current: f64,
+    disk_read: f64,
+    active_request_count: u64,
     timestamp_unix: i64,
 }
 
@@ -50,6 +38,8 @@ pub struct MemoryMonitoringStrategy {
 
 impl MemoryMonitoringStrategy {
     pub fn new(broker_host: String, broker_port: u16) -> Self {
+        let start_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+
         let servers_info_map = Arc::new(RwLock::new(HashMap::new()));
         let servers_li_map = Arc::new(RwLock::new(HashMap::new()));
         let servers_probability_map = Arc::new(RwLock::new(HashMap::new()));
@@ -88,9 +78,10 @@ impl MemoryMonitoringStrategy {
                                     info_guard.insert(
                                         payload.server_socket.clone(),
                                         ServerInfo {
-                                            lmi: payload.normalized_values.memory_current_consumption,
-                                            ldi: payload.normalized_values.disk_read_consumption,
+                                            lmi: payload.memory_current,
+                                            ldi: payload.disk_read,
                                             ti: payload.timestamp_unix,
+                                            ar: payload.active_request_count,
                                         },
                                     );
                                 }
@@ -145,7 +136,35 @@ impl MemoryMonitoringStrategy {
 
                                 // Compute arriveT and Pi per server
                                 let r = r_clone.load(Ordering::Relaxed) as f64;
-                                let arrive_t = (r / t / l_tot);
+                                let arrive_t = {
+                                    let min_arrive_t = {
+                                        let bigger_li = servers_li_map_clone.read().values()
+                                            .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                                            .copied()
+                                            .unwrap_or(0.0);
+                                        bigger_li * n as f64 - l_tot
+                                    };
+
+                                    let total_active_requests = servers_info_map_clone.read().values().map(|v| v.ar).sum::<u64>() as f64;
+                                    let total_load = servers_li_map_clone.read().values().sum::<f64>() as f64;
+                                    let elapsed_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as f64 - start_time as f64;
+                                    println!("total_active_requests = {}", total_active_requests);
+                                    println!("r = {}", r);
+                                    println!("total_load = {}", total_load);
+                                    println!("elapsed_time = {}", elapsed_time);
+                                    println!("t = {}", t);
+                                    println!("arrive_t = (({} / {}) * {}) * ({} / {})", r, elapsed_time, t, total_load, total_active_requests);
+                                    if total_active_requests > 0.0 && r > 0.0 && total_load > 0.0 {
+                                        let val = (((r / elapsed_time) * t) * (total_load / total_active_requests)) * 0.05;
+                                        if val < min_arrive_t {
+                                            min_arrive_t
+                                        } else {
+                                            val
+                                        }
+                                    } else {
+                                        min_arrive_t
+                                    }
+                                };
                                 {
                                     let li_guard = servers_li_map_clone.read();
                                     let mut pi_guard = servers_probability_map_clone.write();
@@ -157,22 +176,6 @@ impl MemoryMonitoringStrategy {
                                             pi_guard.insert(k.clone(), uniform);
                                         }
                                     } else {
-                                        // Choose alpha >= max(alpha0, alpha1) so that 0 <= Pi <= 1 holds
-                                        // alpha0 ensures non-negativity: alpha0 = n * (Lmax - Lavg)
-                                        // alpha1 ensures Pi <= 1:      alpha1 = n * (Lavg - Lmin) / (n - 1)
-                                        // let mut lmax = f64::NEG_INFINITY;
-                                        // let mut lmin = f64::INFINITY;
-                                        // for (_, li) in li_guard.iter() {
-                                        //     if *li > lmax { lmax = *li; }
-                                        //     if *li < lmin { lmin = *li; }
-                                        // }
-                                        // let lavg = l_tot / n as f64;
-                                        // let alpha0 = (n as f64 * (lmax - lavg)).max(0.0);
-                                        // let alpha1 = if n > 1 {
-                                        //     (n as f64 * (lavg - lmin) / (n as f64 - 1.0)).max(0.0)
-                                        // } else { 0.0 };
-                                        // let alpha = arrive_t.max(alpha0.max(alpha1)).max(1e-9);
-
                                         for (k, l_i) in li_guard.iter() {
                                             let mut Pi = (((l_tot + arrive_t) / n as f64) - *l_i) / arrive_t;
                                             if !Pi.is_finite() { Pi = 0.0; }
@@ -192,42 +195,40 @@ impl MemoryMonitoringStrategy {
                                     .join(", ");
                                 println!("Pi = [{}]", pi_list);
 
+                                // Print all Li
+                                let li_guard = servers_li_map_clone.read();
+                                let mut li_items: Vec<_> = li_guard.iter().collect();
+                                li_items.sort_by(|a, b| a.0.partial_cmp(b.0).unwrap_or(std::cmp::Ordering::Equal));
+                                let mut li_list = li_items
+                                    .iter()
+                                    .map(|(k, v)| format!("{}: {:.2}", k, v))
+                                    .collect::<Vec<_>>()
+                                    .join(", ");
+                                println!("Li = [{}]", li_list);
+
+                                // Print Pi equation
+                                println!("Pi = (({} + {}) / {}) - Li / {}", l_tot, arrive_t, n, arrive_t);
+
                                 // if payload.server_socket == "mpeg-dash-processor-1:8080" {
                                 //     // Print everything related to li
                                 //     println!("c_m = {:.2}", c_m);
                                 //     println!("c_d = {:.2}", c_d);
                                 //     // lmi, ldi
-                                //     println!("lmi = {:.2}", payload.normalized_values.memory_current_consumption);
-                                //     println!("ldi = {:.2}", payload.normalized_values.disk_read_consumption);
+                                //     println!("lmi = {:.2}", payload.memory_current);
+                                //     println!("ldi = {:.2}", payload.disk_read);
                                 // }
-
-                                // // Print all Li
-                                // let li_guard = servers_li_map_clone.read();
-                                // let mut li_items: Vec<_> = li_guard.iter().collect();
-                                // li_items.sort_by(|a, b| a.0.partial_cmp(b.0).unwrap_or(std::cmp::Ordering::Equal));
-                                // let li_list = li_items
-                                //     .iter()
-                                //     .map(|(k, v)| format!("{}: {:.2}", k, v))
-                                //     .collect::<Vec<_>>()
-                                //     .join(", ");
-                                // println!("Li = [{}]", li_list);
                                 
                                 // print a list of this below
                                 // [TM, TD, N, T, CM, CD, Ltot, R, arriveT]
                                 // println!("[TM = {}, TD = {}, N = {}, T = {}, CM = {}, CD = {}, Ltot = {}, R = {}, arriveT = {}]", t_m, t_d, n, t, c_m, c_d, l_tot, r, arrive_t);
 
-                                // // Optional concise log using absolute values for visibility
-                                // let mem_mb = payload.absolute_values.memory_current_bytes as f64 / (1024.0 * 1024.0);
-                                // let disk_kbps = payload.absolute_values.disk_read_bytes_per_sec as f64 / (1024.0 * 1024.0);
-                                // let mem_rel = (payload.normalized_values.memory_current_consumption);
-                                // let disk_rel = (payload.normalized_values.disk_read_consumption);
+                                // let mem = (payload.memory_current);
+                                // let disk = (payload.disk_read);
                                 // println!(
-                                //     "Metrics received: server={} mem={:.2}MB disk={:.2}KB/s mem_rel={:.2} disk_rel={:.2} ts={}",
+                                //     "Metrics received: server={} mem={:.2}MB disk={:.2}KB/s meml={:.2} disk={:.2} ts={}",
                                 //     payload.server_socket,
-                                //     mem_mb,
-                                //     disk_kbps,
-                                //     mem_rel,
-                                //     disk_rel,
+                                //     mem,
+                                //     disk,
                                 //     payload.timestamp_unix
                                 // );
                             }

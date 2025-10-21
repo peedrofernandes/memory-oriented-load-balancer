@@ -1,0 +1,74 @@
+COMMANDS
+============================================================================================================
+Run everything:
+- echo 3 | sudo tee /proc/sys/vm/drop_caches && docker compose down && docker compose up -d --build && docker compose logs -f load-balancer
+============================================================================================================
+Run everything and build:
+- echo 3 | sudo tee /proc/sys/vm/drop_caches && docker compose down && docker compose up -d --build && docker compose logs -f load-balancer
+============================================================================================================
+View Load balancer logs: 
+- docker compose logs -f load-balancer
+============================================================================================================
+Generate load:
+- docker run --rm load-generator \
+  --url http://host.docker.internal:8080 \
+  --concurrent 10000 \
+  --duration 60 \
+  --log-level INFO
+============================================================================================================
+View disk I/O metrics logs
+- watch -n 1 cat /sys/fs/cgroup/docker/$(docker ps --no-trunc -qf name="mpeg-dash-processor-1")/io.stat
+============================================================================================================
+View memory metrics logs
+- watch -n 1 cat /sys/fs/cgroup/docker/$(docker ps --no-trunc -qf name="mpeg-dash-processor-1")/memory.current
+============================================================================================================
+View host metrics logs
+- watch -n 1 cat /sys/fs/cgroup/io.stat
+============================================================================================================
+View dashboard:
+- http://localhost:3001
+============================================================================================================
+Enter container shell
+- docker exec -it mpeg-dash-processor-1 /bin/sh
+============================================================================================================
+Do something on the disk
+- docker exec $(docker ps --no-trunc -qf name="mpeg-dash-processor-1") sh -c "dd if=/dev/zero of=/tmp/testfile bs=1M count=10"
+============================================================================================================
+Reset WSL kernel cache
+- echo 3 | sudo tee /proc/sys/vm/drop_caches
+============================================================================================================
+Rebuild load generator
+- docker build -t load-generator ./load-generator --no-cache
+============================================================================================================
+Run load generator
+- (inside load-generator folder) echo 3 | sudo tee /proc/sys/vm/drop_caches && docker compose down && docker compose up -d && docker compose logs -f
+============================================================================================================
+Detect bind mount data partition
+- findmnt -T /var/lib/data/server-7 -o SOURCE -n
+============================================================================================================
+Copy Video folders
+- for i in $(seq 2 1000); do sudo rsync -a video-1/ "video-${i}/"; done
+============================================================================================================
+Copy server folders
+- sudo rsync -a --progress ./server-1/ ./server-2/ \
+ ; sudo rsync -a --progress ./server-1/ ./server-3/ \
+ ; sudo rsync -a --progress ./server-1/ ./server-4/ \
+ ; sudo rsync -a --progress ./server-1/ ./server-5/ \
+ ; sudo rsync -a --progress ./server-1/ ./server-6/ \
+ ; sudo rsync -a --progress ./server-1/ ./server-7/ \
+ ; sudo rsync -a --progress ./server-1/ ./server-8/
+============================================================================================================
+Create video with multiple resolutions
+- sudo ffmpeg -i video.mp4 \
+  -map 0:v -map 0:v -map 0:v -map 0:a \
+  -c:v:0 libx264 -b:v:0 3000k -vf:0 "scale=1280:720,setsar=1" \
+  -c:v:1 libx264 -b:v:1 1500k -vf:1 "scale=854:480,setsar=1" \
+  -c:v:2 libx264 -b:v:2 800k -vf:2 "scale=640:360,setsar=1" \
+  -c:a copy \
+  -f dash -seg_duration 4 -use_template 1 -use_timeline 1 \
+  -adaptation_sets "id=0,streams=v id=1,streams=a" \
+  manifest.mpd
+============================================================================================================
+============================================================================================================
+============================================================================================================
+============================================================================================================

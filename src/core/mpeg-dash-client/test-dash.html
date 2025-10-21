@@ -64,10 +64,22 @@
             border: 1px solid #dee2e6;
             border-radius: 5px;
             padding: 10px;
-            max-height: 200px;
+            max-height: 300px;
             overflow-y: auto;
             font-family: monospace;
             font-size: 12px;
+        }
+        .log li {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #007bff;
+            background: white;
+        }
+        .log li.stall {
+            border-left-color: #dc3545;
+        }
+        .log li.quality {
+            border-left-color: #28a745;
         }
     </style>
 </head>
@@ -76,9 +88,7 @@
         <h1>MPEG-DASH Video Player</h1>
 
         <div class="controls">
-            <button onclick="loadStream()">Load Stream</button>
-            <button onclick="clearLog()">Clear Log</button>
-            <button onclick="showStats()">Show Stats</button>
+            <button onclick="startVideoSession()">Start Video Session</button>
         </div>
 
         <div class="player">
@@ -88,7 +98,7 @@
         </div>
 
         <div class="status" id="status">
-            Ready to load stream...
+            Ready to start video session...
         </div>
 
         <ul class="log" id="log"></ul>
@@ -102,12 +112,26 @@
         let logElement = document.getElementById('log');
         let statusElement = document.getElementById('status');
 
-        function log(message) {
-            const timestamp = new Date().toLocaleTimeString();
-            const li = document.createElement("li")
-            li.innerText = `[${timestamp}] ${message}`
-            logElement.appendChild(li)
-            console.log(`${message}\n`);
+        // Session metrics
+        let sessionMetrics = {
+            stalls: [],
+            currentStallStart: null,
+            qualityPeriods: [],
+            currentQuality: null,
+            currentQualityStart: null,
+            sessionStart: null,
+            videoDuration: 0,
+            metricsLogged: false
+        };
+
+        function log(message, type = '') {
+            const li = document.createElement("li");
+            li.innerText = message;
+            if (type) {
+                li.className = type;
+            }
+            logElement.appendChild(li);
+            logElement.scrollTop = logElement.scrollHeight;
         }
 
         function clearLog() {
@@ -118,10 +142,147 @@
             statusElement.textContent = message;
         }
 
-        function loadStream() {
+        function resetSession() {
+            // Reset session metrics
+            sessionMetrics = {
+                stalls: [],
+                currentStallStart: null,
+                qualityPeriods: [],
+                currentQuality: null,
+                currentQualityStart: null,
+                sessionStart: null,
+                videoDuration: 0,
+                metricsLogged: false
+            };
+            
+            // Clear log
+            clearLog();
+            
+            // Reset player if exists
+            if (player) {
+                player.reset();
+            }
+            
+            // Reset video element
+            const videoElement = document.getElementById('videoPlayer');
+            videoElement.src = '';
+            videoElement.load();
+        }
+
+        function getQualityLabel(qualityIndex, bitrateInfo) {
+            if (!bitrateInfo || !bitrateInfo[qualityIndex]) {
+                return `Quality ${qualityIndex}`;
+            }
+            
+            const info = bitrateInfo[qualityIndex];
+            
+            // dash.js uses different property names depending on version
+            const width = info.width || info.streamWidth || 'unknown';
+            const height = info.height || info.streamHeight || 'unknown';
+            
+            // Try different property names for bitrate
+            let kbps = 'unknown';
+            if (info.bitrate) {
+                kbps = Math.round(info.bitrate / 1000);
+            } else if (info.bandwidth) {
+                kbps = Math.round(info.bandwidth / 1000);
+            } else if (info.qualityBitrate) {
+                kbps = Math.round(info.qualityBitrate / 1000);
+            }
+            
+            return `${height}p (${kbps} kbps)`;
+        }
+
+        function logStallMetrics() {
+            if (sessionMetrics.stalls.length === 0) {
+                log('No stalls occurred during this session', 'stall');
+                return;
+            }
+            
+            log('=== STALL METRICS ===', 'stall');
+            log(`Total stalls: ${sessionMetrics.stalls.length}`, 'stall');
+            
+            sessionMetrics.stalls.forEach((stall, index) => {
+                log(`Stall #${index + 1}: ${stall.duration.toFixed(2)}s at ${stall.timestamp}`, 'stall');
+            });
+            
+            const totalStallDuration = sessionMetrics.stalls.reduce((sum, stall) => sum + stall.duration, 0);
+            log(`Total stall duration: ${totalStallDuration.toFixed(2)}s`, 'stall');
+        }
+
+        function logQualityDistribution() {
+            // Close current quality period if active
+            if (sessionMetrics.currentQuality !== null && sessionMetrics.currentQualityStart !== null) {
+                const duration = (Date.now() - sessionMetrics.currentQualityStart) / 1000;
+                const qualityIndex = parseInt(sessionMetrics.currentQuality);
+                if (!isNaN(qualityIndex)) {
+                    sessionMetrics.qualityPeriods.push({
+                        quality: qualityIndex,
+                        duration: duration
+                    });
+                }
+                sessionMetrics.currentQualityStart = null;
+            }
+            
+            if (sessionMetrics.qualityPeriods.length === 0) {
+                log('No quality data available', 'quality');
+                return;
+            }
+            
+            // Calculate total session time
+            const totalDuration = sessionMetrics.qualityPeriods.reduce((sum, period) => sum + period.duration, 0);
+            
+            if (totalDuration === 0) {
+                log('Session duration is 0', 'quality');
+                return;
+            }
+            
+            // Group by quality and sum durations
+            const qualityDurations = {};
+            sessionMetrics.qualityPeriods.forEach(period => {
+                if (!qualityDurations[period.quality]) {
+                    qualityDurations[period.quality] = 0;
+                }
+                qualityDurations[period.quality] += period.duration;
+            });
+            
+            // Get bitrate info for labels
+            let bitrateInfo = null;
             try {
-                updateStatus('Loading stream...');
-                log('Starting DASH stream load...');
+                if (player && typeof player.getBitrateInfoListFor === 'function') {
+                    bitrateInfo = player.getBitrateInfoListFor('video');
+                }
+            } catch (error) {
+                console.error('Could not get bitrate info:', error);
+            }
+            
+            // Sort by quality level and create distribution log
+            log('=== QUALITY DISTRIBUTION ===', 'quality');
+            
+            const sortedQualities = Object.entries(qualityDurations).sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
+            
+            let cumulativePercentage = 0;
+            sortedQualities.forEach(([qualityStr, duration]) => {
+                const quality = parseInt(qualityStr);
+                const percentage = (duration / totalDuration) * 100;
+                const startPercentage = cumulativePercentage;
+                const endPercentage = cumulativePercentage + percentage;
+                
+                const qualityLabel = getQualityLabel(quality, bitrateInfo);
+                log(`${startPercentage.toFixed(1)}%-${endPercentage.toFixed(1)}%: ${qualityLabel}`, 'quality');
+                
+                cumulativePercentage = endPercentage;
+            });
+            
+            log(`Total session duration: ${totalDuration.toFixed(2)}s`, 'quality');
+        }
+
+        function startVideoSession() {
+            try {
+                updateStatus('Starting video session...');
+                
+                // Reset everything
+                resetSession();
 
                 // Initialize dash.js player
                 player = dashjs.MediaPlayer().create();
@@ -129,7 +290,7 @@
                 // Configure player
                 player.updateSettings({
                     'debug': {
-                        'logLevel': dashjs.Debug.LOG_LEVEL_DEBUG
+                        'logLevel': dashjs.Debug.LOG_LEVEL_WARNING
                     },
                     'streaming': {
                         'buffer': {
@@ -141,72 +302,169 @@
                     }
                 });
 
-                // Set up event listeners
-                player.on(dashjs.MediaPlayer.events.MANIFEST_LOADED, function() {
-                    log('Manifest loaded successfully');
-                    updateStatus('Manifest loaded - ready to play');
+                // Log available qualities when first quality is set
+                let qualitiesLogged = false;
+                player.on(dashjs.MediaPlayer.events.QUALITY_CHANGE_RENDERED, function(e) {
+                    // Only track video quality changes, not audio
+                    if (e.mediaType !== 'video') {
+                        return;
+                    }
+                    
+                    const now = Date.now();
+                    console.log('QUALITY_CHANGE_RENDERED event:', e);
+                    
+                    // Log available qualities on first quality change
+                    if (!qualitiesLogged) {
+                        qualitiesLogged = true;
+                        try {
+                            // Try multiple API methods for different dash.js versions
+                            let bitrateInfo = null;
+                            if (typeof player.getBitrateInfoListFor === 'function') {
+                                bitrateInfo = player.getBitrateInfoListFor('video');
+                            } else if (typeof player.getTracksFor === 'function') {
+                                const tracks = player.getTracksFor('video');
+                                if (tracks && tracks.length > 0) {
+                                    bitrateInfo = tracks[0].bitrateList;
+                                }
+                            }
+                            
+                            if (bitrateInfo && bitrateInfo.length > 0) {
+                                console.log('BitrateInfo structure:', bitrateInfo);
+                                log(`Available qualities: ${bitrateInfo.length}`, 'quality');
+                                bitrateInfo.forEach((quality, index) => {
+                                    console.log(`Quality ${index}:`, quality);
+                                    const label = getQualityLabel(index, bitrateInfo);
+                                    log(`  Quality ${index}: ${label}`, 'quality');
+                                });
+                            } else {
+                                log('Quality info: 1 representation available', 'quality');
+                            }
+                        } catch (error) {
+                            console.error('Quality info error:', error);
+                        }
+                    }
+                    
+                    // Extract quality index from newRepresentation object
+                    let newQualityValue = null;
+                    if (e.newRepresentation) {
+                        console.log('newRepresentation:', e.newRepresentation);
+                        // Try different possible property names for the quality index
+                        newQualityValue = e.newRepresentation.index;
+                        if (newQualityValue === undefined) {
+                            newQualityValue = e.newRepresentation.id;
+                        }
+                        if (newQualityValue === undefined) {
+                            newQualityValue = e.newRepresentation.qualityIndex;
+                        }
+                        if (newQualityValue === undefined) {
+                            newQualityValue = e.newRepresentation.bitrateIndex;
+                        }
+                    }
+                    
+                    console.log('Detected quality value:', newQualityValue);
+                    
+                    // Save previous quality period
+                    if (sessionMetrics.currentQuality !== null && sessionMetrics.currentQualityStart !== null) {
+                        const duration = (now - sessionMetrics.currentQualityStart) / 1000;
+                        console.log('Saving quality period:', sessionMetrics.currentQuality, duration);
+                        sessionMetrics.qualityPeriods.push({
+                            quality: parseInt(sessionMetrics.currentQuality),
+                            duration: duration
+                        });
+                    }
+                    
+                    // Start tracking new quality - ensure it's a number
+                    const newQuality = parseInt(newQualityValue);
+                    if (!isNaN(newQuality)) {
+                        sessionMetrics.currentQuality = newQuality;
+                        sessionMetrics.currentQualityStart = now;
+                        console.log('Started tracking quality:', newQuality);
+                    } else {
+                        console.error('Invalid quality index:', newQualityValue, 'from representation:', e.newRepresentation);
+                    }
                 });
 
-                player.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, function() {
-                    log('Stream initialized');
-                });
-
-                player.on(dashjs.MediaPlayer.events.FRAGMENT_LOADING_STARTED, function(e) {
-                    console.log("EVENT.REQUEST")
-                    console.log(e.request)
-                    log(`Loading fragment: ${e.request.mediaType} segment ${e.request.index}`);
-                });
-
-                player.on(dashjs.MediaPlayer.events.FRAGMENT_LOADING_COMPLETED, function(e) {
-                    log(`Fragment loaded: ${e.request.mediaType} segment ${e.request.index}`);
-                });
-
-                player.on(dashjs.MediaPlayer.events.ERROR, function(error) {
-                    log(`ERROR: ${error.error}`);
-                    updateStatus(`Error: ${error.error}`);
-                });
-
+                // Track session start
                 player.on(dashjs.MediaPlayer.events.PLAYBACK_STARTED, function() {
-                    log('Playback started');
+                    if (!sessionMetrics.sessionStart) {
+                        sessionMetrics.sessionStart = Date.now();
+                        console.log('PLAYBACK_STARTED - Session started at:', sessionMetrics.sessionStart);
+                        
+                        // Capture initial quality if not already set by QUALITY_CHANGE_RENDERED
+                        // We'll rely on QUALITY_CHANGE_RENDERED to set the quality
+                        // since getQualityFor seems to not be available in this dash.js version
+                        if (sessionMetrics.currentQuality === null) {
+                            // Set a timeout to check and capture quality after a short delay
+                            setTimeout(function() {
+                                if (sessionMetrics.currentQuality === null) {
+                                    // Try to get quality index - assume 0 if we can't get it
+                                    console.log('Quality not set by event, attempting to get current quality');
+                                    try {
+                                        const currentQuality = player.getQualityFor('video');
+                                        console.log('Got quality from getQualityFor:', currentQuality);
+                                        const qualityIndex = parseInt(currentQuality);
+                                        if (!isNaN(qualityIndex)) {
+                                            sessionMetrics.currentQuality = qualityIndex;
+                                            sessionMetrics.currentQualityStart = Date.now();
+                                            console.log('Set initial quality tracking:', qualityIndex);
+                                        }
+                                    } catch (error) {
+                                        console.error('Could not get initial quality, will wait for quality change event:', error);
+                                    }
+                                }
+                            }, 500);
+                        }
+                    }
                     updateStatus('Playing...');
                 });
 
+                // Track stalls
+                player.on(dashjs.MediaPlayer.events.PLAYBACK_WAITING, function() {
+                    sessionMetrics.currentStallStart = Date.now();
+                    updateStatus('Buffering...');
+                });
+
+                player.on(dashjs.MediaPlayer.events.PLAYBACK_PLAYING, function() {
+                    // Only log a stall if we actually detected a waiting event
+                    if (sessionMetrics.currentStallStart !== null) {
+                        const stallDuration = (Date.now() - sessionMetrics.currentStallStart) / 1000;
+                        const timestamp = new Date().toLocaleTimeString();
+                        sessionMetrics.stalls.push({
+                            duration: stallDuration,
+                            timestamp: timestamp
+                        });
+                        sessionMetrics.currentStallStart = null;
+                    }
+                });
+
+                // Track playback ended
                 player.on(dashjs.MediaPlayer.events.PLAYBACK_ENDED, function() {
-                    log('Playback ended');
-                    updateStatus('Playback completed');
+                    // Only log metrics once
+                    if (!sessionMetrics.metricsLogged) {
+                        sessionMetrics.metricsLogged = true;
+                        updateStatus('Video session completed');
+                        
+                        console.log('Session metrics:', sessionMetrics);
+                        
+                        // Log all metrics
+                        logStallMetrics();
+                        logQualityDistribution();
+                    }
+                });
+
+                player.on(dashjs.MediaPlayer.events.ERROR, function(error) {
+                    updateStatus(`Error: ${error.error}`);
                 });
 
                 // Initialize the player with the manifest
-                player.initialize(document.getElementById('videoPlayer'), 'http://localhost:8080/video-1/manifest.mpd', false);
+                player.initialize(document.getElementById('videoPlayer'), 'http://localhost:8080/video-1/manifest.mpd', true);
                 
-                log('Player initialized with manifest: /video-1/manifest.mpd');
+                updateStatus('Video session started');
 
             } catch (error) {
-                log(`Failed to load stream: ${error.message}`);
-                updateStatus(`Failed to load: ${error.message}`);
+                updateStatus(`Failed to start session: ${error.message}`);
             }
         }
-
-        function showStats() {
-            if (player) {
-                const stats = player.getMetricsFor('video');
-                log('=== Player Statistics ===');
-                log(`Buffer Level: ${player.getBufferLength('video')}s`);
-                log(`Current Time: ${player.time()}s`);
-                log(`Duration: ${player.duration()}s`);
-                log(`Playback Rate: ${player.getPlaybackRate()}`);
-                log(`Current Quality: ${player.getQualityFor('video')}`);
-                log(`Available Qualities: ${player.getBitrateInfoListFor('video').length}`);
-                log('========================');
-            } else {
-                log('Player not initialized');
-            }
-        }
-
-        // Auto-load stream when page loads
-        window.addEventListener('load', function() {
-            log('Page loaded, ready to test DASH stream');
-        });
     </script>
 </body>
 </html>

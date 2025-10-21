@@ -67,10 +67,10 @@ impl LoadBalancer {
                                 ));
                             }
                         };
-                        if let Some(snapshot) = strategy.debug_snapshot() {
-                            println!("Scores snapshot: {}", snapshot);
-                        }
-                        println!("Picking backend for request: {}", backend);
+                        // if let Some(snapshot) = strategy.debug_snapshot() {
+                        //     println!("Scores snapshot: {}", snapshot);
+                        // }
+                        // println!("Picking backend for request: {}", backend);
                         
                         // Build new URI with backend authority
                         let path_and_query = req

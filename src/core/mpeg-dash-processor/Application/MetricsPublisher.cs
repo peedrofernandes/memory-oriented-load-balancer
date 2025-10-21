@@ -14,11 +14,15 @@ public sealed class MetricsPublisher : BackgroundService
 {
     private readonly ILogger<MetricsPublisher> _logger;
     private readonly IManagedMqttClient _managedClient;
+    private readonly RequestCounter _requestCounter;
 
     private readonly string _mqttBrokerHost;
     private readonly int _mqttBrokerPort;
     private readonly TimeSpan _publishInterval;
     private readonly string _serverSocket;
+
+    private readonly ulong _memoryLimitMb;
+    private readonly ulong _readDiskLimitMbps;
 
     // cgroup v2 file paths inside container namespace
     private const string CgroupIoStatPath = "/sys/fs/cgroup/io.stat";
@@ -28,9 +32,13 @@ public sealed class MetricsPublisher : BackgroundService
     private ulong _lastTotalReadBytes;
     private DateTimeOffset _lastSampleTime;
 
-    public MetricsPublisher(ILogger<MetricsPublisher> logger)
+    public MetricsPublisher(ILogger<MetricsPublisher> logger, RequestCounter requestCounter)
     {
         _logger = logger;
+        _requestCounter = requestCounter;
+
+        _memoryLimitMb = ulong.Parse(Environment.GetEnvironmentVariable("MEMORY_LIMIT_MB") ?? throw new Exception("MEMORY_LIMIT_MB environment variable is required"));
+        _readDiskLimitMbps = ulong.Parse(Environment.GetEnvironmentVariable("READ_DISK_LIMIT_MBPS") ?? throw new Exception("READ_DISK_LIMIT_MBPS environment variable is required"));
 
         // Prefer single env var for broker to minimize parameters
         // Default connects to host machine broker via host.docker.internal
@@ -104,12 +112,24 @@ public sealed class MetricsPublisher : BackgroundService
                 _lastTotalReadBytes = totalReadBytes;
                 _lastSampleTime = now;
 
+                var normalized_memory_current_bytes = Math.Clamp((double)memoryCurrentBytes / (_memoryLimitMb * 1024 * 1024), 0.0, 1.0);
+                var normalized_read_bytes_per_sec = Math.Clamp(readBytesPerSec / (_readDiskLimitMbps * 1024 * 1024), 0.0, 1.0);
+
                 var payload = new
                 {
                     server_socket = _serverSocket,
-                    memory_current_bytes = memoryCurrentBytes,
-                    disk_read_bytes_per_sec = readBytesPerSec,
-                    timestamp_unix = now.ToUnixTimeSeconds()
+                    absolute_values = new
+                    {
+                        memory_current_bytes = memoryCurrentBytes,
+                        disk_read_bytes_per_sec = readBytesPerSec,
+                        active_request_count = _requestCounter.Get(),
+                    },
+                    normalized_values = new
+                    {
+                        memory_current_bytes = normalized_memory_current_bytes,
+                        disk_read_bytes_per_sec = normalized_read_bytes_per_sec,
+                    },
+                    timestamp_unix = now.ToUnixTimeSeconds(),
                 };
 
                 var json = JsonSerializer.Serialize(payload);

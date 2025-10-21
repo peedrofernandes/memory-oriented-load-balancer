@@ -6,6 +6,9 @@ var builder = WebApplication.CreateBuilder(args);
 // Add logging
 builder.Logging.AddConsole();
 
+// Active request counter (singleton)
+builder.Services.AddSingleton<RequestCounter>();
+
 // Add background publisher service for metrics
 builder.Services.AddHostedService<MetricsPublisher>();
 
@@ -19,6 +22,9 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
 var app = builder.Build();
 
 app.UseCors();
+
+// Count active requests
+app.UseMiddleware<RequestCountingMiddleware>();
 
 // Add middleware to handle Range requests for DASH segments
 app.Use(async (context, next) =>

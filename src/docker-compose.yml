@@ -11,7 +11,7 @@ services:
       - nanomq-data:/opt/nanomq/data
     restart: unless-stopped
     command: ["nanomq", "start", "--conf", "/etc/nanomq.conf"]
-    
+
   mpeg-dash-processor-1:
     build: ./core/mpeg-dash-processor/Application
     container_name: mpeg-dash-processor-1
@@ -24,18 +24,18 @@ services:
       - MQTT_BROKER_URL=mqtt://nanomq-broker:1883
       - SERVER_SOCKET=mpeg-dash-processor-1:8080
       - METRICS_PUBLISH_INTERVAL_SECONDS=12
-      - READ_DISK_LIMIT_MBPS=512
-      - MEMORY_LIMIT_MB=4096
+      - READ_DISK_LIMIT_MBPS=256
+      - MEMORY_LIMIT_MB=1024
     restart: unless-stopped
     blkio_config:
       device_read_bps:
         - path: /dev/sdd
-          rate: '512mb'
+          rate: '256mb'
     deploy:
       resources:
         limits:
           cpus: "1.0"
-          memory: 4096M
+          memory: 1024M
         reservations:
           cpus: "0.25"
           memory: 64M
@@ -55,7 +55,7 @@ services:
       - SERVER_SOCKET=mpeg-dash-processor-2:8080
       - METRICS_PUBLISH_INTERVAL_SECONDS=10
       - READ_DISK_LIMIT_MBPS=256
-      - MEMORY_LIMIT_MB=2048
+      - MEMORY_LIMIT_MB=1024
     restart: unless-stopped
     blkio_config:
       device_read_bps:
@@ -65,7 +65,7 @@ services:
       resources:
         limits:
           cpus: "1.0"
-          memory: 2048M
+          memory: 1024M
         reservations:
           cpus: "0.25"
           memory: 64M
@@ -84,13 +84,13 @@ services:
       - MQTT_BROKER_URL=mqtt://nanomq-broker:1883
       - SERVER_SOCKET=mpeg-dash-processor-3:8080
       - METRICS_PUBLISH_INTERVAL_SECONDS=8
-      - READ_DISK_LIMIT_MBPS=128
+      - READ_DISK_LIMIT_MBPS=256
       - MEMORY_LIMIT_MB=1024
     restart: unless-stopped
     blkio_config:
       device_read_bps:
         - path: /dev/sdd
-          rate: '128mb'
+          rate: '256mb'
     deploy:
       resources:
         limits:
@@ -114,18 +114,18 @@ services:
       - MQTT_BROKER_URL=mqtt://nanomq-broker:1883
       - SERVER_SOCKET=mpeg-dash-processor-4:8080
       - METRICS_PUBLISH_INTERVAL_SECONDS=6
-      - READ_DISK_LIMIT_MBPS=64
-      - MEMORY_LIMIT_MB=512
+      - READ_DISK_LIMIT_MBPS=256
+      - MEMORY_LIMIT_MB=1024
     restart: unless-stopped
     blkio_config:
       device_read_bps:
         - path: /dev/sdd
-          rate: '64mb'
+          rate: '256mb'
     deploy:
       resources:
         limits:
           cpus: "1.0"
-          memory: 512M
+          memory: 1024M
         reservations:
           cpus: "0.25"
           memory: 64M
@@ -144,18 +144,18 @@ services:
       - MQTT_BROKER_URL=mqtt://nanomq-broker:1883
       - SERVER_SOCKET=mpeg-dash-processor-5:8080
       - METRICS_PUBLISH_INTERVAL_SECONDS=4
-      - READ_DISK_LIMIT_MBPS=32
-      - MEMORY_LIMIT_MB=512
+      - READ_DISK_LIMIT_MBPS=256
+      - MEMORY_LIMIT_MB=1024
     restart: unless-stopped
     blkio_config:
       device_read_bps:
         - path: /dev/sdd
-          rate: '32mb'
+          rate: '256mb'
     deploy:
       resources:
         limits:
           cpus: "1.0"
-          memory: 512M
+          memory: 1024M
         reservations:
           cpus: "0.25"
           memory: 64M
@@ -174,18 +174,18 @@ services:
       - MQTT_BROKER_URL=mqtt://nanomq-broker:1883
       - SERVER_SOCKET=mpeg-dash-processor-6:8080
       - METRICS_PUBLISH_INTERVAL_SECONDS=3
-      - READ_DISK_LIMIT_MBPS=16
-      - MEMORY_LIMIT_MB=512
+      - READ_DISK_LIMIT_MBPS=256
+      - MEMORY_LIMIT_MB=1024
     restart: unless-stopped
     blkio_config:
       device_read_bps:
         - path: /dev/sdd
-          rate: '16mb'
+          rate: '256mb'
     deploy:
       resources:
         limits:
           cpus: "1.0"
-          memory: 512M
+          memory: 1024M
         reservations:
           cpus: "0.25"
           memory: 64M
@@ -204,18 +204,18 @@ services:
       - MQTT_BROKER_URL=mqtt://nanomq-broker:1883
       - SERVER_SOCKET=mpeg-dash-processor-7:8080
       - METRICS_PUBLISH_INTERVAL_SECONDS=2
-      - READ_DISK_LIMIT_MBPS=8
-      - MEMORY_LIMIT_MB=512
+      - READ_DISK_LIMIT_MBPS=256
+      - MEMORY_LIMIT_MB=1024
     restart: unless-stopped
     blkio_config:
       device_read_bps:
         - path: /dev/sdd
-          rate: '8mb'
+          rate: '256mb'
     deploy:
       resources:
         limits:
           cpus: "1.0"
-          memory: 512M
+          memory: 1024M
         reservations:
           cpus: "0.25"
           memory: 64M
@@ -234,18 +234,18 @@ services:
       - MQTT_BROKER_URL=mqtt://nanomq-broker:1883
       - SERVER_SOCKET=mpeg-dash-processor-8:8080
       - METRICS_PUBLISH_INTERVAL_SECONDS=1
-      - READ_DISK_LIMIT_MBPS=4
-      - MEMORY_LIMIT_MB=512
+      - READ_DISK_LIMIT_MBPS=256
+      - MEMORY_LIMIT_MB=1024
     restart: unless-stopped
     blkio_config:
       device_read_bps:
         - path: /dev/sdd
-          rate: '4mb'
+          rate: '256mb'
     deploy:
       resources:
         limits:
           cpus: "1.0"
-          memory: 512M
+          memory: 1024M
         reservations:
           cpus: "0.25"
           memory: 64M

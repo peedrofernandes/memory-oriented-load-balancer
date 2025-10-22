@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Used by memory-monitoring strategy; ignored by others.
     let broker_host = std::env::var("MQTT_BROKER_HOST").unwrap_or_else(|_| "nanomq-broker".to_string());
     let broker_port: u16 = std::env::var("MQTT_BROKER_PORT").ok().and_then(|s| s.parse().ok()).unwrap_or(1883);
-    let strategy: Arc<dyn ServerSelectionStrategy> = Arc::new(RandomStrategy::new());
+    let strategy: Arc<dyn ServerSelectionStrategy> = Arc::new(RoundRobinStrategy::new());
 
     let load_balancer = LoadBalancer::new(servers, strategy);
     

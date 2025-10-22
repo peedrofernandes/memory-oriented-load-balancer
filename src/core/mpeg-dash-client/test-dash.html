@@ -252,6 +252,13 @@
                 if (player && typeof player.getBitrateInfoListFor === 'function') {
                     bitrateInfo = player.getBitrateInfoListFor('video');
                 }
+                // Fallback for other dash.js versions
+                if ((!bitrateInfo || bitrateInfo.length === 0) && player && typeof player.getTracksFor === 'function') {
+                    const tracks = player.getTracksFor('video');
+                    if (tracks && tracks.length > 0 && tracks[0].bitrateList) {
+                        bitrateInfo = tracks[0].bitrateList;
+                    }
+                }
             } catch (error) {
                 console.error('Could not get bitrate info:', error);
             }
@@ -268,8 +275,10 @@
                 const startPercentage = cumulativePercentage;
                 const endPercentage = cumulativePercentage + percentage;
                 
-                const qualityLabel = getQualityLabel(quality, bitrateInfo);
-                log(`${startPercentage.toFixed(1)}%-${endPercentage.toFixed(1)}%: ${qualityLabel}`, 'quality');
+                const fullLabel = getQualityLabel(quality, bitrateInfo);
+                const resOnlyMatch = /\b(\d+)p\b/.exec(fullLabel);
+                const resolutionOnly = resOnlyMatch ? resOnlyMatch[0] : fullLabel;
+                log(`${startPercentage.toFixed(1)}%-${endPercentage.toFixed(1)}%: ${resolutionOnly}`, 'quality');
                 
                 cumulativePercentage = endPercentage;
             });
@@ -334,7 +343,7 @@
                                 bitrateInfo.forEach((quality, index) => {
                                     console.log(`Quality ${index}:`, quality);
                                     const label = getQualityLabel(index, bitrateInfo);
-                                    log(`  Quality ${index}: ${label}`, 'quality');
+                                    log(`  ${label}`, 'quality');
                                 });
                             } else {
                                 log('Quality info: 1 representation available', 'quality');

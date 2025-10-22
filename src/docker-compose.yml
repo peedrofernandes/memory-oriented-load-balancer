@@ -11,6 +11,7 @@ services:
       - nanomq-data:/opt/nanomq/data
     restart: unless-stopped
     command: ["nanomq", "start", "--conf", "/etc/nanomq.conf"]
+    
   mpeg-dash-processor-1:
     build: ./core/mpeg-dash-processor/Application
     container_name: mpeg-dash-processor-1

@@ -6,7 +6,7 @@ Test scenarios
 
 - Total concurrent users: 500 (50 * 10)
 - Total timeout seconds: 15
-- Total catalog videos: 100
+- Total catalog videos: 12
 - Total distinct resolutions (qualities): 3
 - Server distribution: heterogeneous
   - Server 1: 4096MB RAM, 1024MB/s
@@ -25,7 +25,7 @@ Test scenarios
 
 - Total concurrent users: 500 (50 * 10)
 - Total timeout seconds: 15
-- Total catalog videos: 100
+- Total catalog videos: 12
 - Total distinct resolutions (qualities): 3
 - Server distribution: homogeneous
   - Server 1: 1024MB RAM, 256MB/s
@@ -43,7 +43,7 @@ Test scenarios
 
 - Total concurrent users: 2000 (200 * 10)
 - Total timeout seconds: 15
-- Total catalog videos: 100
+- Total catalog videos: 12
 - Total distinct resolutions (qualities): 3
 - Server distribution: heterogeneous
   - Server 1: 4096MB RAM, 1024MB/s
@@ -61,7 +61,7 @@ Test scenarios
 
 - Total concurrent users: 2000 (200 * 10)
 - Total timeout seconds: 15
-- Total catalog videos: 100
+- Total catalog videos: 12
 - Total distinct resolutions (qualities): 3
 - Server distribution: homogeneous
   - Server 1: 1024MB RAM, 256MB/s

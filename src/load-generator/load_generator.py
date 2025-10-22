@@ -52,7 +52,7 @@ class LoadTestResults:
 DEFAULT_TIMEOUT_SECONDS = 15.0
 DEFAULT_ENDPOINT = "/"
 DEFAULT_MANIFEST_PATH = "/video-1/manifest.mpd"
-MAX_VIDEO_DIRECTORIES = 50
+MAX_VIDEO_DIRECTORIES = 12
 
 # Fixed-memory histogram for response times (ms)
 # Covers 0..HISTOGRAM_MAX_MS with HISTOGRAM_BUCKET_MS resolution

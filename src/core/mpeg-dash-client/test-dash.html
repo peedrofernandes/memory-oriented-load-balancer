@@ -79,7 +79,7 @@
             border-left-color: #dc3545;
         }
         .log li.quality {
-            border-left-color: #28a745;
+            border-left-color: #007bff;
         }
     </style>
 </head>
@@ -102,23 +102,34 @@
         </div>
 
         <ul class="log" id="log"></ul>
+        <div id="qualityChartContainer" style="margin-top: 10px;"></div>
+        <div id="stallChartContainer" style="margin-top: 20px;"></div>
     </div>
 
     <!-- dash.js library -->
     <script src="https://cdn.dashjs.org/latest/dash.all.min.js"></script>
+    <!-- Chart.js for beautiful line chart -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <script>
         let player;
         let logElement = document.getElementById('log');
         let statusElement = document.getElementById('status');
+        let qualityMap = new Map();
+        let qualitySequence = [];
+        let qualityIndexInfo = [];
+        let chartInstance = null;
+        let currentSortedRepIds = [];
+        let stallChartInstance = null;
+        let stallPoints = [];
+        let lastRepIdLogged = null;
+        let segmentIndexToRepId = new Map();
+        let videoRepIdsSet = new Set();
 
         // Session metrics
         let sessionMetrics = {
             stalls: [],
             currentStallStart: null,
-            qualityPeriods: [],
-            currentQuality: null,
-            currentQualityStart: null,
             sessionStart: null,
             videoDuration: 0,
             metricsLogged: false
@@ -147,16 +158,46 @@
             sessionMetrics = {
                 stalls: [],
                 currentStallStart: null,
-                qualityPeriods: [],
-                currentQuality: null,
-                currentQualityStart: null,
                 sessionStart: null,
                 videoDuration: 0,
                 metricsLogged: false
             };
+            qualityMap = new Map();
+            qualitySequence = [];
+            qualityIndexInfo = [];
             
             // Clear log
             clearLog();
+            // Clear chart
+            const chartContainer = document.getElementById('qualityChartContainer');
+            if (chartContainer) {
+                chartContainer.innerHTML = '';
+            }
+            if (chartInstance) {
+                try { chartInstance.destroy(); } catch (e) {}
+                chartInstance = null;
+            }
+            currentSortedRepIds = [];
+            if (stallChartInstance) {
+                try { stallChartInstance.destroy(); } catch (e) {}
+                stallChartInstance = null;
+            }
+            stallPoints = [];
+            lastRepIdLogged = null;
+            segmentIndexToRepId = new Map();
+            videoRepIdsSet = new Set();
+            const stallContainer = document.getElementById('stallChartContainer');
+            if (stallContainer) {
+                stallContainer.innerHTML = '';
+            }
+            if (stallChartInstance) {
+                try { stallChartInstance.destroy(); } catch (e) {}
+                stallChartInstance = null;
+            }
+            stallPoints = [];
+            lastRepIdLogged = null;
+            segmentIndexToRepId = new Map();
+            videoRepIdsSet = new Set();
             
             // Reset player if exists
             if (player) {
@@ -210,80 +251,364 @@
             log(`Total stall duration: ${totalStallDuration.toFixed(2)}s`, 'stall');
         }
 
-        function logQualityDistribution() {
-            // Close current quality period if active
-            if (sessionMetrics.currentQuality !== null && sessionMetrics.currentQualityStart !== null) {
-                const duration = (Date.now() - sessionMetrics.currentQualityStart) / 1000;
-                const qualityIndex = parseInt(sessionMetrics.currentQuality);
-                if (!isNaN(qualityIndex)) {
-                    sessionMetrics.qualityPeriods.push({
-                        quality: qualityIndex,
-                        duration: duration
-                    });
-                }
-                sessionMetrics.currentQualityStart = null;
-            }
-            
-            if (sessionMetrics.qualityPeriods.length === 0) {
-                log('No quality data available', 'quality');
-                return;
-            }
-            
-            // Calculate total session time
-            const totalDuration = sessionMetrics.qualityPeriods.reduce((sum, period) => sum + period.duration, 0);
-            
-            if (totalDuration === 0) {
-                log('Session duration is 0', 'quality');
-                return;
-            }
-            
-            // Group by quality and sum durations
-            const qualityDurations = {};
-            sessionMetrics.qualityPeriods.forEach(period => {
-                if (!qualityDurations[period.quality]) {
-                    qualityDurations[period.quality] = 0;
-                }
-                qualityDurations[period.quality] += period.duration;
-            });
-            
-            // Get bitrate info for labels
-            let bitrateInfo = null;
+        // Removed old duration-based quality distribution logic
+
+        function buildQualityMap() {
             try {
+                let list = null;
                 if (player && typeof player.getBitrateInfoListFor === 'function') {
-                    bitrateInfo = player.getBitrateInfoListFor('video');
+                    list = player.getBitrateInfoListFor('video');
                 }
-                // Fallback for other dash.js versions
-                if ((!bitrateInfo || bitrateInfo.length === 0) && player && typeof player.getTracksFor === 'function') {
+                if ((!list || list.length === 0) && player && typeof player.getTracksFor === 'function') {
                     const tracks = player.getTracksFor('video');
                     if (tracks && tracks.length > 0 && tracks[0].bitrateList) {
-                        bitrateInfo = tracks[0].bitrateList;
+                        list = tracks[0].bitrateList;
                     }
                 }
-            } catch (error) {
-                console.error('Could not get bitrate info:', error);
+                if (list && list.length) {
+                    // Build index→meta for later mapping
+                    qualityIndexInfo = list.map((q, i) => {
+                        const height = q.height || q.streamHeight;
+                        const bitrate = q.bitrate || q.bandwidth || q.qualityBitrate;
+                        const label = height ? `${height}P` : `Q${i}`;
+                        return { label: label, bitrateKbps: bitrate ? Math.round(bitrate / 1000) : NaN };
+                    });
+                    log(`Discovered ${list.length} video qualities`, 'quality');
+                }
+
+                // Attempt to build repId→meta mapping using tracks API if available (preferred)
+                if (player && typeof player.getTracksFor === 'function') {
+                    const tracks = player.getTracksFor('video');
+                    if (tracks && tracks.length > 0 && tracks[0].bitrateList) {
+                        const brList = tracks[0].bitrateList;
+                        brList.forEach((b) => {
+                            const repIdStr = b.id != null ? String(b.id) : null;
+                            if (!repIdStr) return;
+                            const repIdNum = parseInt(repIdStr, 10);
+                            if (Number.isNaN(repIdNum)) return;
+                            const height = b.height || b.streamHeight;
+                            const bitrate = b.bandwidth || b.bitrate || b.qualityBitrate;
+                            const label = height ? `${height}P` : (bitrate ? `${Math.round(bitrate / 1000)} kbps` : `ID ${repIdStr}`);
+                            qualityMap.set(repIdNum, { label: label, bitrateKbps: bitrate ? Math.round(bitrate / 1000) : NaN });
+                            videoRepIdsSet.add(repIdNum);
+                        });
+                    }
+                }
+            } catch (e) {
+                // ignore
             }
-            
-            // Sort by quality level and create distribution log
-            log('=== QUALITY DISTRIBUTION ===', 'quality');
-            
-            const sortedQualities = Object.entries(qualityDurations).sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
-            
-            let cumulativePercentage = 0;
-            sortedQualities.forEach(([qualityStr, duration]) => {
-                const quality = parseInt(qualityStr);
-                const percentage = (duration / totalDuration) * 100;
-                const startPercentage = cumulativePercentage;
-                const endPercentage = cumulativePercentage + percentage;
-                
-                const fullLabel = getQualityLabel(quality, bitrateInfo);
-                const resOnlyMatch = /\b(\d+)p\b/.exec(fullLabel);
-                const resolutionOnly = resOnlyMatch ? resOnlyMatch[0] : fullLabel;
-                log(`${startPercentage.toFixed(1)}%-${endPercentage.toFixed(1)}%: ${resolutionOnly}`, 'quality');
-                
-                cumulativePercentage = endPercentage;
+            // Initialize or update chart after building the map
+            updateQualityChartLive();
+        }
+
+        function ensureQualityMapEntry(repIdNum, qualityIndex) {
+            if (qualityMap.has(repIdNum)) return;
+            const info = qualityIndexInfo && qualityIndexInfo[qualityIndex];
+            if (info) {
+                qualityMap.set(repIdNum, { label: info.label, bitrateKbps: info.bitrateKbps });
+            } else {
+                qualityMap.set(repIdNum, { label: `ID ${repIdNum}`, bitrateKbps: NaN });
+            }
+        }
+
+        function getSegmentIndexFromRequest(r) {
+            if (r && typeof r.index === 'number' && r.index >= 0) return r.index;
+            if (r && r.url) {
+                // Try to parse trailing numeric segment sequence from URL (e.g., ...00001.m4s)
+                const m2 = /\.([0-9]+)\.m4s(\?|$)/.exec(r.url);
+                if (m2) return parseInt(m2[1], 10);
+            }
+            return null;
+        }
+
+        function onVideoFragmentEvent(e) {
+            if (!e) return;
+            const isVideo = (e.mediaType === 'video') || (e.request && e.request.mediaType === 'video');
+            if (!isVideo) return;
+            const r = e.request || e;
+            if (!r || r.type !== 'MediaSegment') return;
+            // Determine representation ID
+            let repIdNum = null;
+            if (r.representationId != null) {
+                const parsed = parseInt(r.representationId, 10);
+                if (!Number.isNaN(parsed)) repIdNum = parsed;
+            }
+            if (repIdNum == null && typeof r.quality === 'number') {
+                // Map via quality index if we have info
+                if (qualityIndexInfo[r.quality]) {
+                    // Can't derive repId from index, so skip if unknown
+                }
+            }
+            if (repIdNum == null && r.url) {
+                const m = /chunk-stream(\d+)/.exec(r.url);
+                if (m) {
+                    const parsed = parseInt(m[1], 10);
+                    if (!Number.isNaN(parsed)) repIdNum = parsed;
+                }
+            }
+            if (repIdNum == null) return;
+            // Ensure this is a known video rep id
+            if (videoRepIdsSet.size > 0 && !videoRepIdsSet.has(repIdNum)) return;
+
+            // Ensure metadata exists
+            if (!qualityMap.has(repIdNum)) {
+                const mediaInfo = r.mediaInfo;
+                if (mediaInfo && Array.isArray(mediaInfo.bitrateList)) {
+                    const found = mediaInfo.bitrateList.find(b => String(b.id) === String(repIdNum));
+                    if (found) {
+                        const height = found.height || found.streamHeight;
+                        const bitrate = found.bandwidth || found.bitrate || found.qualityBitrate;
+                        const label = height ? `${height}P` : (bitrate ? `${Math.round(bitrate / 1000)} kbps` : undefined);
+                        if (label) {
+                            qualityMap.set(repIdNum, { label: label, bitrateKbps: bitrate ? Math.round(bitrate / 1000) : NaN });
+                        }
+                    }
+                }
+            }
+
+            const segIndex = getSegmentIndexFromRequest(r);
+            if (segIndex == null) return;
+            // Only record first append per segment index
+            if (!segmentIndexToRepId.has(segIndex)) {
+                segmentIndexToRepId.set(segIndex, repIdNum);
+                // Rebuild quality sequence based on ascending segment index
+                qualitySequence = [...segmentIndexToRepId.entries()].sort((a, b) => a[0] - b[0]).map(([_, id]) => id);
+                // Log quality change if different
+                if (lastRepIdLogged === null || lastRepIdLogged !== repIdNum) {
+                    const meta = qualityMap.get(repIdNum) || {};
+                    const label = meta.label || `ID ${repIdNum}`;
+                    const br = isFinite(meta.bitrateKbps) ? `${meta.bitrateKbps} kbps` : null;
+                    log(`Quality changed to ${label}${br ? ` (${br})` : ''}`, 'quality');
+                    lastRepIdLogged = repIdNum;
+                }
+                updateQualityChartLive();
+                updateStallChartLive();
+            }
+        }
+
+        function renderQualityChart() {
+            const container = document.getElementById('qualityChartContainer');
+            if (!container) return;
+            container.innerHTML = '';
+            if (chartInstance) {
+                try { chartInstance.destroy(); } catch (e) {}
+                chartInstance = null;
+            }
+            // Build Y ordering by ascending bitrate, fallback to label then id
+            const entries = [...qualityMap.entries()];
+            if (entries.length === 0 && qualitySequence.length > 0) {
+                // create placeholder entries from sequence if map empty
+                const uniq = Array.from(new Set(qualitySequence));
+                uniq.forEach(id => qualityMap.set(id, { label: `ID ${id}`, bitrateKbps: NaN }));
+            }
+            currentSortedRepIds = [...qualityMap.entries()]
+                .sort((a, b) => {
+                    const qa = a[1];
+                    const qb = b[1];
+                    const ba = isFinite(qa.bitrateKbps) ? qa.bitrateKbps : Number.MAX_SAFE_INTEGER;
+                    const bb = isFinite(qb.bitrateKbps) ? qb.bitrateKbps : Number.MAX_SAFE_INTEGER;
+                    if (ba !== bb) return ba - bb; // lowest quality first
+                    const la = qa.label || '';
+                    const lb = qb.label || '';
+                    if (la !== lb) return la.localeCompare(lb);
+                    return a[0] - b[0];
+                })
+                .map(([id]) => id);
+            const repIdToRank = new Map();
+            currentSortedRepIds.forEach((id, idx) => repIdToRank.set(id, idx));
+
+            const yData = qualitySequence
+                .map(id => repIdToRank.has(id) ? repIdToRank.get(id) : null)
+                .filter(v => v != null);
+            const xLabels = yData.map((_, i) => (i + 1).toString());
+
+            const canvas = document.createElement('canvas');
+            canvas.style.width = '100%';
+            canvas.style.maxHeight = '320px';
+            container.appendChild(canvas);
+
+            const lineColor = 'rgba(0, 123, 255, 0.9)';
+            const pointColor = 'rgba(0, 123, 255, 1)';
+            const gridColor = 'rgba(0, 0, 0, 0.08)';
+
+            const ctx = canvas.getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: xLabels,
+                    datasets: [{
+                        label: 'Quality over time',
+                        data: yData,
+                        borderColor: lineColor,
+                        backgroundColor: 'rgba(0, 123, 255, 0.08)',
+                        pointBackgroundColor: pointColor,
+                        pointBorderColor: '#fff',
+                        pointRadius: 2,
+                        pointHoverRadius: 4,
+                        fill: false,
+                        tension: 0.3,
+                        cubicInterpolationMode: 'monotone'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => {
+                                    const rank = ctx.parsed.y;
+                                    const repId = currentSortedRepIds[rank];
+                                    const meta = qualityMap.get(repId) || {};
+                                    const label = meta.label || `ID ${repId}`;
+                                    const br = isFinite(meta.bitrateKbps) ? `${meta.bitrateKbps} kbps` : 'unknown kbps';
+                                    return ` ${label} (${br}) [ID ${repId}]`;
+                                }
+                            }
+                        },
+                        title: { display: true, text: 'Quality Timeline', color: '#333', font: { size: 14 } }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            title: { display: true, text: 'Segments', color: '#555' },
+                            grid: { color: gridColor }
+                        },
+                        y: {
+                            display: true,
+                            ticks: {
+                                precision: 0,
+                                callback: (value) => {
+                                    const repId = currentSortedRepIds[value];
+                                    const meta = qualityMap.get(repId) || {};
+                                    const label = meta.label || (isFinite(meta.bitrateKbps) ? `${meta.bitrateKbps} kbps` : 'Unknown');
+                                    const br = isFinite(meta.bitrateKbps) ? `${meta.bitrateKbps} kbps` : '';
+                                    return br && !label.includes('kbps') ? `${label} (${br})` : label;
+                                }
+                            },
+                            grid: { color: gridColor }
+                        }
+                    }
+                }
             });
-            
-            log(`Total session duration: ${totalDuration.toFixed(2)}s`, 'quality');
+        }
+
+        function updateQualityChartLive() {
+            const container = document.getElementById('qualityChartContainer');
+            if (!container) return;
+            if (!chartInstance) {
+                // initial render
+                renderQualityChart();
+                return;
+            }
+            // Recompute ordering and data
+            const entries = [...qualityMap.entries()];
+            if (entries.length === 0 && qualitySequence.length > 0) {
+                const uniq = Array.from(new Set(qualitySequence));
+                uniq.forEach(id => qualityMap.set(id, { label: `ID ${id}`, bitrateKbps: NaN }));
+            }
+            const newSorted = [...qualityMap.entries()]
+                .sort((a, b) => {
+                    const qa = a[1];
+                    const qb = b[1];
+                    const ba = isFinite(qa.bitrateKbps) ? qa.bitrateKbps : Number.MAX_SAFE_INTEGER;
+                    const bb = isFinite(qb.bitrateKbps) ? qb.bitrateKbps : Number.MAX_SAFE_INTEGER;
+                    if (ba !== bb) return ba - bb;
+                    const la = qa.label || '';
+                    const lb = qb.label || '';
+                    if (la !== lb) return la.localeCompare(lb);
+                    return a[0] - b[0];
+                })
+                .map(([id]) => id);
+            const repIdToRank = new Map();
+            newSorted.forEach((id, idx) => repIdToRank.set(id, idx));
+            const yData = qualitySequence
+                .map(id => repIdToRank.has(id) ? repIdToRank.get(id) : null)
+                .filter(v => v != null);
+            const xLabels = yData.map((_, i) => (i + 1).toString());
+
+            currentSortedRepIds = newSorted;
+            chartInstance.data.labels = xLabels;
+            chartInstance.data.datasets[0].data = yData;
+            chartInstance.update('none');
+        }
+
+        function renderStallChart() {
+            const container = document.getElementById('stallChartContainer');
+            if (!container) return;
+            container.innerHTML = '';
+            if (stallChartInstance) {
+                try { stallChartInstance.destroy(); } catch (e) {}
+                stallChartInstance = null;
+            }
+            const canvas = document.createElement('canvas');
+            canvas.style.width = '100%';
+            canvas.style.maxHeight = '260px';
+            container.appendChild(canvas);
+
+            const ctx = canvas.getContext('2d');
+            stallChartInstance = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Stalls (duration vs. segment index)',
+                        data: stallPoints,
+                        backgroundColor: 'rgba(220, 53, 69, 0.9)',
+                        borderColor: 'rgba(220, 53, 69, 1)',
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                    }]
+                },
+                options: {
+                    parsing: false,
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => {
+                                    const p = ctx.raw || {};
+                                    const dur = typeof p.y === 'number' ? p.y.toFixed(2) : '0.00';
+                                    const seg = p.x;
+                                    return ` Stall: ${dur}s at segment ${seg}`;
+                                }
+                            }
+                        },
+                        title: { display: true, text: 'Stall Timeline', color: '#333', font: { size: 14 } }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            title: { display: true, text: 'Segments', color: '#555' },
+                            grid: { color: 'rgba(0,0,0,0.08)' },
+                            suggestedMin: 1,
+                            suggestedMax: Math.max(1, qualitySequence.length)
+                        },
+                        y: {
+                            title: { display: true, text: 'Stall duration (s)', color: '#555' },
+                            grid: { color: 'rgba(0,0,0,0.08)' },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateStallChartLive() {
+            const container = document.getElementById('stallChartContainer');
+            if (!container) return;
+            if (!stallChartInstance) {
+                renderStallChart();
+                return;
+            }
+            // Update dataset and axis max to follow quality chart X axis
+            stallChartInstance.data.datasets[0].data = stallPoints;
+            if (stallChartInstance.options && stallChartInstance.options.scales && stallChartInstance.options.scales.x) {
+                stallChartInstance.options.scales.x.suggestedMax = Math.max(1, qualitySequence.length);
+            }
+            stallChartInstance.update('none');
         }
 
         function startVideoSession() {
@@ -311,120 +636,31 @@
                     }
                 });
 
-                // Log available qualities when first quality is set
-                let qualitiesLogged = false;
-                player.on(dashjs.MediaPlayer.events.QUALITY_CHANGE_RENDERED, function(e) {
-                    // Only track video quality changes, not audio
-                    if (e.mediaType !== 'video') {
-                        return;
-                    }
-                    
-                    const now = Date.now();
-                    console.log('QUALITY_CHANGE_RENDERED event:', e);
-                    
-                    // Log available qualities on first quality change
-                    if (!qualitiesLogged) {
-                        qualitiesLogged = true;
-                        try {
-                            // Try multiple API methods for different dash.js versions
-                            let bitrateInfo = null;
-                            if (typeof player.getBitrateInfoListFor === 'function') {
-                                bitrateInfo = player.getBitrateInfoListFor('video');
-                            } else if (typeof player.getTracksFor === 'function') {
-                                const tracks = player.getTracksFor('video');
-                                if (tracks && tracks.length > 0) {
-                                    bitrateInfo = tracks[0].bitrateList;
-                                }
-                            }
-                            
-                            if (bitrateInfo && bitrateInfo.length > 0) {
-                                console.log('BitrateInfo structure:', bitrateInfo);
-                                log(`Available qualities: ${bitrateInfo.length}`, 'quality');
-                                bitrateInfo.forEach((quality, index) => {
-                                    console.log(`Quality ${index}:`, quality);
-                                    const label = getQualityLabel(index, bitrateInfo);
-                                    log(`  ${label}`, 'quality');
-                                });
-                            } else {
-                                log('Quality info: 1 representation available', 'quality');
-                            }
-                        } catch (error) {
-                            console.error('Quality info error:', error);
-                        }
-                    }
-                    
-                    // Extract quality index from newRepresentation object
-                    let newQualityValue = null;
-                    if (e.newRepresentation) {
-                        console.log('newRepresentation:', e.newRepresentation);
-                        // Try different possible property names for the quality index
-                        newQualityValue = e.newRepresentation.index;
-                        if (newQualityValue === undefined) {
-                            newQualityValue = e.newRepresentation.id;
-                        }
-                        if (newQualityValue === undefined) {
-                            newQualityValue = e.newRepresentation.qualityIndex;
-                        }
-                        if (newQualityValue === undefined) {
-                            newQualityValue = e.newRepresentation.bitrateIndex;
-                        }
-                    }
-                    
-                    console.log('Detected quality value:', newQualityValue);
-                    
-                    // Save previous quality period
-                    if (sessionMetrics.currentQuality !== null && sessionMetrics.currentQualityStart !== null) {
-                        const duration = (now - sessionMetrics.currentQualityStart) / 1000;
-                        console.log('Saving quality period:', sessionMetrics.currentQuality, duration);
-                        sessionMetrics.qualityPeriods.push({
-                            quality: parseInt(sessionMetrics.currentQuality),
-                            duration: duration
-                        });
-                    }
-                    
-                    // Start tracking new quality - ensure it's a number
-                    const newQuality = parseInt(newQualityValue);
-                    if (!isNaN(newQuality)) {
-                        sessionMetrics.currentQuality = newQuality;
-                        sessionMetrics.currentQualityStart = now;
-                        console.log('Started tracking quality:', newQuality);
-                    } else {
-                        console.error('Invalid quality index:', newQualityValue, 'from representation:', e.newRepresentation);
-                    }
-                });
+                // Hook new per-segment quality tracking (video only) and quality map build
+                const Events = dashjs.MediaPlayer.events;
+                const FRAGMENT_EVENT = Events && (Events.FRAGMENT_APPENDED || Events.FRAGMENT_LOADING_COMPLETED);
+                const STREAM_INIT_EVENT = Events && (Events.STREAM_INITIALIZED || Events.MANIFEST_LOADED || Events.SOURCE_INITIALIZED);
+                if (FRAGMENT_EVENT) {
+                    player.on(FRAGMENT_EVENT, onVideoFragmentEvent);
+                } else {
+                    console.warn('dash.js fragment event not available on this version');
+                }
+                if (STREAM_INIT_EVENT) {
+                    player.on(STREAM_INIT_EVENT, function() { buildQualityMap(); updateQualityChartLive(); updateStallChartLive(); });
+                } else {
+                    console.warn('dash.js stream init event not available on this version');
+                }
 
                 // Track session start
                 player.on(dashjs.MediaPlayer.events.PLAYBACK_STARTED, function() {
                     if (!sessionMetrics.sessionStart) {
                         sessionMetrics.sessionStart = Date.now();
                         console.log('PLAYBACK_STARTED - Session started at:', sessionMetrics.sessionStart);
-                        
-                        // Capture initial quality if not already set by QUALITY_CHANGE_RENDERED
-                        // We'll rely on QUALITY_CHANGE_RENDERED to set the quality
-                        // since getQualityFor seems to not be available in this dash.js version
-                        if (sessionMetrics.currentQuality === null) {
-                            // Set a timeout to check and capture quality after a short delay
-                            setTimeout(function() {
-                                if (sessionMetrics.currentQuality === null) {
-                                    // Try to get quality index - assume 0 if we can't get it
-                                    console.log('Quality not set by event, attempting to get current quality');
-                                    try {
-                                        const currentQuality = player.getQualityFor('video');
-                                        console.log('Got quality from getQualityFor:', currentQuality);
-                                        const qualityIndex = parseInt(currentQuality);
-                                        if (!isNaN(qualityIndex)) {
-                                            sessionMetrics.currentQuality = qualityIndex;
-                                            sessionMetrics.currentQualityStart = Date.now();
-                                            console.log('Set initial quality tracking:', qualityIndex);
-                                        }
-                                    } catch (error) {
-                                        console.error('Could not get initial quality, will wait for quality change event:', error);
-                                    }
-                                }
-                            }, 500);
-                        }
                     }
                     updateStatus('Playing...');
+                    // Ensure chart is visible as soon as playback starts
+                    updateQualityChartLive();
+                    updateStallChartLive();
                 });
 
                 // Track stalls
@@ -443,6 +679,13 @@
                             timestamp: timestamp
                         });
                         sessionMetrics.currentStallStart = null;
+                        // Add stall point aligned to current segment index timeline (1-based)
+                        const segIndex = Math.max(1, qualitySequence.length);
+                        const durRounded = parseFloat(stallDuration.toFixed(2));
+                        stallPoints.push({ x: segIndex, y: durRounded });
+                        // Real-time stall log (single-line)
+                        log(`Stall during ${durRounded}s at segment ${segIndex}`, 'stall');
+                        updateStallChartLive();
                     }
                 });
 
@@ -457,7 +700,22 @@
                         
                         // Log all metrics
                         logStallMetrics();
-                        logQualityDistribution();
+                        updateQualityChartLive();
+
+                        // Export-friendly arrays
+                        try {
+                            const qualitySequenceLabels = qualitySequence.map(function(id) {
+                                const meta = qualityMap.get(id) || {};
+                                return meta.label || ('ID ' + id);
+                            });
+                            const stallPointsExport = stallPoints.map(function(p) { return { segment: p.x, seconds: p.y }; });
+                            console.log('Quality sequence (rep IDs):', qualitySequence);
+                            console.log('Quality sequence (labels):', qualitySequenceLabels);
+                            console.log('Stalls (points):', stallPointsExport);
+                            console.log('Stalls (detailed):', sessionMetrics.stalls);
+                        } catch (e) {
+                            console.warn('Failed to export arrays:', e);
+                        }
                     }
                 });
 

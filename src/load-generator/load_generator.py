@@ -205,8 +205,11 @@ class LoadGenerator:
 
     def _record_result(self, success: bool, response_time: float, error_message: Optional[str] = None):
         """Record a single request outcome into aggregated metrics."""
-        duration_ms = int(response_time * 1000)
-        bucket_index = min(duration_ms // self.bucket_ms, self.num_buckets - 1)
+        # Guard against any negative durations due to system clock adjustments
+        safe_response_time = 0.0 if response_time < 0 else response_time
+        duration_ms = int(safe_response_time * 1000)
+        # Ensure non-negative bucket index
+        bucket_index = min(max(0, duration_ms // self.bucket_ms), self.num_buckets - 1)
         with self.metrics_lock:
             self.total_requests += 1
             if success:
@@ -216,11 +219,11 @@ class LoadGenerator:
                 if error_message:
                     key = error_message.split(':')[0] if ':' in error_message else error_message
                     self.errors[key] = self.errors.get(key, 0) + 1
-            self.response_time_sum += response_time
-            if response_time < self.response_time_min:
-                self.response_time_min = response_time
-            if response_time > self.response_time_max:
-                self.response_time_max = response_time
+            self.response_time_sum += safe_response_time
+            if safe_response_time < self.response_time_min:
+                self.response_time_min = safe_response_time
+            if safe_response_time > self.response_time_max:
+                self.response_time_max = safe_response_time
             self.histogram[bucket_index] += 1
     
     def _signal_handler(self, signum, frame):
@@ -232,7 +235,7 @@ class LoadGenerator:
     async def _make_request(self, session: aiohttp.ClientSession, request_id: int, 
                            url: Optional[str] = None, segment_type: Optional[str] = None) -> None:
         """Make a single HTTP GET request and update aggregated metrics."""
-        start_time = time.time()
+        start_time = time.perf_counter()
         timestamp = start_time
         base_url = url if url else self.target_url
         request_url = base_url
@@ -247,7 +250,7 @@ class LoadGenerator:
                 timeout=aiohttp.ClientTimeout(total=self.timeout)
             ) as response:
                 await response.read()
-                end_time = time.time()
+                end_time = time.perf_counter()
                 
                 self.logger.debug(f"Request {request_id}: SUCCESS - Status: {response.status}, "
                                 f"Time: {(end_time - start_time)*1000:.2f}ms - URL: {request_url} "
@@ -255,12 +258,12 @@ class LoadGenerator:
                 self._record_result(True, end_time - start_time)
                 
         except asyncio.TimeoutError:
-            end_time = time.time()
+            end_time = time.perf_counter()
             error_msg = "Timeout"
             self.logger.warning(f"Request {request_id}: {error_msg} - URL: {request_url}")
             self._record_result(False, end_time - start_time, error_msg)
         except aiohttp.ClientConnectorError as e:
-            end_time = time.time()
+            end_time = time.perf_counter()
             os_err = getattr(e, 'os_error', None)
             errno_val = getattr(os_err, 'errno', None)
             error_msg = f"Connection error: {type(e).__name__}: {str(e)}"
@@ -269,27 +272,27 @@ class LoadGenerator:
             self.logger.error(f"Request {request_id}: {error_msg} - URL: {request_url}")
             self._record_result(False, end_time - start_time, error_msg)
         except aiohttp.ClientResponseError as e:
-            end_time = time.time()
+            end_time = time.perf_counter()
             error_msg = f"HTTP {e.status} error: {str(e)}"
             self.logger.error(f"Request {request_id}: {error_msg} - URL: {request_url}")
             self._record_result(False, end_time - start_time, f"HTTP Error {e.status}")
         except aiohttp.ClientError as e:
-            end_time = time.time()
+            end_time = time.perf_counter()
             error_msg = f"Client error: {type(e).__name__}: {str(e)}"
             self.logger.error(f"Request {request_id}: {error_msg} - URL: {request_url}")
             self._record_result(False, end_time - start_time, f"Client Error: {type(e).__name__}")
         except Exception as e:
-            end_time = time.time()
+            end_time = time.perf_counter()
             error_msg = f"Unexpected error: {type(e).__name__}: {str(e)}"
             self.logger.error(f"Request {request_id}: {error_msg} - URL: {request_url}")
             self._record_result(False, end_time - start_time, f"Unexpected Error: {type(e).__name__}")
     
     async def _worker(self, worker_id: int, session: aiohttp.ClientSession):
         """DASH worker that continuously fetches segments with no throttling."""
-        worker_start_time = time.time()
+        worker_start_time = time.perf_counter()
         self.logger.debug(f"Worker {worker_id}: Started")
         await self._dash_worker(worker_id, session)
-        worker_end_time = time.time()
+        worker_end_time = time.perf_counter()
         self.logger.debug(f"Worker {worker_id}: Stopped after {worker_end_time - worker_start_time:.2f}s")
     
     async def _dash_worker(self, worker_id: int, session: aiohttp.ClientSession):
@@ -328,7 +331,7 @@ class LoadGenerator:
         request_count = 0
         
         while not self.stop_event.is_set():
-            if self.duration and (time.time() - self.start_time) >= self.duration:
+            if self.duration and (time.perf_counter() - self.start_time) >= self.duration:
                 break
             
             if media_segments:
@@ -394,14 +397,14 @@ class LoadGenerator:
         print(f"Log level: {self.logger.level}")
         print("-" * 50)
         
-        self.start_time = time.time()
+        self.start_time = time.perf_counter()
         
         try:
             asyncio.run(self._run_async_load_test())
         except KeyboardInterrupt:
             print("\nLoad test interrupted by user")
         
-        self.end_time = time.time()
+        self.end_time = time.perf_counter()
         
         return self._calculate_results()
 

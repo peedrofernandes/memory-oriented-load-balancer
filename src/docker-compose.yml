@@ -40,7 +40,7 @@ services:
           cpus: "0.25"
           memory: 64M
     volumes:
-      - /var/lib/data/server-1:/app/wwwroot/Static
+      - /data/server-1:/app/wwwroot/Static
 
   mpeg-dash-processor-2:
     build: ./core/mpeg-dash-processor/Application
@@ -70,7 +70,7 @@ services:
           cpus: "0.25"
           memory: 64M
     volumes:
-      - /var/lib/data/server-2:/app/wwwroot/Static
+      - /data/server-2:/app/wwwroot/Static
 
   mpeg-dash-processor-3:
     build: ./core/mpeg-dash-processor/Application
@@ -100,7 +100,7 @@ services:
           cpus: "0.25"
           memory: 64M
     volumes:
-      - /var/lib/data/server-3:/app/wwwroot/Static
+      - /data/server-3:/app/wwwroot/Static
 
   mpeg-dash-processor-4:
     build: ./core/mpeg-dash-processor/Application
@@ -130,7 +130,7 @@ services:
           cpus: "0.25"
           memory: 64M
     volumes:
-      - /var/lib/data/server-4:/app/wwwroot/Static
+      - /data/server-4:/app/wwwroot/Static
 
   mpeg-dash-processor-5:
     build: ./core/mpeg-dash-processor/Application
@@ -160,7 +160,7 @@ services:
           cpus: "0.25"
           memory: 64M
     volumes:
-      - /var/lib/data/server-5:/app/wwwroot/Static
+      - /data/server-5:/app/wwwroot/Static
 
   mpeg-dash-processor-6:
     build: ./core/mpeg-dash-processor/Application
@@ -190,7 +190,7 @@ services:
           cpus: "0.25"
           memory: 64M
     volumes:
-      - /var/lib/data/server-6:/app/wwwroot/Static
+      - /data/server-6:/app/wwwroot/Static
 
   mpeg-dash-processor-7:
     build: ./core/mpeg-dash-processor/Application
@@ -220,7 +220,7 @@ services:
           cpus: "0.25"
           memory: 64M
     volumes:
-      - /var/lib/data/server-7:/app/wwwroot/Static
+      - /data/server-7:/app/wwwroot/Static
 
   mpeg-dash-processor-8:
     build: ./core/mpeg-dash-processor/Application
@@ -250,7 +250,7 @@ services:
           cpus: "0.25"
           memory: 64M
     volumes:
-      - /var/lib/data/server-8:/app/wwwroot/Static
+      - /data/server-8:/app/wwwroot/Static
 
   load-balancer:
     build: ./core/load-balancer

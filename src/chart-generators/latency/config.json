@@ -1,0 +1,16 @@
+{
+    "scenario-1-round-robin": 0.12,
+    "scenario-1-random-selection": 0.15,
+    "scenario-1-memory-monitoring": 0.18,
+    
+    "scenario-2-round-robin": 0.21,
+    "scenario-2-random-selection": 0.24,
+    "scenario-2-memory-monitoring": 0.27,
+    "scenario-4-round-robin": 0.39,
+    "scenario-4-random-selection": 0.42,
+    "scenario-4-memory-monitoring": 0.45,
+    
+    "scenario-3-round-robin": 0.30,
+    "scenario-3-random-selection": 0.33,
+    "scenario-3-memory-monitoring": 0.36
+}

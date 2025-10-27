@@ -92,3 +92,5 @@ load-balancer/target/
 .DS_Store
 Thumbs.db
 files
+
+**/*.png

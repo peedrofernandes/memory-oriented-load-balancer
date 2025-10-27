@@ -113,4 +113,53 @@ Create video with multiple resolutions and Full HD (v3)
 -adaptation_sets "id=0,streams=v id=1,streams=a" \
 manifest.mpd
 ============================================================================================================
+Create video with multiple resolutions and Full HD (v4)
+- ffmpeg -y -i video.mp4 \
+-filter_complex "[0:v]format=yuv420p,setsar=1,split=6[v0][v1][v2][v3][v4][v5]; \
+                 [v0]scale=1920:1080:flags=lanczos[v1080]; \
+                 [v1]scale=1280:720:flags=lanczos[v720]; \
+                 [v2]scale=854:480:flags=lanczos[v480]; \
+                 [v3]scale=640:360:flags=lanczos[v360]; \
+                 [v4]scale=426:240:flags=lanczos[v240]; \
+                 [v5]scale=256:144:flags=lanczos[v144]" \
+-map "[v1080]" -map "[v720]" -map "[v480]" -map "[v360]" -map "[v240]" -map "[v144]" -map 0:a:0 \
+-c:v:0 libx264 -b:v:0 6000k -maxrate:v:0 6600k -bufsize:v:0 12000k \
+-c:v:1 libx264 -b:v:1 3000k -maxrate:v:1 3300k -bufsize:v:1 6000k \
+-c:v:2 libx264 -b:v:2 2000k -maxrate:v:2 2200k -bufsize:v:2 4000k \
+-c:v:3 libx264 -b:v:3 1500k -maxrate:v:3 1650k -bufsize:v:3 3000k \
+-c:v:4 libx264 -b:v:4  800k -maxrate:v:4  880k -bufsize:v:4 1600k \
+-c:v:5 libx264 -b:v:5  300k -maxrate:v:5  330k -bufsize:v:5  600k \
+-profile:v:0 high -profile:v:1 main -profile:v:2 main -profile:v:3 main -profile:v:4 main -profile:v:5 main \
+-g 120 -keyint_min 120 -sc_threshold 0 -pix_fmt yuv420p -preset veryfast \
+-c:a aac -b:a 128k -ar 48000 -ac 2 \
+-use_template 1 -use_timeline 1 -seg_duration 4 \
+-init_seg_name 'init-stream$RepresentationID$.m4s' \
+-media_seg_name 'chunk-stream$RepresentationID$-$Number%05d$.m4s' \
+-adaptation_sets "id=0,streams=v id=1,streams=a" \
+manifest.mpd
 ============================================================================================================
+Run Chart Generators (inside src/chart-generators folder) (fail_rate)
+- docker build -t fail_rate_chart_generator ./fail_rate; docker run --rm fail_rate_chart_generator > ./_output/fail_rate_chart.png
+============================================================================================================
+Run Chart Generators (inside src/chart-generators folder) (latency)
+- docker build -t latency_chart_generator ./latency; docker run --rm latency_chart_generator > ./_output/latency_chart.png
+============================================================================================================
+Run Chart Generators (inside src/chart-generators folder) (quality_per_frame)
+- docker build -t quality_chart_generator ./quality_per_frame; docker run --rm quality_chart_generator > ./_output/quality_chart.png
+============================================================================================================
+Run Chart Generators (inside src/chart-generators folder) (stalls_per_frame)
+- docker build -t stalls_chart_generator ./stalls_per_frame; docker run --rm stalls_chart_generator > ./_output/stalls_chart.png
+============================================================================================================
+Generate all charts at once
+- docker build -t fail_rate_chart_generator ./fail_rate; docker run --rm fail_rate_chart_generator > ./_output/fail_rate_chart.png \
+; docker build -t latency_chart_generator ./latency; docker run --rm latency_chart_generator > ./_output/latency_chart.png \
+; docker build -t quality_chart_generator ./quality_per_frame; docker run --rm quality_chart_generator > ./_output/quality_chart.png \
+; docker build -t stalls_chart_generator ./stalls_per_frame; docker run --rm stalls_chart_generator > ./_output/stalls_chart.png
+============================================================================================================
+============================================================================================================
+============================================================================================================
+============================================================================================================
+============================================================================================================
+============================================================================================================
+============================================================================================================
+

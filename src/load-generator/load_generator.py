@@ -53,6 +53,7 @@ DEFAULT_TIMEOUT_SECONDS = 15.0
 DEFAULT_ENDPOINT = "/"
 DEFAULT_MANIFEST_PATH = "/video-1/manifest.mpd"
 MAX_VIDEO_DIRECTORIES = 12
+DEFAULT_DURATION = 240
 
 # Fixed-memory histogram for response times (ms)
 # Covers 0..HISTOGRAM_MAX_MS with HISTOGRAM_BUCKET_MS resolution
@@ -150,11 +151,11 @@ class LoadGenerator:
     """Main load generator class (blast-only DASH)."""
     
     def __init__(self, target_url: str, concurrent_users: int = 10,
-                 duration: Optional[int] = None, log_level: str = "INFO",
+                 duration: Optional[int] = DEFAULT_DURATION, log_level: str = "INFO",
                  no_keepalive: bool = False):
         self.target_url = target_url
         self.concurrent_users = concurrent_users
-        self.duration = duration
+        self.duration = DEFAULT_DURATION if duration is None else duration
         self.no_keepalive = no_keepalive
         
         # Timing
@@ -373,12 +374,24 @@ class LoadGenerator:
             timeout=timeout,
             headers=default_headers
         ) as session:
+            stopper_task = None
+            if self.duration:
+                async def _stopper():
+                    await asyncio.sleep(self.duration)
+                    self.stop_event.set()
+                stopper_task = asyncio.create_task(_stopper())
             tasks = []
             for i in range(self.concurrent_users):
                 task = asyncio.create_task(self._worker(i, session))
                 tasks.append(task)
             
             await asyncio.gather(*tasks, return_exceptions=True)
+            if stopper_task and not stopper_task.done():
+                stopper_task.cancel()
+                try:
+                    await stopper_task
+                except asyncio.CancelledError:
+                    pass
     
     def run_load_test(self) -> LoadTestResults:
         """Run the load test and return results"""
@@ -424,7 +437,8 @@ class LoadGenerator:
         
         successful_requests = self.successful_requests
         failed_requests = self.failed_requests
-        total_time = self.end_time - self.start_time
+        elapsed = self.end_time - self.start_time
+        total_time = min(elapsed, float(self.duration)) if self.duration else elapsed
         
         # Compute percentiles from histogram
         def percentile_from_histogram(pct: float) -> float:

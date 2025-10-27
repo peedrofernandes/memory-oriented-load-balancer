@@ -46,7 +46,7 @@ Interactive mode with custom parameters:
 ```bash
 docker run --rm -it load-generator \
   --url http://host.docker.internal:8080 \
-  --concurrent 50 --duration 60 \
+  --concurrent 50 --duration 240 \
   --timeout 10
 ```
 
@@ -65,8 +65,8 @@ python load_generator.py
 # Test with 50 concurrent users making 1000 requests
 python load_generator.py --concurrent 50 --requests 1000
 
-# Run test for 60 seconds with 20 concurrent users
-python load_generator.py --concurrent 20 --duration 60
+# Run test for 240 seconds with 20 concurrent users
+python load_generator.py --concurrent 20 --duration 240
 
 # Test specific endpoint with custom URL
 python load_generator.py --url http://localhost:8080 --endpoint /api/health

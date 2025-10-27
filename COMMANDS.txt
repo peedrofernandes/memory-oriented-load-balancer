@@ -13,7 +13,7 @@ Generate load:
 - docker run --rm load-generator \
   --url http://host.docker.internal:8080 \
   --concurrent 10000 \
-  --duration 60 \
+  --duration 240 \
   --log-level INFO
 ============================================================================================================
 View disk I/O metrics logs

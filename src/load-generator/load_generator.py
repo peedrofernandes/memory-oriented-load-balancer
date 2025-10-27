@@ -58,7 +58,7 @@ DEFAULT_DURATION = 240
 # Fixed-memory histogram for response times (ms)
 # Covers 0..HISTOGRAM_MAX_MS with HISTOGRAM_BUCKET_MS resolution
 HISTOGRAM_BUCKET_MS = 5
-HISTOGRAM_MAX_MS = 20000
+HISTOGRAM_MAX_MS = 60000
 
 class DashManifestParser:
     """Parser for MPEG-DASH manifest files"""

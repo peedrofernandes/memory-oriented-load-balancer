@@ -1,11 +1,13 @@
 use crate::strategies::strategy::ServerSelectionStrategy;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use hyper::{Body, Client, Request, Response, Uri};
 use hyper::service::{make_service_fn, service_fn};
 use http::{HeaderMap, HeaderValue};
+use std::time::Duration;
+use tokio::time::timeout;
 
 pub struct LoadBalancer {
     servers: Vec<String>,
@@ -57,64 +59,109 @@ impl LoadBalancer {
                         // Increment per-request counter
                         let _ = request_counter.fetch_add(1, Ordering::Relaxed);
 
-                        // Pick backend per HTTP request
-                        let backend = match strategy.pick_server(&servers) {
-                            Some(s) => s,
-                            None => {
-                                return Ok::<_, hyper::Error>(response_with_status(
-                                    http::StatusCode::BAD_GATEWAY,
-                                    "No available servers",
-                                ));
-                            }
-                        };
-                        // if let Some(snapshot) = strategy.debug_snapshot() {
-                        //     println!("Scores snapshot: {}", snapshot);
-                        // }
-                        // println!("Picking backend for request: {}", backend);
-                        
-                        // Build new URI with backend authority
+                        // Extract immutable request data for retries
+                        let method = req.method().clone();
+                        let version = req.version();
                         let path_and_query = req
                             .uri()
                             .path_and_query()
                             .map(|pq| pq.as_str().to_string())
                             .unwrap_or_else(|| "/".to_string());
+                        let original_headers = req.headers().clone();
+                        let body_bytes = match hyper::body::to_bytes(req.into_body()).await {
+                            Ok(b) => b,
+                            Err(_) => {
+                                return Ok::<_, hyper::Error>(response_with_status(
+                                    http::StatusCode::BAD_REQUEST,
+                                    "Failed to read request body",
+                                ));
+                            }
+                        };
 
-                        let new_uri: Uri = match Uri::builder()
-                            .scheme("http")
-                            .authority(backend.as_str())
-                            .path_and_query(path_and_query.as_str())
-                            .build() {
-                                Ok(u) => u,
-                                Err(_) => {
+                        // Retry across available servers with a 5s timeout per attempt
+                        let mut attempted: HashSet<String> = HashSet::new();
+
+                        loop {
+                            // Build candidate list excluding attempted servers
+                            let candidates: Vec<String> = servers
+                                .iter()
+                                .filter(|s| !attempted.contains(*s))
+                                .cloned()
+                                .collect();
+
+                            if candidates.is_empty() {
+                                return Ok::<_, hyper::Error>(response_with_status(
+                                    http::StatusCode::BAD_GATEWAY,
+                                    "No available servers",
+                                ));
+                            }
+
+                            let backend = match strategy.pick_server(&candidates) {
+                                Some(s) => s,
+                                None => {
                                     return Ok::<_, hyper::Error>(response_with_status(
                                         http::StatusCode::BAD_GATEWAY,
-                                        "Invalid backend URI",
+                                        "No available servers",
                                     ));
                                 }
                             };
+                            attempted.insert(backend.clone());
 
-                        // Rewrite request to target backend
-                        let (mut parts, body) = req.into_parts();
-                        parts.uri = new_uri;
-                        sanitize_hop_by_hop_headers(&mut parts.headers);
-                        parts.headers.insert(
-                            http::header::HOST,
-                            HeaderValue::from_str(backend.as_str()).unwrap_or(HeaderValue::from_static("")),
-                        );
+                            // Build new URI with backend authority
+                            let new_uri: Uri = match Uri::builder()
+                                .scheme("http")
+                                .authority(backend.as_str())
+                                .path_and_query(path_and_query.as_str())
+                                .build() {
+                                    Ok(u) => u,
+                                    Err(_) => {
+                                        // Bad URI for this backend, try another
+                                        continue;
+                                    }
+                                };
 
-                        let outbound_req = Request::from_parts(parts, body);
+                            // Build outbound request
+                            let mut outbound_req = match Request::builder()
+                                .method(method.clone())
+                                .version(version)
+                                .uri(new_uri)
+                                .body(Body::from(body_bytes.clone())) {
+                                    Ok(r) => r,
+                                    Err(_) => {
+                                        // Failed to build request, try another backend
+                                        continue;
+                                    }
+                                };
 
-                        // Forward
-                        match client.request(outbound_req).await {
-                            Ok(mut resp) => {
-                                sanitize_hop_by_hop_headers(resp.headers_mut());
-                                Ok::<_, hyper::Error>(resp)
+                            // Copy headers, sanitize hop-by-hop, and set Host
+                            {
+                                let h = outbound_req.headers_mut();
+                                // Extend with original headers
+                                for (k, v) in original_headers.iter() {
+                                    // Skip hop-by-hop here; sanitize after extend as well
+                                    h.append(k, v.clone());
+                                }
+                                sanitize_hop_by_hop_headers(h);
+                                h.insert(
+                                    http::header::HOST,
+                                    HeaderValue::from_str(backend.as_str()).unwrap_or(HeaderValue::from_static("")),
+                                );
                             }
-                            Err(_e) => {
-                                Ok::<_, hyper::Error>(response_with_status(
-                                    http::StatusCode::BAD_GATEWAY,
-                                    "Upstream request failed",
-                                ))
+
+                            // Send with timeout
+                            match timeout(Duration::from_secs(5), client.request(outbound_req)).await {
+                                Ok(Ok(mut resp)) => {
+                                    sanitize_hop_by_hop_headers(resp.headers_mut());
+                                    return Ok::<_, hyper::Error>(resp);
+                                }
+                                Ok(Err(_e)) => {
+                                    // Upstream error, try next server
+                                    continue;
+                                }
+                                Err(_elapsed) => {
+                                    // Timed out, try next server
+                                    continue;
+                                }
                             }
                         }
                     }

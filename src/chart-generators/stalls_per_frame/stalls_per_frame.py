@@ -80,6 +80,10 @@ def create_stalls_chart(config: Dict[str, Any]) -> None:
         for scenario in datasets.keys()
     }
 
+    # Determine maximum value across all scenarios to inform y-axis scaling
+    all_values: List[float] = [v for values in values_per_scenario.values() for v in values]
+    max_data_value: float = max(all_values) if all_values else 0.0
+
     # Plot settings
     figure_size = tuple(chart_settings.get('figure_size', [12, 8]))
     colors = chart_settings.get('colors', ['#1f77b4', '#ff7f0e', '#2ca02c'])
@@ -112,10 +116,17 @@ def create_stalls_chart(config: Dict[str, Any]) -> None:
     # X-axis ticks at the center of each group
     plt.xticks(indices, [str(s) for s in all_segments])
 
-    # Y-axis limits if provided
+    # Y-axis limits: respect config but auto-extend if data exceeds configured max
     if 'y_axis_limits' in chart_settings:
         y_min, y_max = chart_settings['y_axis_limits']
-        plt.ylim(float(y_min), float(y_max))
+        y_min_f = float(y_min)
+        y_max_f = float(y_max)
+        # Add a small headroom (5%) above the maximum observed data value
+        dynamic_top = max(y_max_f, max_data_value * 1.05 if max_data_value > 0 else y_max_f)
+        # Ensure bottom is not above top
+        if y_min_f >= dynamic_top:
+            y_min_f = 0.0
+        plt.ylim(y_min_f, dynamic_top)
 
     # Grid, legend, and layout
     plt.grid(True, axis='y', alpha=0.3, linestyle='--')

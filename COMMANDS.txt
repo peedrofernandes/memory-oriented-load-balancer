@@ -151,8 +151,7 @@ Run Chart Generators (inside src/chart-generators folder) (stalls_per_frame)
 - docker build -t stalls_chart_generator ./stalls_per_frame; docker run --rm stalls_chart_generator > ./_output/stalls_chart.png
 ============================================================================================================
 Generate all charts at once
-- docker build -t fail_rate_chart_generator ./fail_rate; docker run --rm fail_rate_chart_generator > ./_output/fail_rate_chart.png \
-; docker build -t latency_chart_generator ./latency; docker run --rm latency_chart_generator > ./_output/latency_chart.png \
+- docker build -t latency_chart_generator ./latency; docker run --rm latency_chart_generator > ./_output/latency_chart.png \
 ; docker build -t quality_chart_generator ./quality_per_frame; docker run --rm quality_chart_generator > ./_output/quality_chart.png \
 ; docker build -t stalls_chart_generator ./stalls_per_frame; docker run --rm stalls_chart_generator > ./_output/stalls_chart.png
 ============================================================================================================

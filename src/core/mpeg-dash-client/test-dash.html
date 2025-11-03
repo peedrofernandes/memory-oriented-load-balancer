@@ -103,6 +103,7 @@
 
         <ul class="log" id="log"></ul>
         <div id="qualityChartContainer" style="margin-top: 10px;"></div>
+        <div id="bitrateChartContainer" style="margin-top: 20px;"></div>
         <div id="stallChartContainer" style="margin-top: 20px;"></div>
     </div>
 
@@ -121,10 +122,13 @@
         let chartInstance = null;
         let currentSortedRepIds = [];
         let stallChartInstance = null;
+        let bitrateChartInstance = null;
         let stallPoints = [];
         let lastRepIdLogged = null;
         let segmentIndexToRepId = new Map();
         let videoRepIdsSet = new Set();
+        let segmentIndexToBitrateKbps = new Map();
+        let bitrateSequenceKbps = [];
 
         // Session metrics
         let sessionMetrics = {
@@ -177,7 +181,17 @@
                 try { chartInstance.destroy(); } catch (e) {}
                 chartInstance = null;
             }
+            const bitrateContainer = document.getElementById('bitrateChartContainer');
+            if (bitrateContainer) {
+                bitrateContainer.innerHTML = '';
+            }
+            if (bitrateChartInstance) {
+                try { bitrateChartInstance.destroy(); } catch (e) {}
+                bitrateChartInstance = null;
+            }
             currentSortedRepIds = [];
+            segmentIndexToBitrateKbps = new Map();
+            bitrateSequenceKbps = [];
             if (stallChartInstance) {
                 try { stallChartInstance.destroy(); } catch (e) {}
                 stallChartInstance = null;
@@ -381,8 +395,17 @@
                     log(`Quality changed to ${label}${br ? ` (${br})` : ''}`, 'quality');
                     lastRepIdLogged = repIdNum;
                 }
+                // Measure throughput using startDate/endDate and total bytes only (no fallbacks)
+
+                const bytesTotal = r.bytesTotal;
+                const elapsedSeconds = (r.endDate.getTime() - r.startDate.getTime()) / 1000;
+                const measuredKbps = Math.round(((bytesTotal * 8) / elapsedSeconds) / 1000);
+
+                segmentIndexToBitrateKbps.set(segIndex, isFinite(measuredKbps) ? measuredKbps : null);
+                bitrateSequenceKbps = [...segmentIndexToBitrateKbps.entries()].sort(function(a, b) { return a[0] - b[0]; }).map(function(entry) { return entry[1]; });
                 updateQualityChartLive();
                 updateStallChartLive();
+                updateBitrateChartLive();
             }
         }
 
@@ -534,6 +557,91 @@
             chartInstance.update('none');
         }
 
+        function renderBitrateChart() {
+            const container = document.getElementById('bitrateChartContainer');
+            if (!container) return;
+            container.innerHTML = '';
+            if (bitrateChartInstance) {
+                try { bitrateChartInstance.destroy(); } catch (e) {}
+                bitrateChartInstance = null;
+            }
+            const bitrateData = bitrateSequenceKbps.slice();
+            const xLabels = bitrateData.map(function(_, i) { return (i + 1).toString(); });
+
+            const canvas = document.createElement('canvas');
+            canvas.style.width = '100%';
+            canvas.style.maxHeight = '320px';
+            container.appendChild(canvas);
+
+            const lineColor = 'rgba(40, 167, 69, 0.9)';
+            const pointColor = 'rgba(40, 167, 69, 1)';
+            const gridColor = 'rgba(0, 0, 0, 0.08)';
+
+            const ctx = canvas.getContext('2d');
+            bitrateChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: xLabels,
+                    datasets: [{
+                        label: 'Bitrate over time',
+                        data: bitrateData,
+                        borderColor: lineColor,
+                        backgroundColor: 'rgba(40, 167, 69, 0.08)',
+                        pointBackgroundColor: pointColor,
+                        pointBorderColor: '#fff',
+                        pointRadius: 2,
+                        pointHoverRadius: 4,
+                        fill: false,
+                        tension: 0.3,
+                        cubicInterpolationMode: 'monotone'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => {
+                                    const v = ctx.parsed.y;
+                                    return ` ${isFinite(v) ? v : 'unknown'} kbps`;
+                                }
+                            }
+                        },
+                        title: { display: true, text: 'Bitrate Timeline', color: '#333', font: { size: 14 } }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            title: { display: true, text: 'Segments', color: '#555' },
+                            grid: { color: gridColor }
+                        },
+                        y: {
+                            display: true,
+                            title: { display: true, text: 'Bitrate (kbps)', color: '#555' },
+                            grid: { color: gridColor },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateBitrateChartLive() {
+            const container = document.getElementById('bitrateChartContainer');
+            if (!container) return;
+            if (!bitrateChartInstance) {
+                renderBitrateChart();
+                return;
+            }
+            const bitrateData = bitrateSequenceKbps.slice();
+            const xLabels = bitrateData.map(function(_, i) { return (i + 1).toString(); });
+            bitrateChartInstance.data.labels = xLabels;
+            bitrateChartInstance.data.datasets[0].data = bitrateData;
+            bitrateChartInstance.update('none');
+        }
+
         function renderStallChart() {
             const container = document.getElementById('stallChartContainer');
             if (!container) return;
@@ -646,7 +754,7 @@
                     console.warn('dash.js fragment event not available on this version');
                 }
                 if (STREAM_INIT_EVENT) {
-                    player.on(STREAM_INIT_EVENT, function() { buildQualityMap(); updateQualityChartLive(); updateStallChartLive(); });
+                    player.on(STREAM_INIT_EVENT, function() { buildQualityMap(); updateQualityChartLive(); updateBitrateChartLive(); updateStallChartLive(); });
                 } else {
                     console.warn('dash.js stream init event not available on this version');
                 }
@@ -660,6 +768,7 @@
                     updateStatus('Playing...');
                     // Ensure chart is visible as soon as playback starts
                     updateQualityChartLive();
+                    updateBitrateChartLive();
                     updateStallChartLive();
                 });
 
@@ -701,6 +810,7 @@
                         // Log all metrics
                         logStallMetrics();
                         updateQualityChartLive();
+                        updateBitrateChartLive();
 
                         // Export-friendly arrays
                         try {
@@ -711,6 +821,7 @@
                             const stallPointsExport = stallPoints.map(function(p) { return { segment: p.x, seconds: p.y }; });
                             console.log('Quality sequence (rep IDs):', qualitySequence);
                             console.log('Quality sequence (labels):', qualitySequenceLabels);
+                            console.log('Bitrate sequence (kbps):', bitrateSequenceKbps);
                             console.log('Stalls (points):', stallPointsExport);
                             console.log('Stalls (detailed):', sessionMetrics.stalls);
                         } catch (e) {

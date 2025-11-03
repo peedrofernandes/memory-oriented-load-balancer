@@ -1,13 +1,15 @@
 Test scenarios
 
+Global parameters
+- Total timeout seconds: 30
+- Total catalog videos: 12
+- Total distinct resolutions (qualities): 5
+
 ================================================================================================================================
 
-# Scenario 1
+# Scenario 1 - Low concurrency, heterogeneous
 
-- Total concurrent users: 500 (50 * 10)
-- Total timeout seconds: 15
-- Total catalog videos: 12
-- Total distinct resolutions (qualities): 3
+- Total concurrent users: 100 (10 * 10)
 - Server distribution: heterogeneous
   - Server 1: 4096MB RAM, 1024MB/s
   - Server 2: 2048MB RAM, 512MB/s
@@ -21,12 +23,9 @@ Test scenarios
 
 ================================================================================================================================
 
-# Scenario 2
+# Scenario 2 - Low concurrency, homogeneous
 
-- Total concurrent users: 500 (50 * 10)
-- Total timeout seconds: 15
-- Total catalog videos: 12
-- Total distinct resolutions (qualities): 3
+- Total concurrent users: 100 (10 * 10)
 - Server distribution: homogeneous
   - Server 1: 1024MB RAM, 256MB/s
   - Server 2: 1024MB RAM, 256MB/s
@@ -39,12 +38,9 @@ Test scenarios
 
 ================================================================================================================================
 
-# Scenario 3
+# Scenario 3 - High concurrency, heterogeneous
 
-- Total concurrent users: 2000 (200 * 10)
-- Total timeout seconds: 15
-- Total catalog videos: 12
-- Total distinct resolutions (qualities): 3
+- Total concurrent users: 1000 (100 * 10)
 - Server distribution: heterogeneous
   - Server 1: 4096MB RAM, 1024MB/s
   - Server 2: 2048MB RAM, 512MB/s
@@ -59,10 +55,7 @@ Test scenarios
 
 # Scenario 4
 
-- Total concurrent users: 2000 (200 * 10)
-- Total timeout seconds: 15
-- Total catalog videos: 12
-- Total distinct resolutions (qualities): 3
+- Total concurrent users: 1000 (100 * 10)
 - Server distribution: homogeneous
   - Server 1: 1024MB RAM, 256MB/s
   - Server 2: 1024MB RAM, 256MB/s

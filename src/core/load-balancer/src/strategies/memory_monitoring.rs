@@ -158,7 +158,7 @@ impl MemoryMonitoringStrategy {
                                     println!("t = {}", t);
                                     println!("arrive_t = (({} / {}) * {}) * ({} / {})", r, elapsed_time, t, total_load, total_active_requests);
                                     if total_active_requests > 0.0 && r > 0.0 && total_load > 0.0 {
-                                        let val = (((r / elapsed_time) * t) * (total_load / total_active_requests)) * 0.001;
+                                        let val = (((r / elapsed_time) * t) * (total_load / total_active_requests)) * 0.1;
                                         if val < min_arrive_t {
                                             min_arrive_t
                                         } else {

@@ -129,6 +129,7 @@
         let videoRepIdsSet = new Set();
         let segmentIndexToBitrateKbps = new Map();
         let bitrateSequenceKbps = [];
+        let last9MeasuredKbps = [];
 
         // Session metrics
         let sessionMetrics = {
@@ -395,13 +396,16 @@
                     log(`Quality changed to ${label}${br ? ` (${br})` : ''}`, 'quality');
                     lastRepIdLogged = repIdNum;
                 }
-                // Measure throughput using startDate/endDate and total bytes only (no fallbacks)
 
-                const bytesTotal = r.bytesTotal;
-                const elapsedSeconds = (r.endDate.getTime() - r.startDate.getTime()) / 1000;
-                const measuredKbps = Math.round(((bytesTotal * 8) / elapsedSeconds) / 1000);
+                const measuredKbps = Math.round(((r.bytesTotal * 8) / ((r.endDate.getTime() - r.startDate.getTime()) / 1000)) / 1000);
 
-                segmentIndexToBitrateKbps.set(segIndex, isFinite(measuredKbps) ? measuredKbps : null);
+                last9MeasuredKbps.push(measuredKbps);
+                if (last9MeasuredKbps.length > 9) {
+                    last9MeasuredKbps.shift();
+                }
+                const averageKbps = Math.round(last9MeasuredKbps.reduce((a, b) => a + b, 0) / last9MeasuredKbps.length);
+
+                segmentIndexToBitrateKbps.set(segIndex, isFinite(averageKbps) ? averageKbps : null);
                 bitrateSequenceKbps = [...segmentIndexToBitrateKbps.entries()].sort(function(a, b) { return a[0] - b[0]; }).map(function(entry) { return entry[1]; });
                 updateQualityChartLive();
                 updateStallChartLive();

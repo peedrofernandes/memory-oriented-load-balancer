@@ -32,6 +32,7 @@ pub struct MemoryMonitoringStrategy {
     servers_info_map: Arc<RwLock<HashMap<String, ServerInfo>>>,
     servers_li_map: Arc<RwLock<HashMap<String, f64>>>,
     servers_probability_map: Arc<RwLock<HashMap<String, f64>>>,
+    servers_request_counts: Arc<RwLock<HashMap<String, u64>>>,
     r: Arc<AtomicU64>,
     _mqtt_handle: JoinHandle<()>,
 }
@@ -43,11 +44,13 @@ impl MemoryMonitoringStrategy {
         let servers_info_map = Arc::new(RwLock::new(HashMap::new()));
         let servers_li_map = Arc::new(RwLock::new(HashMap::new()));
         let servers_probability_map = Arc::new(RwLock::new(HashMap::new()));
+        let servers_request_counts = Arc::new(RwLock::new(HashMap::<String, u64>::new()));
         let r = Arc::new(AtomicU64::new(0));
 
         let servers_info_map_clone = Arc::clone(&servers_info_map);
         let servers_li_map_clone = Arc::clone(&servers_li_map);
         let servers_probability_map_clone = Arc::clone(&servers_probability_map);
+        let servers_request_counts_clone = Arc::clone(&servers_request_counts);
         let r_clone = Arc::clone(&r);
 
         let mqtt_handle = tokio::spawn(async move {
@@ -116,7 +119,7 @@ impl MemoryMonitoringStrategy {
                                 // CM and CD with safe fallback if TM + TD == 0
                                 let denom = t_m + t_d;
                                 let (c_m, c_d) = if denom > 0.0 {
-                                    (t_d / denom, t_m / denom)
+                                    (t_m / denom, t_d / denom)
                                 } else {
                                     (0.5, 0.5)
                                 };
@@ -206,6 +209,17 @@ impl MemoryMonitoringStrategy {
                                     .join(", ");
                                 println!("Li = [{}]", li_list);
 
+                                // Print per-server request counts
+                                let counts_guard = servers_request_counts_clone.read();
+                                let mut count_items: Vec<_> = counts_guard.iter().collect();
+                                count_items.sort_by(|a, b| a.0.partial_cmp(b.0).unwrap_or(std::cmp::Ordering::Equal));
+                                let counts_list = count_items
+                                    .iter()
+                                    .map(|(k, v)| format!("{}: {}", k, v))
+                                    .collect::<Vec<_>>()
+                                    .join(", ");
+                                println!("RequestsPerServer = [{}]", counts_list);
+
                                 // Print Pi equation
                                 println!("Pi = (({} + {}) / {}) - Li / {}", l_tot, arrive_t, n, arrive_t);
 
@@ -247,6 +261,7 @@ impl MemoryMonitoringStrategy {
             servers_info_map,
             servers_li_map,
             servers_probability_map,
+            servers_request_counts,
             r,
             _mqtt_handle: mqtt_handle,
         }
@@ -293,17 +308,35 @@ impl ServerSelectionStrategy for MemoryMonitoringStrategy {
             for (s, w) in &weights {
                 if *w <= 0.0 { continue; }
                 if threshold <= *w {
+                    // Increment per-server request counter
+                    {
+                        let mut guard = self.servers_request_counts.write();
+                        let counter = guard.entry(s.clone()).or_insert(0);
+                        *counter += 1;
+                    }
                     return Some(s.clone());
                 }
                 threshold -= *w;
             }
             // Fallback in case of numerical issues
-            Some(weights.last().map(|(s, _)| s.clone()).unwrap_or_else(|| servers[0].clone()))
+            let selected = weights.last().map(|(s, _)| s.clone()).unwrap_or_else(|| servers[0].clone());
+            {
+                let mut guard = self.servers_request_counts.write();
+                let counter = guard.entry(selected.clone()).or_insert(0);
+                *counter += 1;
+            }
+            Some(selected)
         } else {
             // No weights yet: pick uniformly at random
             let mut rng = rand::thread_rng();
             let idx = rng.gen_range(0..servers.len());
-            Some(servers[idx].clone())
+            let selected = servers[idx].clone();
+            {
+                let mut guard = self.servers_request_counts.write();
+                let counter = guard.entry(selected.clone()).or_insert(0);
+                *counter += 1;
+            }
+            Some(selected)
         };
 
         chosen

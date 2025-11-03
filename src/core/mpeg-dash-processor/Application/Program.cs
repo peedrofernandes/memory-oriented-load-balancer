@@ -38,7 +38,7 @@ app.Use(async (context, next) =>
 {
     var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
     var gcInfo = GC.GetGCMemoryInfo();
-    var headroom = gcInfo.HighMemoryLoadThresholdBytes - gcInfo.MemoryLoadBytes;
+    var headroom = gcInfo.TotalAvailableMemoryBytes - gcInfo.MemoryLoadBytes;
 
     if (headroom < requiredHeadroomBytes)
     {

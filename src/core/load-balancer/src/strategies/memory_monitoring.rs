@@ -116,7 +116,7 @@ impl MemoryMonitoringStrategy {
                                 // CM and CD with safe fallback if TM + TD == 0
                                 let denom = t_m + t_d;
                                 let (c_m, c_d) = if denom > 0.0 {
-                                    (t_m / denom, t_d / denom)
+                                    (t_d / denom, t_m / denom)
                                 } else {
                                     (0.5, 0.5)
                                 };
@@ -155,7 +155,7 @@ impl MemoryMonitoringStrategy {
                                     println!("t = {}", t);
                                     println!("arrive_t = (({} / {}) * {}) * ({} / {})", r, elapsed_time, t, total_load, total_active_requests);
                                     if total_active_requests > 0.0 && r > 0.0 && total_load > 0.0 {
-                                        let val = (((r / elapsed_time) * t) * (total_load / total_active_requests)) * 0.05;
+                                        let val = (((r / elapsed_time) * t) * (total_load / total_active_requests)) * 0.001;
                                         if val < min_arrive_t {
                                             min_arrive_t
                                         } else {

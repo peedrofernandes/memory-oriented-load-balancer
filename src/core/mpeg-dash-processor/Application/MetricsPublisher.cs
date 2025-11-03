@@ -31,6 +31,8 @@ public sealed class MetricsPublisher : BackgroundService
     // Rolling state to compute read/s
     private ulong _lastTotalReadBytes;
     private DateTimeOffset _lastSampleTime;
+    private uint _qtyMovingAverageSamples;
+    private List<double> _readBytesPerSecMovingAverageSamples = [];
 
     public MetricsPublisher(ILogger<MetricsPublisher> logger, RequestCounter requestCounter)
     {
@@ -72,6 +74,8 @@ public sealed class MetricsPublisher : BackgroundService
             _logger.LogWarning("Disconnected from MQTT broker: {Reason}", args.Reason);
             return Task.CompletedTask;
         };
+
+        _qtyMovingAverageSamples = Math.Max(1, (uint)Math.Floor(30 / (decimal)intervalSeconds));
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -115,11 +119,18 @@ public sealed class MetricsPublisher : BackgroundService
                 var normalized_memory_current_bytes = Math.Clamp((double)memoryCurrentBytes / (_memoryLimitMb * 1024 * 1024), 0.0, 1.0);
                 var normalized_read_bytes_per_sec = Math.Clamp(readBytesPerSec / (_readDiskLimitMbps * 1024 * 1024), 0.0, 1.0);
 
+                _readBytesPerSecMovingAverageSamples.Add(normalized_read_bytes_per_sec);
+                if (_readBytesPerSecMovingAverageSamples.Count > _qtyMovingAverageSamples)
+                {
+                    _readBytesPerSecMovingAverageSamples.RemoveAt(0);
+                }
+                var normalized_read_bytes_per_sec_moving_average = _readBytesPerSecMovingAverageSamples.Average();
+
                 var payload = new
                 {
                     server_socket = _serverSocket,
                     memory_current = normalized_memory_current_bytes,
-                    disk_read = normalized_read_bytes_per_sec,
+                    disk_read = Math.Max(normalized_read_bytes_per_sec, normalized_read_bytes_per_sec_moving_average),
                     active_request_count = _requestCounter.Get(),
                     timestamp_unix = now.ToUnixTimeSeconds(),
                 };

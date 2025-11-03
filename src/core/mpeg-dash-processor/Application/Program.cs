@@ -13,6 +13,33 @@ builder.Services.AddSingleton<RequestCounter>();
 // Add background publisher service for metrics
 builder.Services.AddHostedService<MetricsPublisher>();
 
+// Derive Kestrel connection limits from container resource budgets
+// Heuristic:
+// - Memory bound: reserve ~40% of MEMORY_LIMIT_MB for per-connection overhead (~2 MB/conn)
+// - Disk bound: assume ~2 MB/s disk read per active streaming connection
+// Final limit is the min of both, clamped to a safe range [16, 2000]
+var memEnv = Environment.GetEnvironmentVariable("MEMORY_LIMIT_MB");
+var diskEnv = Environment.GetEnvironmentVariable("READ_DISK_LIMIT_MBPS");
+if (!ulong.TryParse(memEnv, out var memoryLimitMb) || !ulong.TryParse(diskEnv, out var readDiskLimitMbps))
+{
+    throw new Exception("MEMORY_LIMIT_MB and READ_DISK_LIMIT_MBPS environment variables are required");
+}
+
+const double memoryFractionForConnections = 0.40; // leave headroom for runtime/native/stacks
+const double memPerConnectionMb = 2.0;
+const double diskPerConnectionMbps = 2.0;
+
+var maxByMem = (int)Math.Floor(memoryLimitMb * memoryFractionForConnections / memPerConnectionMb);
+var maxByDisk = (int)Math.Floor(readDiskLimitMbps / diskPerConnectionMbps);
+var maxConnections = Math.Clamp(Math.Min(maxByMem, maxByDisk), 16, 2000);
+
+builder.WebHost.ConfigureKestrel(o =>
+{
+    o.Limits.MaxConcurrentConnections = maxConnections;
+    o.Limits.MaxConcurrentUpgradedConnections = Math.Max(5, maxConnections / 20);
+});
+
+
 // CORS: allow browsers/players to fetch from anywhere (tighten if needed)
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
     .AllowAnyOrigin()

@@ -135,6 +135,8 @@ public sealed class MetricsPublisher : BackgroundService
                     timestamp_unix = now.ToUnixTimeSeconds(),
                 };
 
+                _logger.LogInformation("Payload: {Json}", JsonSerializer.Serialize(payload));
+
                 var json = JsonSerializer.Serialize(payload);
                 var message = new MqttApplicationMessageBuilder()
                     .WithTopic("loadbalancer/metrics")

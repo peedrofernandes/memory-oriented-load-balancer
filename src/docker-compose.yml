@@ -23,14 +23,14 @@ services:
       - DISABLE_FILE_CACHING=false
       - MQTT_BROKER_URL=mqtt://nanomq-broker:1883
       - SERVER_SOCKET=mpeg-dash-processor-1:8080
-      - METRICS_PUBLISH_INTERVAL_SECONDS=12
-      - READ_DISK_LIMIT_MBPS=512
+      - METRICS_PUBLISH_INTERVAL_SECONDS=2
+      - READ_DISK_LIMIT_MBPS=1024
       - MEMORY_LIMIT_MB=4096
     restart: unless-stopped
     blkio_config:
       device_read_bps:
         - path: /dev/sdd
-          rate: '512mb'
+          rate: '1024mb'
     deploy:
       resources:
         limits:
@@ -38,7 +38,7 @@ services:
           memory: 4096M
         reservations:
           cpus: "0.25"
-          memory: 64M
+          memory: 256M
     volumes:
       - /data/server-1:/app/wwwroot/Static
 
@@ -50,17 +50,17 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
-      - DISABLE_FILE_CACHING=true
+      - DISABLE_FILE_CACHING=false
       - MQTT_BROKER_URL=mqtt://nanomq-broker:1883
       - SERVER_SOCKET=mpeg-dash-processor-2:8080
-      - METRICS_PUBLISH_INTERVAL_SECONDS=10
-      - READ_DISK_LIMIT_MBPS=256
+      - METRICS_PUBLISH_INTERVAL_SECONDS=3
+      - READ_DISK_LIMIT_MBPS=512
       - MEMORY_LIMIT_MB=2048
     restart: unless-stopped
     blkio_config:
       device_read_bps:
         - path: /dev/sdd
-          rate: '256mb'
+          rate: '512mb'
     deploy:
       resources:
         limits:
@@ -68,7 +68,7 @@ services:
           memory: 2048M
         reservations:
           cpus: "0.25"
-          memory: 64M
+          memory: 256M
     volumes:
       - /data/server-2:/app/wwwroot/Static
 
@@ -83,14 +83,14 @@ services:
       - DISABLE_FILE_CACHING=false
       - MQTT_BROKER_URL=mqtt://nanomq-broker:1883
       - SERVER_SOCKET=mpeg-dash-processor-3:8080
-      - METRICS_PUBLISH_INTERVAL_SECONDS=8
-      - READ_DISK_LIMIT_MBPS=128
+      - METRICS_PUBLISH_INTERVAL_SECONDS=4
+      - READ_DISK_LIMIT_MBPS=256
       - MEMORY_LIMIT_MB=1024
     restart: unless-stopped
     blkio_config:
       device_read_bps:
         - path: /dev/sdd
-          rate: '128mb'
+          rate: '256mb'
     deploy:
       resources:
         limits:
@@ -98,7 +98,7 @@ services:
           memory: 1024M
         reservations:
           cpus: "0.25"
-          memory: 64M
+          memory: 256M
     volumes:
       - /data/server-3:/app/wwwroot/Static
 
@@ -113,14 +113,14 @@ services:
       - DISABLE_FILE_CACHING=false
       - MQTT_BROKER_URL=mqtt://nanomq-broker:1883
       - SERVER_SOCKET=mpeg-dash-processor-4:8080
-      - METRICS_PUBLISH_INTERVAL_SECONDS=6
-      - READ_DISK_LIMIT_MBPS=64
+      - METRICS_PUBLISH_INTERVAL_SECONDS=5
+      - READ_DISK_LIMIT_MBPS=128
       - MEMORY_LIMIT_MB=512
     restart: unless-stopped
     blkio_config:
       device_read_bps:
         - path: /dev/sdd
-          rate: '64mb'
+          rate: '128mb'
     deploy:
       resources:
         limits:
@@ -128,7 +128,7 @@ services:
           memory: 512M
         reservations:
           cpus: "0.25"
-          memory: 64M
+          memory: 256M
     volumes:
       - /data/server-4:/app/wwwroot/Static
 
@@ -143,22 +143,22 @@ services:
       - DISABLE_FILE_CACHING=false
       - MQTT_BROKER_URL=mqtt://nanomq-broker:1883
       - SERVER_SOCKET=mpeg-dash-processor-5:8080
-      - METRICS_PUBLISH_INTERVAL_SECONDS=4
-      - READ_DISK_LIMIT_MBPS=32
-      - MEMORY_LIMIT_MB=512
+      - METRICS_PUBLISH_INTERVAL_SECONDS=7
+      - READ_DISK_LIMIT_MBPS=64
+      - MEMORY_LIMIT_MB=256
     restart: unless-stopped
     blkio_config:
       device_read_bps:
         - path: /dev/sdd
-          rate: '32mb'
+          rate: '64mb'
     deploy:
       resources:
         limits:
           cpus: "1.0"
-          memory: 512M
+          memory: 256M
         reservations:
           cpus: "0.25"
-          memory: 64M
+          memory: 256M
     volumes:
       - /data/server-5:/app/wwwroot/Static
 
@@ -173,22 +173,22 @@ services:
       - DISABLE_FILE_CACHING=false
       - MQTT_BROKER_URL=mqtt://nanomq-broker:1883
       - SERVER_SOCKET=mpeg-dash-processor-6:8080
-      - METRICS_PUBLISH_INTERVAL_SECONDS=3
-      - READ_DISK_LIMIT_MBPS=16
-      - MEMORY_LIMIT_MB=512
+      - METRICS_PUBLISH_INTERVAL_SECONDS=8
+      - READ_DISK_LIMIT_MBPS=32
+      - MEMORY_LIMIT_MB=128
     restart: unless-stopped
     blkio_config:
       device_read_bps:
         - path: /dev/sdd
-          rate: '16mb'
+          rate: '32mb'
     deploy:
       resources:
         limits:
           cpus: "1.0"
-          memory: 512M
+          memory: 128M
         reservations:
           cpus: "0.25"
-          memory: 64M
+          memory: 128M
     volumes:
       - /data/server-6:/app/wwwroot/Static
 
@@ -203,19 +203,19 @@ services:
       - DISABLE_FILE_CACHING=false
       - MQTT_BROKER_URL=mqtt://nanomq-broker:1883
       - SERVER_SOCKET=mpeg-dash-processor-7:8080
-      - METRICS_PUBLISH_INTERVAL_SECONDS=2
-      - READ_DISK_LIMIT_MBPS=8
-      - MEMORY_LIMIT_MB=512
+      - METRICS_PUBLISH_INTERVAL_SECONDS=9
+      - READ_DISK_LIMIT_MBPS=16
+      - MEMORY_LIMIT_MB=64
     restart: unless-stopped
     blkio_config:
       device_read_bps:
         - path: /dev/sdd
-          rate: '8mb'
+          rate: '16mb'
     deploy:
       resources:
         limits:
           cpus: "1.0"
-          memory: 512M
+          memory: 64M
         reservations:
           cpus: "0.25"
           memory: 64M
@@ -233,22 +233,22 @@ services:
       - DISABLE_FILE_CACHING=false
       - MQTT_BROKER_URL=mqtt://nanomq-broker:1883
       - SERVER_SOCKET=mpeg-dash-processor-8:8080
-      - METRICS_PUBLISH_INTERVAL_SECONDS=1
-      - READ_DISK_LIMIT_MBPS=4
-      - MEMORY_LIMIT_MB=512
+      - METRICS_PUBLISH_INTERVAL_SECONDS=10
+      - READ_DISK_LIMIT_MBPS=8
+      - MEMORY_LIMIT_MB=32
     restart: unless-stopped
     blkio_config:
       device_read_bps:
         - path: /dev/sdd
-          rate: '4mb'
+          rate: '8mb'
     deploy:
       resources:
         limits:
           cpus: "1.0"
-          memory: 512M
+          memory: 32M
         reservations:
           cpus: "0.25"
-          memory: 64M
+          memory: 32M
     volumes:
       - /data/server-8:/app/wwwroot/Static
 

@@ -5,70 +5,70 @@ services:
       dockerfile: Dockerfile
     image: load-generator:latest
     container_name: load-generator-1
-    command: ["--url", "http://load-balancer:8080", "--concurrent", "100", "--duration", "120", "--log-level", "INFO"]
+    command: ["--url", "http://load-balancer:8080", "--concurrent", "10", "--duration", "120", "--log-level", "INFO"]
     networks:
       - mpeg-dash-network
 
   load-generator-2:
     image: load-generator:latest
     container_name: load-generator-2
-    command: ["--url", "http://load-balancer:8080", "--concurrent", "100", "--duration", "120", "--log-level", "INFO"]
+    command: ["--url", "http://load-balancer:8080", "--concurrent", "10", "--duration", "120", "--log-level", "INFO"]
     networks:
       - mpeg-dash-network
 
   load-generator-3:
     image: load-generator:latest
     container_name: load-generator-3
-    command: ["--url", "http://load-balancer:8080", "--concurrent", "100", "--duration", "120", "--log-level", "INFO"]
+    command: ["--url", "http://load-balancer:8080", "--concurrent", "10", "--duration", "120", "--log-level", "INFO"]
     networks:
       - mpeg-dash-network
 
   load-generator-4:
     image: load-generator:latest
     container_name: load-generator-4
-    command: ["--url", "http://load-balancer:8080", "--concurrent", "100", "--duration", "120", "--log-level", "INFO"]
+    command: ["--url", "http://load-balancer:8080", "--concurrent", "10", "--duration", "120", "--log-level", "INFO"]
     networks:
       - mpeg-dash-network
 
   load-generator-5:
     image: load-generator:latest
     container_name: load-generator-5
-    command: ["--url", "http://load-balancer:8080", "--concurrent", "100", "--duration", "120", "--log-level", "INFO"]
+    command: ["--url", "http://load-balancer:8080", "--concurrent", "10", "--duration", "120", "--log-level", "INFO"]
     networks:
       - mpeg-dash-network
 
   load-generator-6:
     image: load-generator:latest
     container_name: load-generator-6
-    command: ["--url", "http://load-balancer:8080", "--concurrent", "100", "--duration", "120", "--log-level", "INFO"]
+    command: ["--url", "http://load-balancer:8080", "--concurrent", "10", "--duration", "120", "--log-level", "INFO"]
     networks:
       - mpeg-dash-network
 
   load-generator-7:
     image: load-generator:latest
     container_name: load-generator-7
-    command: ["--url", "http://load-balancer:8080", "--concurrent", "100", "--duration", "120", "--log-level", "INFO"]
+    command: ["--url", "http://load-balancer:8080", "--concurrent", "10", "--duration", "120", "--log-level", "INFO"]
     networks:
       - mpeg-dash-network
 
   load-generator-8:
     image: load-generator:latest
     container_name: load-generator-8
-    command: ["--url", "http://load-balancer:8080", "--concurrent", "100", "--duration", "120", "--log-level", "INFO"]
+    command: ["--url", "http://load-balancer:8080", "--concurrent", "10", "--duration", "120", "--log-level", "INFO"]
     networks:
       - mpeg-dash-network
 
   load-generator-9:
     image: load-generator:latest
     container_name: load-generator-9
-    command: ["--url", "http://load-balancer:8080", "--concurrent", "100", "--duration", "120", "--log-level", "INFO"]
+    command: ["--url", "http://load-balancer:8080", "--concurrent", "10", "--duration", "120", "--log-level", "INFO"]
     networks:
       - mpeg-dash-network
 
   load-generator-10:
     image: load-generator:latest
     container_name: load-generator-10
-    command: ["--url", "http://load-balancer:8080", "--concurrent", "100", "--duration", "120", "--log-level", "INFO"]
+    command: ["--url", "http://load-balancer:8080", "--concurrent", "10", "--duration", "120", "--log-level", "INFO"]
     networks:
       - mpeg-dash-network
 

@@ -150,10 +150,14 @@ impl LoadBalancer {
 
                             // Send with timeout
                             match timeout(Duration::from_secs(5), client.request(outbound_req)).await {
-                                Ok(Ok(mut resp)) => {
-                                    sanitize_hop_by_hop_headers(resp.headers_mut());
-                                    return Ok::<_, hyper::Error>(resp);
-                                }
+								Ok(Ok(mut resp)) => {
+									// If upstream is overloaded (503), try another server automatically
+									if resp.status() == http::StatusCode::SERVICE_UNAVAILABLE {
+										continue;
+									}
+									sanitize_hop_by_hop_headers(resp.headers_mut());
+									return Ok::<_, hyper::Error>(resp);
+								}
                                 Ok(Err(_e)) => {
                                     // Upstream error, try next server
                                     continue;

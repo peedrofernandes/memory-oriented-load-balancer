@@ -13,33 +13,6 @@ builder.Services.AddSingleton<RequestCounter>();
 // Add background publisher service for metrics
 builder.Services.AddHostedService<MetricsPublisher>();
 
-// Derive Kestrel connection limits from container resource budgets
-// Heuristic:
-// - Memory bound: reserve ~40% of MEMORY_LIMIT_MB for per-connection overhead (~2 MB/conn)
-// - Disk bound: assume ~2 MB/s disk read per active streaming connection
-// Final limit is the min of both, clamped to a safe range [16, 2000]
-var memEnv = Environment.GetEnvironmentVariable("MEMORY_LIMIT_MB");
-var diskEnv = Environment.GetEnvironmentVariable("READ_DISK_LIMIT_MBPS");
-if (!ulong.TryParse(memEnv, out var memoryLimitMb) || !ulong.TryParse(diskEnv, out var readDiskLimitMbps))
-{
-    throw new Exception("MEMORY_LIMIT_MB and READ_DISK_LIMIT_MBPS environment variables are required");
-}
-
-const double memoryFractionForConnections = 0.40; // leave headroom for runtime/native/stacks
-const double memPerConnectionMb = 2.0;
-const double diskPerConnectionMbps = 2.0;
-
-var maxByMem = (int)Math.Floor(memoryLimitMb * memoryFractionForConnections / memPerConnectionMb);
-var maxByDisk = (int)Math.Floor(readDiskLimitMbps / diskPerConnectionMbps);
-var maxConnections = Math.Clamp(Math.Min(maxByMem, maxByDisk), 16, 2000);
-
-builder.WebHost.ConfigureKestrel(o =>
-{
-    o.Limits.MaxConcurrentConnections = maxConnections;
-    o.Limits.MaxConcurrentUpgradedConnections = Math.Max(5, maxConnections / 20);
-});
-
-
 // CORS: allow browsers/players to fetch from anywhere (tighten if needed)
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
     .AllowAnyOrigin()
@@ -47,9 +20,40 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
     .AllowAnyMethod()
     .WithExposedHeaders("Content-Length", "Content-Range", "Accept-Ranges")));
 
+// Compute required memory headroom (5% of max capacity) from environment
+var memLimitEnv = Environment.GetEnvironmentVariable("MEMORY_LIMIT_MB")
+    ?? throw new Exception("MEMORY_LIMIT_MB environment variable is required");
+if (!long.TryParse(memLimitEnv, out var memoryLimitMb) || memoryLimitMb <= 0)
+{
+    throw new Exception("MEMORY_LIMIT_MB must be a positive integer");
+}
+var requiredHeadroomBytes = (memoryLimitMb * 1024L * 1024L) / 20L; // 5%
+
 var app = builder.Build();
 
 app.UseCors();
+
+// Reject requests if server memory is critically low to avoid OOMs
+app.Use(async (context, next) =>
+{
+    var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+    var gcInfo = GC.GetGCMemoryInfo();
+    var headroom = gcInfo.HighMemoryLoadThresholdBytes - gcInfo.MemoryLoadBytes;
+
+    if (headroom < requiredHeadroomBytes)
+    {
+        logger.LogWarning("Rejecting request due to low memory. Headroom={Headroom} bytes, Required={Required} bytes (limitMb={LimitMb})", headroom, requiredHeadroomBytes, memoryLimitMb);
+        context.Response.StatusCode = 503; // Service Unavailable
+        context.Response.Headers["Retry-After"] = "10"; // seconds
+        context.Response.Headers["X-Memory-Headroom-Bytes"] = headroom.ToString();
+        context.Response.Headers["X-Memory-Required-Bytes"] = requiredHeadroomBytes.ToString();
+        context.Response.ContentType = "text/plain";
+        await context.Response.WriteAsync("Service unavailable: insufficient memory, please retry later.");
+        return;
+    }
+
+    await next();
+});
 
 // Count active requests
 // Inline active request counting middleware (replaces RequestCountingMiddleware)

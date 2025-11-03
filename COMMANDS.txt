@@ -138,22 +138,17 @@ Create video with multiple resolutions and Full HD (v4)
 -adaptation_sets "id=0,streams=v id=1,streams=a" \
 manifest.mpd
 ============================================================================================================
-Run Chart Generators (inside src/chart-generators folder) (fail_rate)
-- docker build -t fail_rate_chart_generator ./fail_rate; docker run --rm fail_rate_chart_generator > ./_output/fail_rate_chart.png
-============================================================================================================
 Run Chart Generators (inside src/chart-generators folder) (latency)
 - docker build -t latency_chart_generator ./latency; docker run --rm latency_chart_generator > ./_output/latency_chart.png
 ============================================================================================================
 Run Chart Generators (inside src/chart-generators folder) (quality_per_frame)
-- docker build -t quality_chart_generator ./quality_per_frame; docker run --rm quality_chart_generator > ./_output/quality_chart.png
+- docker build -t quality_chart_generator ./quality_per_frame; docker run --rm quality_chart_generator > ./_output/quality-charts/scenario-1.png
 ============================================================================================================
 Run Chart Generators (inside src/chart-generators folder) (stalls_per_frame)
-- docker build -t stalls_chart_generator ./stalls_per_frame; docker run --rm stalls_chart_generator > ./_output/stalls_chart.png
+- docker build -t stalls_chart_generator ./stalls_per_frame; docker run --rm stalls_chart_generator > ./_output/stall-charts/scenario-1.png
 ============================================================================================================
-Generate all charts at once
-- docker build -t latency_chart_generator ./latency; docker run --rm latency_chart_generator > ./_output/latency_chart.png \
-; docker build -t quality_chart_generator ./quality_per_frame; docker run --rm quality_chart_generator > ./_output/quality_chart.png \
-; docker build -t stalls_chart_generator ./stalls_per_frame; docker run --rm stalls_chart_generator > ./_output/stalls_chart.png
+Run Chart Generators (inside src/chart-generators folder) (bitrate_per_frame)
+- docker build -t bitrate_chart_generator ./bitrate_per_frame; docker run --rm bitrate_chart_generator > ./_output/bitrate-charts/scenario-1.png
 ============================================================================================================
 ============================================================================================================
 ============================================================================================================

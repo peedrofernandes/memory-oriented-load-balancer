@@ -20,40 +20,9 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
     .AllowAnyMethod()
     .WithExposedHeaders("Content-Length", "Content-Range", "Accept-Ranges")));
 
-// Compute required memory headroom (5% of max capacity) from environment
-var memLimitEnv = Environment.GetEnvironmentVariable("MEMORY_LIMIT_MB")
-    ?? throw new Exception("MEMORY_LIMIT_MB environment variable is required");
-if (!long.TryParse(memLimitEnv, out var memoryLimitMb) || memoryLimitMb <= 0)
-{
-    throw new Exception("MEMORY_LIMIT_MB must be a positive integer");
-}
-var requiredHeadroomBytes = (memoryLimitMb * 1024L * 1024L) / 20L; // 5%
-
 var app = builder.Build();
 
 app.UseCors();
-
-// Reject requests if server memory is critically low to avoid OOMs
-app.Use(async (context, next) =>
-{
-    var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-    var gcInfo = GC.GetGCMemoryInfo();
-    var headroom = gcInfo.TotalAvailableMemoryBytes - gcInfo.MemoryLoadBytes;
-
-    if (headroom < requiredHeadroomBytes)
-    {
-        logger.LogWarning("Rejecting request due to low memory. Headroom={Headroom} bytes, Required={Required} bytes (limitMb={LimitMb})", headroom, requiredHeadroomBytes, memoryLimitMb);
-        context.Response.StatusCode = 503; // Service Unavailable
-        context.Response.Headers["Retry-After"] = "10"; // seconds
-        context.Response.Headers["X-Memory-Headroom-Bytes"] = headroom.ToString();
-        context.Response.Headers["X-Memory-Required-Bytes"] = requiredHeadroomBytes.ToString();
-        context.Response.ContentType = "text/plain";
-        await context.Response.WriteAsync("Service unavailable: insufficient memory, please retry later.");
-        return;
-    }
-
-    await next();
-});
 
 // Count active requests
 // Inline active request counting middleware (replaces RequestCountingMiddleware)

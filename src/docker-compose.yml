@@ -284,6 +284,15 @@ services:
       - ./monitoring/dashboard.html:/usr/share/nginx/html/index.html:ro
     restart: unless-stopped
 
+  dash-client:
+    image: nginx:alpine
+    container_name: dash-client
+    ports:
+      - "3003:80"
+    volumes:
+      - ./core/mpeg-dash-client/test-dash.html:/usr/share/nginx/html/index.html:ro
+    restart: unless-stopped
+
   metrics-collector:
     image: python:3.11-alpine
     container_name: metrics-collector

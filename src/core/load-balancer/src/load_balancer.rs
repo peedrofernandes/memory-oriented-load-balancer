@@ -149,7 +149,7 @@ impl LoadBalancer {
                             }
 
                             // Send with timeout
-                            match timeout(Duration::from_secs(5), client.request(outbound_req)).await {
+                            match timeout(Duration::from_millis(1500), client.request(outbound_req)).await {
 								Ok(Ok(mut resp)) => {
 									// If upstream is overloaded (503), try another server automatically
 									if resp.status() == http::StatusCode::SERVICE_UNAVAILABLE {

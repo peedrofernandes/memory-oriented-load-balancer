@@ -3,8 +3,8 @@
 Quality per Frame Chart Generator
 
 This script generates a line chart showing video quality changes over time
-for different datasets. Each dataset represents a different scenario or
-configuration.
+for a single scenario, plotting one line per strategy (e.g., round-robin,
+random-selection, memory-monitoring-6s, memory-monitoring-30s).
 
 The script reads configuration from a JSON file that contains:
 - Quality mappings (string to numeric values)
@@ -12,8 +12,8 @@ The script reads configuration from a JSON file that contains:
 - Chart settings (colors, sizes, labels, etc.)
 
 Usage:
-    python quality_per_frame.py --config config.json > chart.png
-    python quality_per_frame.py --config config.json | tee chart.png
+    python quality_per_frame.py --config config.json --scenario scenario-1 > chart.png
+    python quality_per_frame.py --config config.json --scenario scenario-1 | tee chart.png
 
 The JSON configuration file should contain:
 - quality_mapping: Dictionary mapping quality strings to numeric values
@@ -55,10 +55,61 @@ def convert_quality_to_numeric(quality_data: List[str], quality_mapping: Dict[st
     return [quality_mapping.get(q, 0) for q in quality_data]
 
 
-def create_quality_chart(config: Dict) -> None:
-    """Create and output the quality per frame chart to stdout."""
-    # Extract configuration
-    datasets = config['datasets']
+def _normalize_strategy_name(name: str) -> str:
+    n = name.strip().lower()
+    mapping = {
+        'round robin': 'Round Robin',
+        'round-robin': 'Round Robin',
+        'round_robin': 'Round Robin',
+        'random selection': 'Random Selection',
+        'random-selection': 'Random Selection',
+        'random_selection': 'Random Selection',
+        'memory monitoring': 'Memory Monitoring',
+        'memory-monitoring': 'Memory Monitoring',
+        'memory_monitoring': 'Memory Monitoring',
+        'memory-monitoring-6s': 'Memory Monitoring (6s)',
+        'memory-monitoring-30s': 'Memory Monitoring (30s)',
+    }
+    return mapping.get(n, name)
+
+
+def _canonical_strategy_key(name: str) -> str:
+    n = name.strip().lower()
+    if n in ('round robin', 'round-robin', 'round_robin'):
+        return 'round-robin'
+    if n in ('random selection', 'random-selection', 'random_selection'):
+        return 'random-selection'
+    if n in ('memory monitoring 6s', 'memory-monitoring-6s', 'memory_monitoring_6s'):
+        return 'memory-monitoring-6s'
+    if n in ('memory monitoring 30s', 'memory-monitoring-30s', 'memory_monitoring_30s'):
+        return 'memory-monitoring-30s'
+    if n in ('memory monitoring', 'memory-monitoring', 'memory_monitoring'):
+        return 'memory-monitoring'
+    return n
+
+
+def _resolve_output_path(output_path: str, scenario: str) -> str:
+    if '{scenario}' in output_path:
+        resolved = output_path.format(scenario=scenario)
+    else:
+        is_dir_hint = output_path.endswith(os.sep) or output_path.endswith('/') or not os.path.splitext(output_path)[1]
+        if is_dir_hint or os.path.isdir(output_path):
+            resolved = os.path.join(output_path, f"{scenario}.png")
+        else:
+            base, ext = os.path.splitext(output_path)
+            if not ext:
+                resolved = os.path.join(output_path, f"{scenario}.png")
+            else:
+                resolved = f"{base}_{scenario}{ext}"
+    directory = os.path.dirname(resolved)
+    if directory and not os.path.exists(directory):
+        os.makedirs(directory, exist_ok=True)
+    return resolved
+
+
+def create_quality_charts(config: Dict, output_path: str) -> None:
+    """Create and save quality charts for all scenarios."""
+    all_datasets = config['datasets']
     quality_mapping = config['quality_mapping']
     quality_labels = config['quality_labels']
     quality_values = config['quality_values']
@@ -68,56 +119,68 @@ def create_quality_chart(config: Dict) -> None:
     plt.figure(figsize=tuple(chart_settings['figure_size']))
     plt.style.use('default')
     
-    # Colors for different lines
     colors = chart_settings['colors']
-    
-    # Plot each dataset
-    for i, (scenario_name, quality_data) in enumerate(datasets.items()):
-        frame_numbers = list(range(1, len(quality_data) + 1))
-        numeric_quality = convert_quality_to_numeric(quality_data, quality_mapping)
-        
-        plt.plot(frame_numbers, numeric_quality, 
-                label=scenario_name, 
-                linewidth=chart_settings['line_width'], 
-                marker='o', 
-                markersize=chart_settings['marker_size'],
-                color=colors[i % len(colors)])
-    
-    # Customize the chart
-    plt.xlabel(chart_settings['x_label'], fontsize=12, fontweight='bold')
-    plt.ylabel(chart_settings['y_label'], fontsize=12, fontweight='bold')
-    plt.title(chart_settings['title'], fontsize=14, fontweight='bold', pad=20)
-    
-    # Set Y-axis labels and ticks
-    plt.yticks(quality_values, quality_labels)
-    plt.ylim(tuple(chart_settings['y_axis_limits']))
-    
-    # Add grid for better readability
-    plt.grid(True, alpha=0.3, linestyle='--')
-    
-    # Add legend
-    plt.legend(loc='upper right', frameon=True, shadow=True)
-    
-    # Adjust layout to prevent label cutoff
-    plt.tight_layout()
-    
-    # Save the chart to stdout
-    buffer = io.BytesIO()
-    plt.savefig(buffer, format='png', dpi=chart_settings['dpi'], bbox_inches='tight')
-    buffer.seek(0)
-    
-    # Write PNG data to stdout in binary mode
-    try:
-        # Ensure we're writing binary data
-        png_data = buffer.getvalue()
-        sys.stdout.buffer.write(png_data)
-        sys.stdout.buffer.flush()
-    except AttributeError:
-        # Fallback for systems without buffer attribute
-        sys.stdout.write(buffer.getvalue())
-    
-    buffer.close()
-    plt.close()  # Clean up the figure
+
+    # Consistent strategy colors across all scenarios (fixed palette)
+    strategy_order = ['round-robin', 'random-selection', 'memory-monitoring-6s', 'memory-monitoring-30s']
+    strategy_color_map: Dict[str, str] = {
+        'round-robin': '#d62728',            # red
+        'random-selection': '#ff7f0e',       # orange
+        'memory-monitoring-6s': '#2ca02c',   # green
+        'memory-monitoring-30s': '#1f77b4',  # blue
+    }
+
+    for scenario, scenario_series in all_datasets.items():
+        if not isinstance(scenario_series, dict):
+            continue
+
+        plt.figure(figsize=tuple(chart_settings['figure_size']))
+        plt.style.use('default')
+
+        # Order strategies consistently
+        canonical_to_original: Dict[str, str] = {}
+        for orig in scenario_series.keys():
+            canonical_to_original[_canonical_strategy_key(orig)] = orig
+        ordered = [k for k in strategy_order if k in canonical_to_original]
+        for k in sorted(canonical_to_original.keys()):
+            if k not in ordered:
+                ordered.append(k)
+
+        for i, canonical in enumerate(ordered):
+            strategy_name = canonical_to_original.get(canonical, canonical)
+            quality_data = scenario_series.get(strategy_name, [])
+            if not quality_data:
+                continue
+            frame_numbers = list(range(1, len(quality_data) + 1))
+            numeric_quality = convert_quality_to_numeric(quality_data, quality_mapping)
+
+            color = strategy_color_map.get(canonical, colors[i % len(colors)])
+            plt.plot(frame_numbers, numeric_quality,
+                     label=_normalize_strategy_name(strategy_name),
+                     linewidth=chart_settings['line_width'],
+                     marker='o',
+                     markersize=chart_settings['marker_size'],
+                     color=color,
+                     linestyle=':',
+                     alpha=0.9,
+                     markeredgecolor='white',
+                     markeredgewidth=0.7)
+
+        plt.xlabel(chart_settings['x_label'], fontsize=12, fontweight='bold')
+        plt.ylabel(chart_settings['y_label'], fontsize=12, fontweight='bold')
+        plt.title(f"{chart_settings['title']} - {scenario}", fontsize=14, fontweight='bold', pad=20)
+
+        plt.yticks(quality_values, quality_labels)
+        plt.ylim(tuple(chart_settings['y_axis_limits']))
+
+        plt.grid(True, alpha=0.3, linestyle='--')
+        plt.legend(loc='upper right', frameon=True, shadow=True)
+        plt.tight_layout()
+
+        out_file = _resolve_output_path(output_path, scenario)
+        plt.savefig(out_file, format='png', dpi=chart_settings['dpi'], bbox_inches='tight')
+        print(f"Saved: {out_file}", file=sys.stderr)
+        plt.close()
 
 
 def main():
@@ -138,6 +201,12 @@ Examples:
         default='config.json',
         help='Path to JSON configuration file (default: config.json)'
     )
+    parser.add_argument(
+        '--output',
+        type=str,
+        required=True,
+        help='Output path. Use a directory, a file path, or a pattern with {scenario}.'
+    )
     
     args = parser.parse_args()
     
@@ -145,8 +214,8 @@ Examples:
         # Print status to stderr so it doesn't interfere with binary output
         print(f"Loading configuration from '{args.config}'...", file=sys.stderr)
         config = load_config(args.config)
-        print("Generating quality chart...", file=sys.stderr)
-        create_quality_chart(config)
+        print("Generating quality charts for all scenarios...", file=sys.stderr)
+        create_quality_charts(config, args.output)
         print("Chart generated successfully!", file=sys.stderr)
     except Exception as e:
         print(f"Error generating chart: {e}", file=sys.stderr)

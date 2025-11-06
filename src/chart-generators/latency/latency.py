@@ -41,6 +41,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 import sys
+import os
 import io
 from typing import Dict, Any, Tuple
 
@@ -70,82 +71,83 @@ def extract_data_and_settings(config: Dict[str, Any]) -> Tuple[Dict[str, float],
     return data, settings
 
 
-def create_bar_chart(data: Dict[str, float], settings: Dict[str, Any]) -> None:
-    def get_category_from_name(name: str) -> str:
-        if '-' in name:
-            return name.split('-')[-2] + '-' + name.split('-')[-1] if name.endswith(('round-robin','random-selection','memory-monitoring')) else name.split('-')[-1]
-        return name
+def create_bar_chart(data: Dict[str, float], settings: Dict[str, Any], output_path: str) -> None:
+    def get_strategy(name: str) -> str:
+        # Expect keys like 'scenario-1-round-robin'; strategy is 'round-robin'
+        parts = name.split('-')
+        return '-'.join(parts[2:])
 
-    def normalize_category(cat: str) -> str:
-        c = cat.strip().lower()
-        if c in ("round robin", "round-robin", "round_robin"): return "round-robin"
-        if c in ("random selection", "random-selection", "random_selection"): return "random-selection"
-        if c in ("memory monitoring", "memory-monitoring", "memory_monitoring"): return "memory-monitoring"
-        return c
-
-    def display_label(cat: str) -> str:
-        labels = {
-            "round-robin": "Round Robin",
-            "random-selection": "Random Selection",
-            "memory-monitoring": "Memory Monitoring",
-        }
-        return labels.get(cat, cat.title())
+    def display_strategy_label(strategy: str) -> str:
+        # round-robin -> Round Robin
+        return strategy.replace('-', ' ').title()
 
     scenarios = list(data.keys())
     values = [float(data[k]) for k in scenarios]
-    raw_categories = [get_category_from_name(s) for s in scenarios]
-    categories = [normalize_category(c) for c in raw_categories]
+    strategies = [get_strategy(s) for s in scenarios]
 
     figure_size = tuple(settings.get('figure_size', [12, 8]))
-    colors = settings.get('colors', ['#1f77b4'])
     dpi = int(settings.get('dpi', 300))
 
     plt.figure(figsize=figure_size)
     plt.style.use('default')
 
     indices = np.arange(len(scenarios))
-    default_category_colors: Dict[str, str] = {
-        "round-robin": "#1f77b4",
-        "random-selection": "#ff7f0e",
-        "memory-monitoring": "#2ca02c",
+    
+    # Assign colors by strategy using a consistent color map
+    strategy_color_map: Dict[str, str] = {
+        'round-robin': '#d62728',          # red
+        'random-selection': '#ff7f0e',     # orange
+        'memory-monitoring-30s': '#1f77b4',  # blue
+        'memory-monitoring-6s': '#2ca02c',   # green
     }
-    category_colors: Dict[str, str] = settings.get('category_colors', default_category_colors)
-    fallback_color = colors[0 % len(colors)] if colors else "#7f7f7f"
-    bar_colors = [category_colors.get(cat, fallback_color) for cat in categories]
-    plt.bar(indices, values, color=bar_colors)
+    unique_strategies = sorted(list(set(strategies)))
+    bar_colors = [strategy_color_map.get(s, '#808080') for s in strategies] # Use gray for unknown strategies
+
+    plt.bar(indices, values, color=bar_colors, edgecolor='black', linewidth=0.4)
 
     plt.xlabel(settings.get('x_label', 'Scenario'), fontsize=12, fontweight='bold')
     plt.ylabel(settings.get('y_label', 'Latency (ms)'), fontsize=12, fontweight='bold')
     plt.title(settings.get('title', 'Latency by Scenario'), fontsize=14, fontweight='bold', pad=20)
     plt.xticks(indices, scenarios, rotation=45, ha='right')
 
+    # Dynamic upper limit based on data
+    v_max = max(values) if values else 0.0
+    y_min = 0.0
     if 'y_axis_limits' in settings:
-        y_min, y_max = settings['y_axis_limits']
-        plt.ylim(float(y_min), float(y_max))
+        try:
+            y_min = float(settings['y_axis_limits'][0])
+        except Exception:
+            y_min = 0.0
+    upper = v_max * 1.1 if v_max else 1.0
+    if upper <= y_min:
+        upper = y_min + 1.0
+    plt.ylim(y_min, upper)
 
     plt.grid(True, axis='y', alpha=0.3, linestyle='--')
-    seen = []
+    
+    # Create legend for strategies in a specific order
+    legend_order = ['round-robin', 'random-selection', 'memory-monitoring-30s', 'memory-monitoring-6s']
     handles = []
-    for cat in categories:
-        if cat not in seen:
-            seen.append(cat)
-            handles.append(mpatches.Patch(color=category_colors.get(cat, fallback_color), label=display_label(cat)))
+    unique_strategies_in_data = set(strategies)
+
+    for strategy in legend_order:
+        if strategy in unique_strategies_in_data and strategy in strategy_color_map:
+            handles.append(mpatches.Patch(color=strategy_color_map[strategy], label=display_strategy_label(strategy)))
+
+    # Add any other strategies not in the predefined order
+    for strategy in sorted(list(unique_strategies_in_data)):
+        if strategy not in legend_order and strategy in strategy_color_map:
+            handles.append(mpatches.Patch(color=strategy_color_map[strategy], label=display_strategy_label(strategy)))
+
     if handles:
         plt.legend(handles=handles, loc='upper right', frameon=True, shadow=True)
+        
     plt.tight_layout()
 
-    buffer = io.BytesIO()
-    plt.savefig(buffer, format='png', dpi=dpi, bbox_inches='tight')
-    buffer.seek(0)
-
-    try:
-        png_data = buffer.getvalue()
-        sys.stdout.buffer.write(png_data)
-        sys.stdout.buffer.flush()
-    except AttributeError:
-        sys.stdout.write(buffer.getvalue())
-
-    buffer.close()
+    directory = os.path.dirname(output_path)
+    if directory and not os.path.exists(directory):
+        os.makedirs(directory, exist_ok=True)
+    plt.savefig(output_path, format='png', dpi=dpi, bbox_inches='tight')
     plt.close()
 
 
@@ -166,6 +168,12 @@ Examples:
         default='config.json',
         help='Path to JSON configuration file (default: config.json)'
     )
+    parser.add_argument(
+        '--output',
+        type=str,
+        required=True,
+        help='Output file path for the latency chart PNG'
+    )
 
     args = parser.parse_args()
 
@@ -174,7 +182,7 @@ Examples:
         config = load_config(args.config)
         data, settings = extract_data_and_settings(config)
         print("Generating latency chart...", file=sys.stderr)
-        create_bar_chart(data, settings)
+        create_bar_chart(data, settings, args.output)
         print("Chart generated successfully!", file=sys.stderr)
     except Exception as e:
         print(f"Error generating chart: {e}", file=sys.stderr)

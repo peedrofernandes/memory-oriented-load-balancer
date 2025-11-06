@@ -1,9 +1,18 @@
 {
-    "scenario-1-round-robin": 8217.524,
-    "scenario-1-random-selection": 8656.115,
-    "scenario-1-memory-monitoring": 4011.044,
-    
-    "scenario-2-round-robin": 2798.091,
-    "scenario-2-random-selection": 2670.049,
-    "scenario-2-memory-monitoring": 4098.772
-}
+    "scenario-1-round-robin": 2345.509,
+    "scenario-1-random-selection": 2163.258,
+    "scenario-1-memory-monitoring-30s": 604.5519999999999,
+    "scenario-1-memory-monitoring-6s": 336.578,
+    "scenario-2-round-robin": 78.576,
+    "scenario-2-random-selection": 72.17800000000001,
+    "scenario-2-memory-monitoring-30s": 73.137,
+    "scenario-2-memory-monitoring-6s": 71.438,
+    "scenario-3-round-robin": 3988.38,
+    "scenario-3-random-selection": 2878.1,
+    "scenario-3-memory-monitoring-30s": 2183.25,
+    "scenario-3-memory-monitoring-6s": 1197.16,
+    "scenario-4-round-robin": 610.566,
+    "scenario-4-random-selection": 610.601,
+    "scenario-4-memory-monitoring-30s": 671.345,
+    "scenario-4-memory-monitoring-6s": 619.577
+  }

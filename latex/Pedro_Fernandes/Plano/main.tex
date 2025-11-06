@@ -1,0 +1,248 @@
+\documentclass[11pt]{article}
+
+\usepackage[brazil]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{setspace}
+\usepackage{epsfig}
+\usepackage[pdftex, hidelinks]{hyperref}
+\usepackage{multirow,multicol}
+\usepackage{fancyhdr,url} 
+\usepackage{float}
+\usepackage{authblk}
+\usepackage[table]{xcolor}
+\usepackage[normalem]{ulem}
+\usepackage{enumitem}
+\usepackage{multicol}
+\usepackage{amssymb,amsmath, amsthm}
+\usepackage[alf,abnt-emphasize=bf]{abntex2cite}
+\usepackage{soulutf8,color}
+
+\setlist[enumerate,1]{start=1}
+
+\newcommand{\pedro}[1]{\textcolor{violet}{\textbf{PEDRO:} #1}}
+\newcommand{\adriano}[1]{\textcolor{magenta}{\textbf{ADRIANO:} #1}}
+
+\newcommand{\Mathcal}[1]{\(\mathcal{#1}\)}
+
+%\oddsidemargin -0.7cm 
+%\evensidemargin -0.7cm
+\topmargin -2.0cm 
+%\headheight 0  cm 
+\headsep 1.5cm   
+%\hoffset -1.0cm
+%\footskip 40pt
+%\textheight = 235mm \textwidth 185mm
+\oddsidemargin 0.4cm 
+\evensidemargin 0.4cm
+\textheight = 235mm \textwidth 165mm
+
+\pagestyle{plain}
+\addtolength\columnsep{2pt}
+
+%  READTHIS
+%  https://mg.readthedocs.io/latexmk.html
+%  https://github.com/James-Yu/LaTeX-Workshop/wiki/Snippets
+
+\begin{document}
+	\pagestyle{fancy}
+	
+	\lhead{
+	  \includegraphics[scale=0.75]{logo_dcc.png}
+	}
+	
+	\chead{
+	  \scriptsize{
+		UNIVERSIDADE DO ESTADO DE SANTA CATARINA -- UDESC\\
+		CENTRO DE CIÊNCIAS TECNOLÓGICAS -- CCT\\
+		DEPARTAMENTO DE CIÊNCIA DA COMPUTAÇÃO -- DCC
+	  }
+	}
+	
+	\rhead{
+	  \includegraphics[scale=0.75]{logo_udesc.png}
+	}
+	\title{Plano de Trabalho de Conclusão de Curso \\ Otimização de balanceadores de carga de sistemas de distribuição de conteúdo por meio de monitoramento sistemático de memória }
+	
+	\onehalfspacing %espaçamento de 1,5
+	
+	\author{UDESC -- Centro de Ciências Tecnológicas\\
+		Departamento de Ciência da Computação\\
+		Bacharelado em Ciência da Computação\\
+		Turma 2022/2 -- Joinville/SC
+	}
+	
+	\affil{
+		\textbf{Pedro Faria Fernandes} -- \texttt{pedro.fernandes@edu.udesc.br}\\
+		\textbf{Adriano Fiorese} -- \texttt{adriano.fiorese@udesc.br} {\textit{(orientador)}}
+	}
+	
+	\date{Março de 2025}
+	\maketitle
+
+	\onehalfspacing  %espaçamento de 1,5
+	
+\begin{abstract}
+No século XXI, sistemas digitais na Internet se consolidaram como principal meio de distribuição a usuários finais de conteúdo em áudio e vídeo. Em decorrência disso, projetistas têm tido como desafio a realização da otimização contínua desses sistemas de modo a garantir que eles ofereçam a melhor QoE (Quality of Experience) ao usuário final, sobretudo em meio à restrição econômica de compatibilidade com tecnologia já implementada. Dessa forma, sabe-se que os balanceadores de carga são elementos-chave no processo de roteamento de requisições e, portanto, sua otimização é de grande valia para o processo de otimização da distribuição de conteúdo. Portanto, o presente trabalho propõe uma abordagem, acompanhada de implementação, para realizar otimização de balanceadores de carga especificamente de sistemas de distribuição de conteúdo por meio de monitoramento sistemático de memória principal e secundária. 
+
+\vskip 0.5cm
+	
+\noindent\textbf{Palavras-chave: \textit{Distribuição de conteúdo, Streaming, Monitoramento de memória, Balanceador de carga}}
+
+\end{abstract}
+	
+\section{Introdução e Contextualização} \label{sec:Introducao}
+
+A partir da segunda metade do século XX, a televisão entrou no mercado e  rapidamente tornou-se um produto extremamente popular, sendo o dispositivo central da maioria das salas de estar da população mundial \cite{kuchta_miklosik_2017}.
+%
+Em decorrência disso, a população se adaptou à prática de consumo de conteúdo audiovisual criando um cenário extremamente favorável às práticas de marketing por parte das empresas, possibilitando-as a ter um canal no qual poderiam comunicar mensagens a respeito de suas marcas de forma extremamente difundida, alcançando públicos enormes. 
+%
+Dessa forma, essa vantagem competitiva comercial impulsionou os agentes comerciais a manterem o hábito de consumo de conteúdo da população, constantemente criando meios de influência que estimulem essa prática e a tornem cada vez mais difundida e consolidada.
+
+Posteriormente, com a implementação da Internet, o hábito do consumo de conteúdo audiovisual, já consolidado pela maior parte da população, começou a passar por um processo de incorporação gradativa, a partir da segunda década do século XXI, para o consumo sob-demanda em formato digital \cite{tefertiller2018media}.
+%
+Agora, com a dinamicidade fornecida pela Internet e os seus sistemas distribuídos, usuários finais podem escolher o que assistir de acordo com seus interesses em vez de assitir à programações pré-definidas.
+%
+Isso criou ainda mais interesse do setor empresarial, não só pela adesão em massa do hábito de consumo de conteúdo, mas também pela democratização da criação de conteúdo - Visto que com o poder computacional dos sistemas modernos agora é possível coletar dados específicos sobre padrões de consumo, aumentando o poder de venda das empresas.
+%
+Juntos, esses dois processos incrementais geram o que é conhecido no âmbito de \textit{startups} como efeito de rede \cite{albourini2020effect} que é o aumento de valor geral para os clientes de uma \textit{startup} quando um novo cliente ou um novo fornecedor adere à solução (ex. para um sistema de trocas de mensagens, quando um novo usuário entra, todos os outros usuários se beneficiam porque há mais um usuário para trocar mensagem, aumentando o valor da solução como um todo. No contexto do consumo de conteúdo audiovisual, o aumento tanto do número de criadores de conteúdo quanto do número de consumidores aumenta a quantidade de dados gerados e que podem ser transformados em poder de análise de gestão comercial, aumentando o ecossistema como um todo). De modo abstrato, esse fenômeno é explicado pela Teoria Geral de Sistemas como Feedback Negativo \cite{bertalanffy1968}.
+
+Desse modo, pode-se inferir que há e continuará havendo interesse no meio empresarial por manter o hábito de consumo de conteúdo audiovisual da população. Consequentemente, no lado técnico, continuará havendo desafios no contexto da otimização contínua dos processos de distribuição de conteúdo sob demanda, haja vista que será necessário maximizar a qualidade (QoE) oferecida pelos serviços para cada vez mais usuários.
+
+\section{O Problema} \label{sec:problema}
+
+Em sistemas distribuídos modernos, o balanceador de carga é um elemento chave e considerado um ponto único de falha com muito espaço para otimização \cite{dos2019balanceamento}.
+%
+De modo simplificado, seu funcionamento consiste em, além de centralizar o roteamento de requisições, oferecer uma abstração para os consumidores, distribuir a carga entre vários servidores de modo a evitar sobrecarga em um ou mais deles.
+%
+Nesse aspecto, os balanceadores de carga podem empregar várias estratégias para realizar esse roteamento - Seleção aleatória, Round-Robin, eleição distribuída, dentre outros.
+%
+Sendo as mais utilizadas, a seleção aleatória e Round-Robin são heurísticas simples de serem implementadas, mas podem eventualmente causar sobrecarga em um ou mais servidores. A abordagem que contorna esse problema é justamente a eleição do servidor mais apropriado para lidar com a requisição de acordo com parâmetros personalizados que evidenciam, usando alguma estratégia, qual é o servidor a ser escolhido.
+%
+A escolha dessa estratégia é a área-chave da atuação da proposta deste trabalho.
+
+Além disso, dispositivos de armazenamento persistente (também conhecidos como dispositivos de memória secundária) são muitas vezes pontos de gargalo em sistemas, sobretudo sistemas de distribuição de conteúdo em streaming, que exigem acesso aleatório à memória \cite{sivathanu2013IOWorkloads}.
+%
+Esses dispositivos de armazenamento persistente exigem custos arquiteturais caros \cite{arpaciDusseau98}, o que pode causar falhas devido à eventual economia no processo de modelagem. Nesse sentido, em data-centers de larga escala, falhas de dispositivos de memória secundária são a regra e não a exceção \cite{wuEtalIOWorkload}, o que faz com que esses sistemas de alta escalabilidade tenham que ser tolerantes a falhas dos dispositivos de memória secundária.  Dessa forma, entende-se que a métrica de taxa de uso de memória secundária é de grande importância no contexto da tomada de decisão de balanceadores de carga de requisições de distribuição de conteúdo.
+%
+Em decorrência disso, para escalar sistemas na Web de forma sólida, uma técnica muito difundida por projetistas de sistemas é o armazenamento de dados na memória principal - A redundância passou a ser característica de sistemas escaláveis na Web.
+%
+
+Em um sistema de distribuição de conteúdo audiovisual pela Internet, também conhecido como distribuição de conteúdo \textit{Over-the-Top} (OTT), a redundância do conteúdo é estratégica sob diversos aspectos. Um deles é a de que o conteúdo deve estar disponível no mesmo servidor em diversas resoluções, de forma a atender a solicitação do usuário da melhor forma possível, de acordo com as condições de distribuição (condições de tráfego de rede - ou Qualidade de Serviço (QoS)) monitoradas no enlace cliente-servidor, disponibilizando a melhor QoE possível. Outro aspecto lida com a necessidade de replicação desse conteúdo redundante em servidores mais próximos desses usuários finais, geralmente na forma de cache, de forma a proporcionar a menor latência possível, bem como as demais métricas de QoS e influenciando na QoE da melhor forma.
+%
+Todos esses fatores corroboraram para que a memória principal, sob o seu principal benefício (a velocidade de acesso), seja utilizada como método primário de armazenamento de dados persistentes - mesmo com a sua volatilidade intrínseca.
+
+Dessa forma, considerando que o papel dos servidores de distribuição de conteúdo é recuperar e entregar dados (relativamente não envolvendo tanto processamento quanto outros tipos de servidores), é possível conceber que a métrica do uso de memória (principal e secundária) é extremamente correlacionada com o desempenho desses servidores - considerando o contexto de múltiplas instâncias de servidores que mantêm seus próprios meios de armazenamento interno - cenário muito presente em CDNs com os servidores de borda (Edge Servers ou Cache Servers) \cite{surveyCDNArchitectures2025}.
+	
+\section{Trabalhos relacionados e Justificativa} \label{sec:trabalhos-relacionados}
+
+Os algoritmos de balanceamento de carga empregados pelo NGINX, um software de servidor web popular de código aberto que pode ser usado para balanceamento de carga, \textit{proxy} reverso, cache e muito mais, \cite{nginxDoc} focam principalmente em fatores como round-robin, least connections e IP hash. No entanto, esses algoritmos não levam em consideração o monitoramento de memória. Embora os balanceadores de carga baseados no NGINX sejam eficientes em termos de distribuir a carga entre servidores de modo geral, não há uma estratégia que monitore o uso de memória em tempo real para ajudar na tomada de decisões dinâmicas, sobretudo no contexto de distribuição de conteúdo, cenário no qual a recuperação de arquivos em memória é predominante. Isso pode resultar em sobrecarga nos servidores de cache, especialmente em cenários de alto tráfego, onde a memória é um recurso crítico. Portanto, a adição de uma camada de monitoramento de memória pode aprimorar a inteligência do balanceador de carga e melhorar a alocação de tráfego com base em dados mais completos.
+
+O HAProxy \cite{haproxy} é um software de código aberto que fornece balanceamento de carga e proxy reverso para aplicações baseadas em TCP/IP e HTTP. Embora seja reconhecido por sua eficiência e baixo uso de memória, não há indicações de que utilize monitoramento de memória em tempo real para otimizar a distribuição de tráfego. Integrar tal funcionalidade poderia aprimorar a alocação de recursos e prevenir sobrecargas nos servidores de cache.
+
+	
+\section{Proposta} \label{sec:proposta}
+
+Para o projeto de TCC e implementação, propõe-se a concepção, criação, elaboração e implementação de uma arquitetura de monitoramento de memória replicável e escalável, de modo a aprimorar ainda mais o algoritmo de tomada de decisão por parte dos balanceadores de carga de servidores de distribuição de conteúdo e evitar sobrecarga nos servidores no contexto de servidores redundantes de cache de redes de distribuição de conteúdo (CDNs).
+
+\section{Metodologia e Objetivos} \label{sec:objetivos}
+
+O trabalho será subdividido nas seguintes etapas: Revisão de literatura, efetuação da modelagem conceitual da solução, levantamento dos requisitos de implementação da solução, implementação da solução e análise dos resultados obtidos.
+
+\textbf{Objetivo geral}: Desenvolver e implementar um modelo arquitetural de monitoramento de memória de servidores de distribuição de conteúdo de modo que possa ser realizada uma otimização nos balanceadores de carga;
+
+\vskip 0.5cm
+
+\noindent\textbf{Objetivos Específicos}:
+
+\begin{enumerate}
+    \item Estudar as principais arquiteturas usadas em servidores de cache de CDNs;
+    \item Estudar os principais modelos de persistência de dados em servidores de distribuição de conteúdo;
+    \item Revisar métodos de monitoramento de memória secundária;
+    \item Revisar métodos de monitoramento de memória principal;
+    \item Levantar estratégias de transmissão contínua de dados de monitoramento de servidores de distribuição de conteúdo para o serviço de balanceador de carga;
+    \item Estabelecer, conceitualmente, algoritmo de escolha de servidores (por parte do balanceador de carga) com base nos dados históricos fornecidos;
+    \item Listar requisitos topológicos da rede e da estrutura dos servidores que definirão o contexto da aplicação da metodologia;
+    \item Implementar o modelo criado com um balanceador de carga simples;
+    \item Avaliar os resultados obtidos, tendo como principal métrica a eficiência de escolha do balanceador de carga, por meio de testes de carga; 
+\end{enumerate}
+
+\section{Cronograma proposto} \label{sec:Cronograma}
+
+Este trabalho propõe o seguinte cronograma, orientado aos objetivos específicos:
+
+\vspace{0.5cm}
+{
+    \noindent \begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|c|}
+    \hline
+    \multirow{2}{*}{\textbf{\small{Objetivos específicos}}} & \multicolumn{4}{|c|}{\textbf{\small{2025/1}}} &
+    \multicolumn{5}{|c|}{\textbf{\small{2025/2}}} \\
+    \cline{2-10}
+    &\textbf{Abr} & \textbf{Mai} & \textbf{Jun} & \textbf{Jul} & \textbf{Ago} & \textbf{Set} & 
+    \textbf{Out} & \textbf{Nov} & \textbf{Dez} \\
+    \hline
+    \textbf{\small{1}} & \cellcolor{gray} & & & & & & & & \\
+    \hline
+    \textbf{\small{2}} & & \cellcolor{gray} & & & & & & & \\
+    \hline
+    \textbf{\small{3}} & & & \cellcolor{gray} & \cellcolor{gray} & & & & & \\
+    \hline
+    \textbf{\small{4}} & & & \cellcolor{gray} & \cellcolor{gray} & & & & & \\
+    \hline
+    \textbf{\small{5}} & & & \cellcolor{gray} & \cellcolor{gray} & & & & & \\
+    \hline
+    \textbf{\small{6}} & & & & & \cellcolor{gray} & & & & \\
+    \hline
+    \textbf{\small{7}} & & & & & & \cellcolor{gray} & & & \\
+    \hline
+    \textbf{\small{8}} & & & & & & & \cellcolor{gray} & \cellcolor{gray} & \\
+    \hline
+    \textbf{\small{9}} & & & & & & & & & \cellcolor{gray} \\
+    \hline
+    
+    \end{tabular}
+}
+
+\vspace{0.5cm}
+
+A escrita do trabalho acontecerá durante todo o tempo de desenvolvimento.
+		
+\section{Linha e Grupo de Pesquisa} \label{sec:LinhaGrupoPesquisa}
+    Este trabalho de conclusão de curso aborda conceitos relacionados à Sistemas Distribuídos, Distribuição de conteúdo, Redes de Computadores, Bancos de dados e Arquitetura de sistemas. Dessa forma, o trabalho se enquadra ao Grupo de Redes e Aplicações Distribuídas (GRADIS).
+
+\section{Forma de Acompanhamento/Orientação} \label{sec:Acompanhamento}
+A orientação deste trabalho ocorrerá por meio de reuniões semanais, com duração prevista de uma hora, para discutir os objetivos alcançados e definir as próximas tarefas. Essas reuniões serão realizadas em datas e horários previamente combinados conforme disponibilidade de ambas as partes, podendo ocorrer presencialmente ou remotamente. Caso seja necessário, encontros adicionais poderão ser agendados.
+
+Além disso, recursos como o correio eletrônico poderão ser utilizados para orientações complementares durante a semana.
+
+O orientador manterá um registro detalhado dessas atividades, utilizando \textit{e-mails} e anotações feitas durante as reuniões, incluindo datas dos encontros, tarefas realizadas pelo aluno, atividades previstas para a semana seguinte e observações adicionais sobre o cumprimento dos prazos estabelecidos.
+
+	\bibliography{referencias}
+	
+	\vskip 5cm
+	
+	\begin{minipage}{0.49\linewidth}
+	  \centering
+	  \rule{7.2cm}{0.1mm}
+	
+	  \textbf{\textit{Adriano Fiorese}}
+	  \newline
+	  \textit{Orientador}
+	\end{minipage}
+	\begin{minipage}{0.49\linewidth}
+	  \centering
+	  \rule{7.2cm}{0.1mm}
+	
+	  \textbf{\textit{Pedro Faria Fernandes}}
+	  \newline
+	\end{minipage}
+
+	%\vskip 4.5cm
+	
+	%\begin{center}
+	% \rule{7.2cm}{0.1mm}
+	
+	 %\textbf{\textit{<Nome do Líder do Grupo>}}\\
+	 %\textit{(se o TCC fizer parte de um grupo do DCC)}
+	%\end{center}
+
+\end{document}

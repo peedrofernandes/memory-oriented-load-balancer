@@ -10,21 +10,21 @@ A plataforma de conteinerização \textit{Docker} foi empregada como ambiente de
 
 \subsection{Particularidades do \textit{Docker} e cgroups}
 
-O \textit{Docker} utiliza o sistema de \textit{cgroups} (grupos de controle) do kernel Linux para implementar limites de recursos e realizar o monitoramento de uso de CPU, memória e leitura de disco. Especificamente, o experimento utiliza \textit{cgroups v2}, que oferece uma interface unificada e simplificada para o gerenciamento de recursos. Através dos arquivos de sistema disponibilizados pelo \textit{cgroups}, é possível ler diretamente as métricas de consumo de memória e taxa de leitura de disco de cada \textit{contêiner} em tempo real.
+O \textit{Docker} utiliza o sistema de \textit{cgroups} (grupos de controle) do \textit{kernel} \textit{Linux} para implementar limites de recursos e realizar o monitoramento de uso de \textit{CPU}, memória e leitura de disco. Especificamente, o experimento utiliza \textit{cgroups v2}, que oferece uma interface unificada e simplificada para o gerenciamento de recursos. Através dos arquivos de sistema disponibilizados pelo \textit{cgroups}, é possível ler diretamente as métricas de consumo de memória e taxa de leitura de disco de cada \textit{contêiner} em tempo real.
 
-Para garantir a consistência entre as execuções dos experimentos e eliminar o efeito de \textit{cache} do sistema operacional nos resultados, é fundamental realizar a limpeza do \textit{cache} de páginas do kernel Linux antes de cada execução. Esta operação é realizada através do comando:
+Para garantir a consistência entre as execuções dos experimentos e eliminar o efeito de \textit{cache} do sistema operacional nos resultados, é fundamental realizar a limpeza do \textit{cache} de páginas do \textit{kernel} \textit{Linux} antes de cada execução. Esta operação é realizada através do comando:
 
 \begin{verbatim}
 echo 3 | sudo tee /proc/sys/vm/drop_caches
 \end{verbatim}
 
-Este comando instrui o kernel a liberar os \textit{caches} de página (\textit{pagecache}), \textit{dentries} e \textit{inodes}, garantindo que cada execução do experimento parta de um estado limpo, sem dados previamente armazenados em memória. A operação requer privilégios de superusuário (\texttt{sudo}) e é executada antes de cada bateria de testes.
+Este comando instrui o \textit{kernel} a liberar os \textit{caches} de página (\textit{pagecache}), \textit{dentries} e \textit{inodes}, garantindo que cada execução do experimento parta de um estado limpo, sem dados previamente armazenados em memória. A operação requer privilégios de superusuário (\texttt{sudo}) e é executada antes de cada bateria de testes.
 
-O \textit{Docker} também permite a configuração de limites explícitos de recursos para cada \textit{contêiner} através de parâmetros na configuração do \textit{Docker Compose}. No experimento, foram configurados limites de memória RAM (através do parâmetro \texttt{memory}) e limites de taxa de leitura de disco (através do parâmetro \texttt{device\_read\_bps}). Estes limites são fundamentais para simular servidores com capacidades heterogêneas, permitindo avaliar o comportamento do algoritmo de balanceamento em cenários com recursos desiguais.
+O \textit{Docker} também permite a configuração de limites explícitos de recursos para cada \textit{contêiner} através de parâmetros na configuração do \textit{Docker Compose}. No experimento, foram configurados limites de memória \textit{RAM} (através do parâmetro \texttt{memory}) e limites de taxa de leitura de disco (através do parâmetro \texttt{device\_read\_bps}). Estes limites são fundamentais para simular servidores com capacidades heterogêneas, permitindo avaliar o comportamento do algoritmo de balanceamento em cenários com recursos desiguais.
 
 \subsection{Organização do conteúdo e bind mounts}
 
-Para simular o cenário realista de servidores de distribuição de conteúdo com arquivos exclusivos, foi necessário replicar o conteúdo de vídeo em múltiplos diretórios no sistema de arquivos do \textit{host} WSL. O conteúdo multimídia foi armazenado em um diretório global localizado em \texttt{/data} no sistema de arquivos Linux do WSL, com subdiretórios específicos para cada servidor (\texttt{/data/server-1}, \texttt{/data/server-2}, e assim por diante até \texttt{/data/server-8}).
+Para simular o cenário realista de servidores de distribuição de conteúdo com arquivos exclusivos, foi necessário replicar o conteúdo de vídeo em múltiplos diretórios no sistema de arquivos do \textit{host} WSL. O conteúdo multimídia foi armazenado em um diretório global localizado em \texttt{/data} no sistema de arquivos \textit{Linux} do WSL, com subdiretórios específicos para cada servidor (\texttt{/data/server-1}, \texttt{/data/server-2}, e assim por diante até \texttt{/data/server-8}).
 
 Cada \textit{contêiner} de servidor MPEG-DASH foi configurado com um \textit{bind mount} que mapeia o diretório específico do servidor no \textit{host} para o diretório interno do \textit{contêiner}. Esta técnica permite que cada servidor acesse apenas seu próprio conjunto de arquivos, simulando a exclusividade de conteúdo encontrada em servidores de borda de uma CDN real. O uso de \textit{bind mounts} também evita a necessidade de copiar os arquivos para dentro das imagens \textit{Docker}, reduzindo o tamanho das imagens e facilitando a atualização do conteúdo sem reconstruir os \textit{contêineres}.
 
@@ -62,7 +62,7 @@ Esta seção apresenta os detalhes técnicos de implementação de cada módulo 
 
 \subsection{Servidores MPEG-DASH}
 
-Os servidores MPEG-DASH foram implementados utilizando ASP.NET Core 8.0, uma plataforma de desenvolvimento \textit{web} moderna e de alto desempenho da Microsoft. A escolha desta tecnologia foi motivada por sua capacidade nativa de servir arquivos estáticos de forma eficiente, sua arquitetura assíncrona que permite alto nível de concorrência e a disponibilidade de bibliotecas para comunicação MQTT.
+Os servidores MPEG-DASH foram implementados utilizando \textit{ASP.NET Core} 8.0, uma plataforma de desenvolvimento \textit{web} moderna e de alto desempenho da \textit{Microsoft}. A escolha desta tecnologia foi motivada por sua capacidade nativa de servir arquivos estáticos de forma eficiente, sua arquitetura assíncrona que permite alto nível de concorrência e a disponibilidade de bibliotecas para comunicação MQTT.
 
 Cada servidor é configurado como uma aplicação \textit{web} mínima que serve arquivos estáticos do diretório \texttt{wwwroot/Static}, onde estão armazenados os segmentos de vídeo MPEG-DASH. A aplicação não realiza processamento de vídeo em tempo real; ela apenas entrega os arquivos pré-processados aos clientes que os solicitam.
 
@@ -95,7 +95,7 @@ O contador de requisições ativas é implementado através da classe \texttt{Re
 
 \subsection{Balanceador de Carga}
 
-O balanceador de carga foi implementado em Rust, uma linguagem de programação de sistemas que oferece garantias de segurança de memória em tempo de compilação e desempenho comparável a linguagens como C e C++. A escolha do Rust foi motivada pela necessidade de alto desempenho e baixa latência no processamento das requisições, características essenciais para um componente crítico como o balanceador de carga.
+O balanceador de carga foi implementado em \textit{Rust}, uma linguagem de programação de sistemas que oferece garantias de segurança de memória em tempo de compilação e desempenho comparável a linguagens como \textit{C} e \textit{C++}. A escolha do Rust foi motivada pela necessidade de alto desempenho e baixa latência no processamento das requisições, características essenciais para um componente crítico como o balanceador de carga.
 
 \subsubsection{Arquitetura e Funcionamento}
 
@@ -127,7 +127,7 @@ A estratégia de monitoramento de memória mantém uma estrutura de dados intern
 
 \subsection{Gerador de Carga}
 
-O gerador de carga é uma aplicação Python que utiliza a biblioteca \texttt{aiohttp} para realizar requisições HTTP assíncronas de alto desempenho. A implementação é baseada em um modelo de concorrência com múltiplas \textit{coroutines} assíncronas (\textit{workers}), onde cada \textit{worker} simula o comportamento de um cliente MPEG-DASH real.
+O gerador de carga é uma aplicação \textit{Python} que utiliza a biblioteca \texttt{aiohttp} para realizar requisições HTTP assíncronas de alto desempenho. A implementação é baseada em um modelo de concorrência com múltiplas \textit{coroutines} assíncronas (\textit{workers}), onde cada \textit{worker} simula o comportamento de um cliente MPEG-DASH real.
 
 \subsubsection{Simulação de Clientes MPEG-DASH}
 
@@ -149,7 +149,7 @@ O número de \textit{workers} concorrentes é parametrizável através do argume
 
 \subsubsection{Aplicação Cliente para Validação e Visualização}
 
-Além do gerador de carga automatizado, foi desenvolvida uma aplicação cliente baseada em HTML (\texttt{test-dash.html}) que utiliza a biblioteca \texttt{dash.js} para reprodução real de vídeos MPEG-DASH com visualização em tempo real das métricas de QoE. Esta aplicação serve como ferramenta de validação e depuração, permitindo observar o comportamento do sistema durante a reprodução de vídeo e coletar dados detalhados sobre a qualidade da experiência do usuário.
+Além do gerador de carga automatizado, foi desenvolvida uma aplicação cliente baseada em \textit{HTML} (\texttt{test-dash.html}) que utiliza a biblioteca \texttt{dash.js} para reprodução real de vídeos MPEG-DASH com visualização em tempo real das métricas de QoE. Esta aplicação serve como ferramenta de validação e depuração, permitindo observar o comportamento do sistema durante a reprodução de vídeo e coletar dados detalhados sobre a qualidade da experiência do usuário.
 
 A aplicação implementa um \textit{player} de vídeo completo com as seguintes funcionalidades:
 
@@ -188,7 +188,7 @@ A Figura \ref{fig:dash-client} apresenta a interface da aplicação cliente dura
 
 \subsection{\textit{Broker} MQTT (NanoMQ)}
 
-O \textit{broker} MQTT utilizado no experimento é o NanoMQ, uma implementação leve e de alto desempenho do protocolo MQTT desenvolvida pela EMQ Technologies. O NanoMQ foi escolhido por sua simplicidade de configuração, baixo consumo de recursos e conformidade completa com o padrão MQTT 5.0.
+O \textit{broker} MQTT utilizado no experimento é o \textit{NanoMQ}, uma implementação leve e de alto desempenho do protocolo MQTT desenvolvida pela \textit{EMQ Technologies}. O \textit{NanoMQ} foi escolhido por sua simplicidade de configuração, baixo consumo de recursos e conformidade completa com o padrão MQTT 5.0.
 
 O \textit{broker} é executado em um \textit{contêiner} \textit{Docker} dedicado e expõe a porta 1883 para comunicação MQTT não criptografada. A configuração é realizada através de um arquivo \texttt{nanomq.conf} montado como volume no \textit{contêiner}, permitindo ajustes finos de parâmetros como o número máximo de conexões simultâneas e o tamanho dos \textit{buffers} de mensagens.
 
@@ -217,7 +217,7 @@ docker compose down
 
 \subsection{Painel de Monitoramento}
 
-O painel de monitoramento foi implementado como uma página HTML estática que utiliza a biblioteca Chart.js para renderizar gráficos em tempo real. A página é servida através de um \textit{contêiner} nginx e se comunica com a API de métricas através de requisições HTTP periódicas utilizando JavaScript.
+O painel de monitoramento foi implementado como uma página \textit{HTML} estática que utiliza a biblioteca \textit{Chart.js} para renderizar gráficos em tempo real. A página é servida através de um \textit{contêiner} \textit{nginx} e se comunica com a API de métricas através de requisições HTTP periódicas utilizando \textit{JavaScript}.
 
 O painel exibe, para cada servidor e para o balanceador de carga:
 

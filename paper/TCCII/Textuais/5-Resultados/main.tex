@@ -194,7 +194,7 @@ A Figura \ref{fig:quality-scenario1} apresenta a evolução da qualidade de repr
 
 A Seleção Aleatória apresentou comportamento similar, mas com padrão menos previsível devido à natureza estocástica da seleção. Iniciou em 1080P, degradou para 144P e eventualmente estabilizou em um patamar intermediário.
 
-Em contraste, o algoritmo de monitoramento de memória (ambos intervalos) demonstrou comportamento superior. Com intervalo de 6 segundos, a qualidade estabilizou rapidamente em 1080P após breve adaptação inicial, permanecendo consistente pelo restante da sessão. Com intervalo de 30 segundos, houve uma fase transitória em 480P antes de estabilizar em 1080P, reflexo do maior tempo necessário para o algoritmo convergir com dados menos frequentes.
+Em contraste, o algoritmo de monitoramento de memória (ambos intervalos) demonstrou comportamento superior. Com intervalo de 6 segundos, a qualidade estabilizou rapidamente em 1080P após breve adaptação inicial, permanecendo consistente pelo restante da sessão. Com intervalo de 30 segundos, houve uma fase transitória em \textit{480P} antes de estabilizar em \textit{1080P}, reflexo do maior tempo necessário para o algoritmo convergir com dados menos frequentes.
 
 \subsubsection{Análise de Travamentos}
 
@@ -228,7 +228,7 @@ O Cenário 2 utiliza a mesma carga do Cenário 1 (100 usuários), mas com todos 
 
 \subsubsection{Convergência de Desempenho}
 
-Os resultados deste cenário são notáveis pela convergência de desempenho entre todas as estratégias. As latências foram similares: 78,6ms (\textit{Round-Robin}), 72,2ms (Seleção Aleatória), 71,4ms (MM 6s) e 73,1ms (MM 30s). Nenhuma estratégia registrou travamentos, e todas mantiveram qualidade consistente em 1080P durante toda a sessão, conforme mostra a Figura \ref{fig:quality-scenario2}.
+Os resultados deste cenário são notáveis pela convergência de desempenho entre todas as estratégias. As latências foram similares: 78,6ms (\textit{Round-Robin}), 72,2ms (Seleção Aleatória), 71,4ms (MM 6s) e 73,1ms (MM 30s). Nenhuma estratégia registrou travamentos, e todas mantiveram qualidade consistente em \textit{1080P} durante toda a sessão, conforme mostra a Figura \ref{fig:quality-scenario2}.
 
 \begin{figure}[htbp]
     \caption{Evolução da qualidade de vídeo no Cenário 2 (100 usuários, homogêneo) para cada estratégia de balanceamento.}
@@ -290,7 +290,7 @@ O Cenário 4 combina alta carga (1000 usuários) com servidores homogêneos, per
 
 Similar ao Cenário 2, este cenário apresentou convergência de desempenho entre as estratégias, embora com latências maiores devido à alta concorrência. As latências ficaram na faixa de 610-671ms, aproximadamente 10 vezes superiores ao Cenário 2, proporcionais ao aumento de carga. Nenhuma estratégia registrou travamentos.
 
-A qualidade de reprodução apresentou algumas variações. O \textit{Round-Robin} alternava entre 720P e 1080P. A Seleção Aleatória mostrou maior variabilidade, com transições ocasionais para 480P e 240P no início. O algoritmo de monitoramento de memória manteve qualidade mais consistente, predominantemente em 1080P (intervalo de 6s) ou alternando entre 720P e 1080P (intervalo de 30s).
+A qualidade de reprodução apresentou algumas variações. O \textit{Round-Robin} alternava entre \textit{720P} e \textit{1080P}. A Seleção Aleatória mostrou maior variabilidade, com transições ocasionais para \textit{480P} e \textit{240P} no início. O algoritmo de monitoramento de memória manteve qualidade mais consistente, predominantemente em \textit{1080P} (intervalo de 6s) ou alternando entre \textit{720P} e \textit{1080P} (intervalo de 30s).
 
 \begin{figure}[htbp]
     \caption{Evolução da qualidade de vídeo no Cenário 4 (1000 usuários, homogêneo) para cada estratégia de balanceamento.}
@@ -378,11 +378,11 @@ A diferença prática é transformacional: usuários com \textit{Round-Robin} ou
 
 \subsection{Qualidade de Reprodução: Consistência e Maximização}
 
-A qualidade de reprodução apresentou diferenças dramáticas entre estratégias. Calculando a qualidade média ponderada (onde 144P=1, 240P=2, 360P=3, 480P=4, 720P=5, 1080P=6), observa-se:
+A qualidade de reprodução apresentou diferenças dramáticas entre estratégias. Calculando a qualidade média ponderada (onde \textit{144P}=1, \textit{240P}=2, \textit{360P}=3, \textit{480P}=4, \textit{720P}=5, \textit{1080P}=6), observa-se:
 
-No Cenário 1, \textit{Round-Robin} apresentou qualidade média de aproximadamente 4,0 (equivalente a 480P), com alta variância. O algoritmo de monitoramento de memória (6s) alcançou 5,7 (quase 1080P puro), com baixa variância. A diferença de 42,5\% representa a distinção entre qualidade moderada instável e qualidade excelente consistente.
+No Cenário 1, \textit{Round-Robin} apresentou qualidade média de aproximadamente 4,0 (equivalente a \textit{480P}), com alta variância. O algoritmo de monitoramento de memória (6s) alcançou 5,7 (quase \textit{1080P} puro), com baixa variância. A diferença de 42,5\% representa a distinção entre qualidade moderada instável e qualidade excelente consistente.
 
-No Cenário 3, a divergência foi ainda maior. \textit{Round-Robin} apresentou qualidade média de 1,2 (pouco acima de 144P), essencialmente colapsando para a qualidade mínima. O algoritmo proposto (6s) manteve 5,3 (entre 720P e 1080P). Esta diferença de 341,7\% é a distinção entre um sistema que falha em sua função básica e um que oferece experiência de alta qualidade.
+No Cenário 3, a divergência foi ainda maior. \textit{Round-Robin} apresentou qualidade média de 1,2 (pouco acima de \textit{144P}), essencialmente colapsando para a qualidade mínima. O algoritmo proposto (6s) manteve 5,3 (entre \textit{720P} e \textit{1080P}). Esta diferença de 341,7\% é a distinção entre um sistema que falha em sua função básica e um que oferece experiência de alta qualidade.
 
 A consistência da qualidade é igualmente importante. Transições frequentes de qualidade são perceptíveis e perturbadoras. As Figuras de qualidade mostram que o algoritmo proposto mantém patamares estáveis, enquanto estratégias convencionais oscilam erraticamente.
 

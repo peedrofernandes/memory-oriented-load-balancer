@@ -8,7 +8,7 @@ Através de implementação completa e validação experimental sistemática em 
 
 Os experimentos revelaram melhorias dramáticas quando o algoritmo proposto foi aplicado em cenários com servidores de capacidades heterogêneas sob carga significativa. No Cenário 1 (100 usuários, servidores heterogêneos), o algoritmo com intervalo de atualização de 6 segundos reduziu a latência média em 85,7\% comparado ao \textit{Round-Robin}, de 2345,5ms para 336,6ms, enquanto manteve qualidade de vídeo consistentemente em 1080P e eliminou travamentos.
 
-No Cenário 3 (1000 usuários, servidores heterogêneos), o mais desafiador dos experimentos, os resultados foram ainda mais contundentes. Enquanto estratégias convencionais colapsaram completamente — com \textit{Round-Robin} registrando 7 travamentos (15,12 segundos totais) e Seleção Aleatória registrando 8 travamentos (29,72 segundos totais), ambos com qualidade degradada para 144P — o algoritmo proposto com intervalo de 6 segundos eliminou totalmente os travamentos, manteve qualidade predominantemente em 720P-1080P, e reduziu a latência em 70,0\% (de 3988,4ms para 1197,2ms).
+No Cenário 3 (1000 usuários, servidores heterogêneos), o mais desafiador dos experimentos, os resultados foram ainda mais contundentes. Enquanto estratégias convencionais colapsaram completamente — com \textit{Round-Robin} registrando 7 travamentos (15,12 segundos totais) e Seleção Aleatória registrando 8 travamentos (29,72 segundos totais), ambos com qualidade degradada para \textit{144P} — o algoritmo proposto com intervalo de 6 segundos eliminou totalmente os travamentos, manteve qualidade predominantemente em \textit{720P}-\textit{1080P}, e reduziu a latência em 70,0\% (de 3988,4ms para 1197,2ms).
 
 Mesmo com o intervalo de atualização de 30 segundos, representando dados moderadamente obsoletos, o algoritmo demonstrou robustez notável. No Cenário 3, apresentou apenas 4 travamentos curtos (total de 6,42 segundos, média de 1,6s cada), ainda substancialmente superior às estratégias convencionais, validando a capacidade do mecanismo de interpretação de dados obsoletos.
 
@@ -84,7 +84,7 @@ Identificação e demonstração clara de que a heterogeneidade dos servidores �
 
 \subsection{Implementação de Código Aberto}
 
-Desenvolvimento de uma implementação completa e funcional utilizando tecnologias modernas (C\# ASP.NET Core, Rust, Python, \textit{Docker}, MQTT), com código organizado, documentado e disponibilizado de forma aberta. Esta contribuição permite reprodução dos experimentos, validação independente dos resultados, e serve como base para trabalhos futuros e adaptações práticas.
+Desenvolvimento de uma implementação completa e funcional utilizando tecnologias modernas (\textit{C\#} \textit{ASP.NET Core}, \textit{Rust}, \textit{Python}, \textit{Docker}, MQTT), com código organizado, documentado e disponibilizado de forma aberta. Esta contribuição permite reprodução dos experimentos, validação independente dos resultados, e serve como base para trabalhos futuros e adaptações práticas.
 
 \subsection{Infraestrutura Experimental Reutilizável}
 
@@ -108,11 +108,11 @@ A validação utilizou exclusivamente o algoritmo de seleção adaptativa de qua
 
 \subsection{Métricas de Monitoramento Limitadas}
 
-O algoritmo atual utiliza apenas duas métricas: consumo de memória principal e taxa de leitura de disco. Embora estas tenham se mostrado efetivas e apropriadas para servidores MPEG-DASH, sistemas reais enfrentam múltiplos tipos de gargalos. Utilização de CPU, largura de banda de rede, latência de resposta, e localização geográfica são fatores adicionais que poderiam melhorar decisões de balanceamento. A otimização multi-objetivo com múltiplas métricas permanece inexplorada.
+O algoritmo atual utiliza apenas duas métricas: consumo de memória principal e taxa de leitura de disco. Embora estas tenham se mostrado efetivas e apropriadas para servidores MPEG-DASH, sistemas reais enfrentam múltiplos tipos de gargalos. Utilização de \textit{CPU}, largura de banda de rede, latência de resposta, e localização geográfica são fatores adicionais que poderiam melhorar decisões de balanceamento. A otimização multi-objetivo com múltiplas métricas permanece inexplorada.
 
 \subsection{Conteúdo de Vídeo Único}
 
-Os experimentos utilizaram um único arquivo de vídeo codificado em múltiplas qualidades. Vídeos com diferentes características (ação intensa vs. cenas estáticas, resolução 4K, codecs H.265/AV1, etc.) podem apresentar padrões de acesso e requisitos de recursos distintos, potencialmente impactando eficácia relativa das estratégias de balanceamento.
+Os experimentos utilizaram um único arquivo de vídeo codificado em múltiplas qualidades. Vídeos com diferentes características (ação intensa vs. cenas estáticas, resolução \textit{4K}, \textit{codecs} \textit{H.265}/\textit{AV1}, etc.) podem apresentar padrões de acesso e requisitos de recursos distintos, potencialmente impactando eficácia relativa das estratégias de balanceamento.
 
 \subsection{Disponibilidade Garantida de Conteúdo}
 
@@ -134,11 +134,11 @@ Validação do algoritmo em CDNs de produção servindo tráfego real de usuári
 
 \subsection{Aprendizado de Máquina para Predição de Carga}
 
-Incorporação de técnicas de \textit{machine learning} para predição de carga futura dos servidores, permitindo decisões proativas ao invés de apenas reativas. Modelos de séries temporais (LSTM, Prophet) poderiam prever tendências de carga com minutos de antecedência, permitindo balanceamento preditivo que antecipa sobrecargas antes que ocorram.
+Incorporação de técnicas de \textit{machine learning} para predição de carga futura dos servidores, permitindo decisões proativas ao invés de apenas reativas. Modelos de séries temporais (\textit{LSTM}, \textit{Prophet}) poderiam prever tendências de carga com minutos de antecedência, permitindo balanceamento preditivo que antecipa sobrecargas antes que ocorram.
 
 \subsection{Otimização Multi-Métrica}
 
-Expansão do algoritmo para considerar múltiplas métricas simultaneamente: memória, disco, CPU, largura de banda de rede, latência geográfica para o usuário. Desenvolvimento de função objetivo multi-critério que pondere estes fatores apropriadamente, potencialmente utilizando técnicas de otimização multi-objetivo (Pareto) ou aprendizado por reforço para aprender pesos ótimos dinamicamente.
+Expansão do algoritmo para considerar múltiplas métricas simultaneamente: memória, disco, \textit{CPU}, largura de banda de rede, latência geográfica para o usuário. Desenvolvimento de função objetivo multi-critério que pondere estes fatores apropriadamente, potencialmente utilizando técnicas de otimização multi-objetivo (\textit{Pareto}) ou aprendizado por reforço para aprender pesos ótimos dinamicamente.
 
 \subsection{Balanceamento Cross-Datacenter}
 
@@ -146,11 +146,11 @@ Extensão do algoritmo para balanceamento não apenas entre servidores de um ún
 
 \subsection{Adaptação para Edge Computing e 5G}
 
-Exploração de como o algoritmo pode ser adaptado para ambientes de \textit{edge computing} e redes 5G, onde recursos computacionais estão distribuídos em torres de celular e pontos de presença de borda. Nestes contextos, mobilidade dos usuários, handoffs entre células, e latências ultra-baixas introduzem desafios adicionais.
+Exploração de como o algoritmo pode ser adaptado para ambientes de \textit{edge computing} e redes \textit{5G}, onde recursos computacionais estão distribuídos em torres de celular e pontos de presença de borda. Nestes contextos, mobilidade dos usuários, \textit{handoffs} entre células, e latências ultra-baixas introduzem desafios adicionais.
 
 \subsection{Estudo de Interação com Algoritmos ABR}
 
-Investigação sistemática de como diferentes algoritmos ABR (BOLA, MPC, Pensieve) interagem com estratégias de balanceamento de carga. Exploração de co-design onde balanceador e ABR cooperam ativamente, com balanceador informando capacidade esperada e ABR ajustando decisões de qualidade proativamente.
+Investigação sistemática de como diferentes algoritmos \textit{ABR} (\textit{BOLA}, \textit{MPC}, \textit{Pensieve}) interagem com estratégias de balanceamento de carga. Exploração de \textit{co-design} onde balanceador e \textit{ABR} cooperam ativamente, com balanceador informando capacidade esperada e \textit{ABR} ajustando decisões de qualidade proativamente.
 
 \subsection{Implementação de \textit{Cache} Inteligente Integrado}
 
@@ -170,7 +170,7 @@ Content Steering, padronizado recentemente no DASH-IF, permite que clientes rece
 
 Investigação de arquiteturas de balanceamento baseadas em \textit{Direct Server Return}, onde o balanceador de carga processa apenas requisições de entrada (caminho de ida), mas respostas são enviadas diretamente dos servidores aos clientes, evitando o balanceador no caminho de retorno. Em \textit{streaming} de vídeo, onde respostas (segmentos de vídeo) são substancialmente maiores que requisições, DSR pode reduzir dramaticamente carga no balanceador e latência percebida.
 
-Aplicar monitoramento de memória em arquitetura DSR introduz desafios interessantes: o balanceador não observa o tráfego de resposta, não podendo medir diretamente taxa de transferência ou sucesso de entregas. Seria necessário confiar exclusivamente em métricas do lado do servidor (memória, disco, CPU) e potencialmente informações agregadas reportadas periodicamente. Avaliar trade-offs entre benefícios de DSR (menor latência, maior throughput) e complexidade de monitoramento é direção valiosa, especialmente para CDNs de ultra-larga escala onde o próprio balanceador pode tornar-se gargalo.
+Aplicar monitoramento de memória em arquitetura DSR introduz desafios interessantes: o balanceador não observa o tráfego de resposta, não podendo medir diretamente taxa de transferência ou sucesso de entregas. Seria necessário confiar exclusivamente em métricas do lado do servidor (memória, disco, \textit{CPU}) e potencialmente informações agregadas reportadas periodicamente. Avaliar trade-offs entre benefícios de DSR (menor latência, maior throughput) e complexidade de monitoramento é direção valiosa, especialmente para CDNs de ultra-larga escala onde o próprio balanceador pode tornar-se gargalo.
 
 \subsection{\textit{Software}-Defined Networking (SDN)}
 
@@ -190,7 +190,7 @@ Do ponto de vista prático, este trabalho oferece não apenas validação acadê
 
 Para a indústria de \textit{streaming} de vídeo, que movimenta bilhões de dólares globalmente e cujo crescimento é impulsionado por demanda crescente por conteúdo em alta qualidade, qualquer melhoria em QoE traduz-se diretamente em maior satisfação de usuários, redução de abandono (\textit{churn}), e vantagem competitiva. Os resultados deste trabalho sugerem que provedores de CDN operando em ambientes heterogêneos — a grande maioria — podem beneficiar significativamente de balanceamento baseado em monitoramento de recursos.
 
-Olhando para o futuro, o \textit{streaming} de vídeo continua evoluindo: resolução 4K/8K, realidade virtual, transmissão ao vivo interativa, e novos codecs (AV1, VVC) aumentam complexidade e requisitos de recursos. Simultaneamente, \textit{edge computing} e redes 5G distribuem conteúdo ainda mais próximo aos usuários, criando ambientes inerentemente heterogêneos com milhares de pontos de presença de capacidades variadas. Neste contexto, balanceamento inteligente e adaptativo não é luxo opcional, mas necessidade fundamental.
+Olhando para o futuro, o \textit{streaming} de vídeo continua evoluindo: resolução \textit{4K}/\textit{8K}, realidade virtual, transmissão ao vivo interativa, e novos \textit{codecs} (\textit{AV1}, \textit{VVC}) aumentam complexidade e requisitos de recursos. Simultaneamente, \textit{edge computing} e redes \textit{5G} distribuem conteúdo ainda mais próximo aos usuários, criando ambientes inerentemente heterogêneos com milhares de pontos de presença de capacidades variadas. Neste contexto, balanceamento inteligente e adaptativo não é luxo opcional, mas necessidade fundamental.
 
 Este trabalho estabelece fundação sólida, mas há muito a explorar. As direções de trabalho futuro delineadas — desde implantação em produção até aprendizado de máquina preditivo — representam apenas o início de uma jornada mais longa rumo a sistemas de distribuição de conteúdo verdadeiramente inteligentes, que aprendem, adaptam-se, e otimizam-se continuamente para proporcionar a melhor experiência possível aos usuários, independentemente de onde estejam ou quais recursos estejam disponíveis.
 

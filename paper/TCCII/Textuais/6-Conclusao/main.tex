@@ -126,7 +126,7 @@ Os resultados deste trabalho e as limitações identificadas abrem múltiplas di
 
 \subsection{Implantação em Ambientes Distribuídos Reais}
 
-Expansão dos experimentos para ambientes distribuídos geograficamente, com servidores em múltiplos data centers e regiões. Isto permitiria avaliar como latências de rede reais, variações de largura de banda, e perdas de pacotes interagem com decisões de balanceamento, e como incorporar métricas de rede (latência, perda, jitter) nas decisões de roteamento.
+Expansão dos experimentos para ambientes distribuídos geograficamente, com servidores em múltiplos \textit{data centers} e regiões. Isto permitiria avaliar como latências de rede reais, variações de largura de banda, e perdas de pacotes interagem com decisões de balanceamento, e como incorporar métricas de rede (latência, perda, jitter) nas decisões de roteamento.
 
 \subsection{Integração com Sistemas CDN de Produção}
 
@@ -140,9 +140,9 @@ Incorporação de técnicas de \textit{machine learning} para predição de carg
 
 Expansão do algoritmo para considerar múltiplas métricas simultaneamente: memória, disco, \textit{CPU}, largura de banda de rede, latência geográfica para o usuário. Desenvolvimento de função objetivo multi-critério que pondere estes fatores apropriadamente, potencialmente utilizando técnicas de otimização multi-objetivo (\textit{Pareto}) ou aprendizado por reforço para aprender pesos ótimos dinamicamente.
 
-\subsection{Balanceamento Cross-Datacenter}
+\subsection{Balanceamento Cross-data center}
 
-Extensão do algoritmo para balanceamento não apenas entre servidores de um único data center, mas entre múltiplos data centers geograficamente distribuídos. Isto introduz trade-offs complexos entre capacidade de recursos (servidor menos carregado pode estar longe) e proximidade geográfica (servidor próximo pode estar mais carregado), requerendo modelagem sofisticada de custos multi-dimensionais.
+Extensão do algoritmo para balanceamento não apenas entre servidores de um único \textit{data center}, mas entre múltiplos \textit{data centers} geograficamente distribuídos. Isto introduz trade-offs complexos entre capacidade de recursos (servidor menos carregado pode estar longe) e proximidade geográfica (servidor próximo pode estar mais carregado), requerendo modelagem sofisticada de custos multi-dimensionais.
 
 \subsection{Adaptação para Edge Computing e 5G}
 

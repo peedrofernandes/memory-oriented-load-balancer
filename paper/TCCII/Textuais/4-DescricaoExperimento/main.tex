@@ -10,7 +10,7 @@ A plataforma de conteinerização \textit{Docker} foi empregada como ambiente de
 
 \subsection{Particularidades do \textit{Docker} e cgroups}
 
-O \textit{Docker} utiliza o sistema de \textit{cgroups} (grupos de controle) do \textit{kernel} \textit{Linux} para implementar limites de recursos e realizar o monitoramento de uso de \textit{CPU}, memória e leitura de disco. Especificamente, o experimento utiliza \textit{cgroups v2}, que oferece uma interface unificada e simplificada para o gerenciamento de recursos. Através dos arquivos de sistema disponibilizados pelo \textit{cgroups}, é possível ler diretamente as métricas de consumo de memória e taxa de leitura de disco de cada \textit{contêiner} em tempo real.
+O \textit{Docker} utiliza o sistema de \textit{cgroups} (grupos de controle) do \textit{kernel} \textit{Linux} para implementar limites de recursos e realizar o monitoramento de uso de \textit{CPU}, memória e leitura de disco. Especificamente, o experimento utiliza \textit{cgroups v2}, que oferece uma interface unificada e simplificada para o gerenciamento de recursos. Através dos arquivos de sistema disponibilizados pelo \textit{cgroups}, é possível ler diretamente as métricas de consumo de memória e taxa de leitura de disco de cada contêiner em tempo real.
 
 Para garantir a consistência entre as execuções dos experimentos e eliminar o efeito de \textit{cache} do sistema operacional nos resultados, é fundamental realizar a limpeza do \textit{cache} de páginas do \textit{kernel} \textit{Linux} antes de cada execução. Esta operação é realizada através do comando:
 
@@ -20,13 +20,13 @@ echo 3 | sudo tee /proc/sys/vm/drop_caches
 
 Este comando instrui o \textit{kernel} a liberar os \textit{caches} de página (\textit{pagecache}), \textit{dentries} e \textit{inodes}, garantindo que cada execução do experimento parta de um estado limpo, sem dados previamente armazenados em memória. A operação requer privilégios de superusuário (\texttt{sudo}) e é executada antes de cada bateria de testes.
 
-O \textit{Docker} também permite a configuração de limites explícitos de recursos para cada \textit{contêiner} através de parâmetros na configuração do \textit{Docker Compose}. No experimento, foram configurados limites de memória \textit{RAM} (através do parâmetro \texttt{memory}) e limites de taxa de leitura de disco (através do parâmetro \texttt{device\_read\_bps}). Estes limites são fundamentais para simular servidores com capacidades heterogêneas, permitindo avaliar o comportamento do algoritmo de balanceamento em cenários com recursos desiguais.
+O \textit{Docker} também permite a configuração de limites explícitos de recursos para cada contêiner através de parâmetros na configuração do \textit{Docker Compose}. No experimento, foram configurados limites de memória \textit{RAM} (através do parâmetro \texttt{memory}) e limites de taxa de leitura de disco (através do parâmetro \texttt{device\_read\_bps}). Estes limites são fundamentais para simular servidores com capacidades heterogêneas, permitindo avaliar o comportamento do algoritmo de balanceamento em cenários com recursos desiguais.
 
 \subsection{Organização do conteúdo e bind mounts}
 
 Para simular o cenário realista de servidores de distribuição de conteúdo com arquivos exclusivos, foi necessário replicar o conteúdo de vídeo em múltiplos diretórios no sistema de arquivos do \textit{host} WSL. O conteúdo multimídia foi armazenado em um diretório global localizado em \texttt{/data} no sistema de arquivos \textit{Linux} do WSL, com subdiretórios específicos para cada servidor (\texttt{/data/server-1}, \texttt{/data/server-2}, e assim por diante até \texttt{/data/server-8}).
 
-Cada \textit{contêiner} de servidor MPEG-DASH foi configurado com um \textit{bind mount} que mapeia o diretório específico do servidor no \textit{host} para o diretório interno do \textit{contêiner}. Esta técnica permite que cada servidor acesse apenas seu próprio conjunto de arquivos, simulando a exclusividade de conteúdo encontrada em servidores de borda de uma CDN real. O uso de \textit{bind mounts} também evita a necessidade de copiar os arquivos para dentro das imagens \textit{Docker}, reduzindo o tamanho das imagens e facilitando a atualização do conteúdo sem reconstruir os \textit{contêineres}.
+Cada contêiner de servidor MPEG-DASH foi configurado com um \textit{bind mount} que mapeia o diretório específico do servidor no \textit{host} para o diretório interno do contêiner. Esta técnica permite que cada servidor acesse apenas seu próprio conjunto de arquivos, simulando a exclusividade de conteúdo encontrada em servidores de borda de uma CDN real. O uso de \textit{bind mounts} também evita a necessidade de copiar os arquivos para dentro das imagens \textit{Docker}, reduzindo o tamanho das imagens e facilitando a atualização do conteúdo sem reconstruir os \textit{contêineres}.
 
 \section{Definição dos Módulos}
 
@@ -37,7 +37,7 @@ O sistema experimental é composto por módulos principais e auxiliares, cada um
 Os módulos principais formam o núcleo funcional do sistema de distribuição de conteúdo e são responsáveis pelo processamento e encaminhamento das requisições dos clientes:
 
 \begin{enumerate}
-    \item \textbf{Servidores MPEG-DASH}: Conjunto de 8 instâncias de servidores \textit{web} responsáveis por servir o conteúdo de vídeo segmentado de acordo com o padrão MPEG-DASH. Cada servidor é executado em um \textit{contêiner} \textit{Docker} isolado e possui limites específicos de memória e taxa de leitura de disco, permitindo a simulação de servidores com capacidades heterogêneas. Os servidores também são responsáveis por coletar e publicar suas próprias métricas de consumo de recursos.
+    \item \textbf{Servidores MPEG-DASH}: Conjunto de 8 instâncias de servidores \textit{web} responsáveis por servir o conteúdo de vídeo segmentado de acordo com o padrão MPEG-DASH. Cada servidor é executado em um contêiner \textit{Docker} isolado e possui limites específicos de memória e taxa de leitura de disco, permitindo a simulação de servidores com capacidades heterogêneas. Os servidores também são responsáveis por coletar e publicar suas próprias métricas de consumo de recursos.
     
     \item \textbf{Balanceador de Carga}: Componente central do experimento, responsável por receber todas as requisições HTTP dos clientes e distribuí-las entre os servidores MPEG-DASH disponíveis de acordo com a estratégia de balanceamento configurada. O balanceador opera como um \textit{proxy} reverso HTTP e é implementado para suportar múltiplas estratégias de seleção de servidor, permitindo a comparação entre diferentes algoritmos.
     
@@ -76,7 +76,7 @@ O \texttt{MetricsPublisher} realiza periodicamente as seguintes operações:
     \item Leitura do consumo atual de memória através do arquivo \texttt{/sys/fs/cgroup/memory.current} do \textit{cgroups v2};
     \item Obtenção das estatísticas de leitura através do arquivo \texttt{/sys/fs/cgroup/io.stat}, extraindo o total de \textit{bytes} lidos (\texttt{rbytes});
     \item Cálculo da taxa de leitura de disco através da diferença entre leituras consecutivas dividida pelo intervalo de tempo decorrido;
-    \item Normalização das métricas em relação aos limites configurados para o \textit{contêiner}, gerando valores entre 0 e 1;
+    \item Normalização das métricas em relação aos limites configurados para o contêiner, gerando valores entre 0 e 1;
     \item Publicação das métricas normalizadas em um tópico MQTT para consumo pelo balanceador de carga.
 \end{enumerate}
 
@@ -190,13 +190,13 @@ A Figura \ref{fig:dash-client} apresenta a interface da aplicação cliente dura
 
 O \textit{broker} MQTT utilizado no experimento é o \textit{NanoMQ}, uma implementação leve e de alto desempenho do protocolo MQTT desenvolvida pela \textit{EMQ Technologies}. O \textit{NanoMQ} foi escolhido por sua simplicidade de configuração, baixo consumo de recursos e conformidade completa com o padrão MQTT 5.0.
 
-O \textit{broker} é executado em um \textit{contêiner} \textit{Docker} dedicado e expõe a porta 1883 para comunicação MQTT não criptografada. A configuração é realizada através de um arquivo \texttt{nanomq.conf} montado como volume no \textit{contêiner}, permitindo ajustes finos de parâmetros como o número máximo de conexões simultâneas e o tamanho dos \textit{buffers} de mensagens.
+O \textit{broker} é executado em um contêiner \textit{Docker} dedicado e expõe a porta 1883 para comunicação MQTT não criptografada. A configuração é realizada através de um arquivo \texttt{nanomq.conf} montado como volume no contêiner, permitindo ajustes finos de parâmetros como o número máximo de conexões simultâneas e o tamanho dos \textit{buffers} de mensagens.
 
 No contexto do experimento, o \textit{broker} atua como canal de comunicação entre os servidores MPEG-DASH (publicadores) e o balanceador de carga (assinante), permitindo que as métricas sejam transmitidas de forma assíncrona e desacoplada, sem que os servidores precisem conhecer o endereço do balanceador ou vice-versa.
 
 \subsection{Orquestração com \textit{Docker} Compose}
 
-A orquestração de todos os componentes do sistema é realizada através do \textit{Docker} Compose, uma ferramenta para definir e executar aplicações \textit{Docker} multi-\textit{contêiner}. O arquivo \texttt{docker-compose.yml} descreve de forma declarativa todos os serviços, suas configurações, limites de recursos, volumes e dependências.
+A orquestração de todos os componentes do sistema é realizada através do \textit{Docker} Compose, uma ferramenta para definir e executar aplicações \textit{Docker} multi-contêiner. O arquivo \texttt{docker-compose.yml} descreve de forma declarativa todos os serviços, suas configurações, limites de recursos, volumes e dependências.
 
 Cada servidor MPEG-DASH é definido como um serviço separado com suas próprias configurações de recursos. Por exemplo, o servidor 1 é configurado com 4096 MB de memória e taxa máxima de leitura de disco de 512 MB/s, enquanto o servidor 8 possui apenas 512 MB de memória e 4 MB/s de leitura de disco. Esta heterogeneidade é fundamental para avaliar a capacidade do algoritmo de balanceamento em distribuir a carga de forma proporcional à capacidade de cada servidor.
 
@@ -217,7 +217,7 @@ docker compose down
 
 \subsection{Painel de Monitoramento}
 
-O painel de monitoramento foi implementado como uma página \textit{HTML} estática que utiliza a biblioteca \textit{Chart.js} para renderizar gráficos em tempo real. A página é servida através de um \textit{contêiner} \textit{nginx} e se comunica com a API de métricas através de requisições HTTP periódicas utilizando \textit{JavaScript}.
+O painel de monitoramento foi implementado como uma página \textit{HTML} estática que utiliza a biblioteca \textit{Chart.js} para renderizar gráficos em tempo real. A página é servida através de um contêiner \textit{nginx} e se comunica com a API de métricas através de requisições HTTP periódicas utilizando \textit{JavaScript}.
 
 O painel exibe, para cada servidor e para o balanceador de carga:
 
@@ -309,7 +309,7 @@ sudo rsync -a --progress ./server-1/ ./server-3/
 # ... continuando até server-8
 \end{verbatim}
 
-Cada subdiretório \texttt{/data/server-X} foi então montado como um volume no \textit{contêiner} correspondente através da diretiva \texttt{volumes} no arquivo \texttt{docker-compose.yml}:
+Cada subdiretório \texttt{/data/server-X} foi então montado como um volume no contêiner correspondente através da diretiva \texttt{volumes} no arquivo \texttt{docker-compose.yml}:
 
 \begin{verbatim}
 volumes:

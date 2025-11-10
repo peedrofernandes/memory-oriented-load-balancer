@@ -4,13 +4,13 @@ Este capítulo apresenta uma descrição detalhada do ambiente experimental util
 
 \section{Ambiente de Experimentação}
 
-O ambiente experimental foi configurado para proporcionar um cenário controlado e reproduzível, capaz de simular condições realistas de operação de um sistema de distribuição de conteúdo. A infraestrutura foi estabelecida em uma única máquina física operando o sistema operacional Windows, com o subsistema Windows para Linux (WSL2) configurado para execução de um \textit{kernel} Linux completo. Esta escolha arquitetural permite a utilização de recursos nativos do Linux, como o sistema de grupos de controle (\textit{cgroups}), essenciais para o monitoramento e limitação de recursos computacionais dos contêineres.
+O ambiente experimental foi configurado para proporcionar um cenário controlado e reproduzível, capaz de simular condições realistas de operação de um sistema de distribuição de conteúdo. A infraestrutura foi estabelecida em uma única máquina física operando o sistema operacional \textit{Windows}, com o subsistema \textit{Windows} para Linux (WSL2) configurado para execução de um \textit{kernel} Linux completo. Esta escolha arquitetural permite a utilização de recursos nativos do Linux, como o sistema de grupos de controle (\textit{cgroups}), essenciais para o monitoramento e limitação de recursos computacionais dos \textit{contêineres}.
 
-A plataforma de conteinerização Docker foi empregada como ambiente de execução para todos os componentes do sistema. O Docker oferece isolamento de processos, gerenciamento de recursos e padronização do ambiente de execução, garantindo que os experimentos possam ser reproduzidos de forma consistente. Além disso, a utilização de contêineres elimina problemas relacionados a dependências de bibliotecas e configurações de sistema operacional, assegurando que cada componente opere em um ambiente idêntico e controlado.
+A plataforma de conteinerização \textit{Docker} foi empregada como ambiente de execução para todos os componentes do sistema. O \textit{Docker} oferece isolamento de processos, gerenciamento de recursos e padronização do ambiente de execução, garantindo que os experimentos possam ser reproduzidos de forma consistente. Além disso, a utilização de \textit{contêineres} elimina problemas relacionados a dependências de bibliotecas e configurações de sistema operacional, assegurando que cada componente opere em um ambiente idêntico e controlado.
 
-\subsection{Particularidades do Docker e cgroups}
+\subsection{Particularidades do \textit{Docker} e cgroups}
 
-O Docker utiliza o sistema de \textit{cgroups} (grupos de controle) do kernel Linux para implementar limites de recursos e realizar o monitoramento de uso de CPU, memória e leitura de disco. Especificamente, o experimento utiliza \textit{cgroups v2}, que oferece uma interface unificada e simplificada para o gerenciamento de recursos. Através dos arquivos de sistema disponibilizados pelo \textit{cgroups}, é possível ler diretamente as métricas de consumo de memória e taxa de leitura de disco de cada contêiner em tempo real.
+O \textit{Docker} utiliza o sistema de \textit{cgroups} (grupos de controle) do kernel Linux para implementar limites de recursos e realizar o monitoramento de uso de CPU, memória e leitura de disco. Especificamente, o experimento utiliza \textit{cgroups v2}, que oferece uma interface unificada e simplificada para o gerenciamento de recursos. Através dos arquivos de sistema disponibilizados pelo \textit{cgroups}, é possível ler diretamente as métricas de consumo de memória e taxa de leitura de disco de cada \textit{contêiner} em tempo real.
 
 Para garantir a consistência entre as execuções dos experimentos e eliminar o efeito de \textit{cache} do sistema operacional nos resultados, é fundamental realizar a limpeza do \textit{cache} de páginas do kernel Linux antes de cada execução. Esta operação é realizada através do comando:
 
@@ -20,13 +20,13 @@ echo 3 | sudo tee /proc/sys/vm/drop_caches
 
 Este comando instrui o kernel a liberar os \textit{caches} de página (\textit{pagecache}), \textit{dentries} e \textit{inodes}, garantindo que cada execução do experimento parta de um estado limpo, sem dados previamente armazenados em memória. A operação requer privilégios de superusuário (\texttt{sudo}) e é executada antes de cada bateria de testes.
 
-O Docker também permite a configuração de limites explícitos de recursos para cada contêiner através de parâmetros na configuração do \textit{Docker Compose}. No experimento, foram configurados limites de memória RAM (através do parâmetro \texttt{memory}) e limites de taxa de leitura de disco (através do parâmetro \texttt{device\_read\_bps}). Estes limites são fundamentais para simular servidores com capacidades heterogêneas, permitindo avaliar o comportamento do algoritmo de balanceamento em cenários com recursos desiguais.
+O \textit{Docker} também permite a configuração de limites explícitos de recursos para cada \textit{contêiner} através de parâmetros na configuração do \textit{Docker Compose}. No experimento, foram configurados limites de memória RAM (através do parâmetro \texttt{memory}) e limites de taxa de leitura de disco (através do parâmetro \texttt{device\_read\_bps}). Estes limites são fundamentais para simular servidores com capacidades heterogêneas, permitindo avaliar o comportamento do algoritmo de balanceamento em cenários com recursos desiguais.
 
 \subsection{Organização do conteúdo e bind mounts}
 
-Para simular o cenário realista de servidores de distribuição de conteúdo com arquivos exclusivos, foi necessário replicar o conteúdo de vídeo em múltiplos diretórios no sistema de arquivos do host WSL. O conteúdo multimídia foi armazenado em um diretório global localizado em \texttt{/data} no sistema de arquivos Linux do WSL, com subdiretórios específicos para cada servidor (\texttt{/data/server-1}, \texttt{/data/server-2}, e assim por diante até \texttt{/data/server-8}).
+Para simular o cenário realista de servidores de distribuição de conteúdo com arquivos exclusivos, foi necessário replicar o conteúdo de vídeo em múltiplos diretórios no sistema de arquivos do \textit{host} WSL. O conteúdo multimídia foi armazenado em um diretório global localizado em \texttt{/data} no sistema de arquivos Linux do WSL, com subdiretórios específicos para cada servidor (\texttt{/data/server-1}, \texttt{/data/server-2}, e assim por diante até \texttt{/data/server-8}).
 
-Cada contêiner de servidor MPEG-DASH foi configurado com um \textit{bind mount} que mapeia o diretório específico do servidor no host para o diretório interno do contêiner. Esta técnica permite que cada servidor acesse apenas seu próprio conjunto de arquivos, simulando a exclusividade de conteúdo encontrada em servidores de borda de uma CDN real. O uso de \textit{bind mounts} também evita a necessidade de copiar os arquivos para dentro das imagens Docker, reduzindo o tamanho das imagens e facilitando a atualização do conteúdo sem reconstruir os contêineres.
+Cada \textit{contêiner} de servidor MPEG-DASH foi configurado com um \textit{bind mount} que mapeia o diretório específico do servidor no \textit{host} para o diretório interno do \textit{contêiner}. Esta técnica permite que cada servidor acesse apenas seu próprio conjunto de arquivos, simulando a exclusividade de conteúdo encontrada em servidores de borda de uma CDN real. O uso de \textit{bind mounts} também evita a necessidade de copiar os arquivos para dentro das imagens \textit{Docker}, reduzindo o tamanho das imagens e facilitando a atualização do conteúdo sem reconstruir os \textit{contêineres}.
 
 \section{Definição dos Módulos}
 
@@ -37,7 +37,7 @@ O sistema experimental é composto por módulos principais e auxiliares, cada um
 Os módulos principais formam o núcleo funcional do sistema de distribuição de conteúdo e são responsáveis pelo processamento e encaminhamento das requisições dos clientes:
 
 \begin{enumerate}
-    \item \textbf{Servidores MPEG-DASH}: Conjunto de 8 instâncias de servidores web responsáveis por servir o conteúdo de vídeo segmentado de acordo com o padrão MPEG-DASH. Cada servidor é executado em um contêiner Docker isolado e possui limites específicos de memória e taxa de leitura de disco, permitindo a simulação de servidores com capacidades heterogêneas. Os servidores também são responsáveis por coletar e publicar suas próprias métricas de consumo de recursos.
+    \item \textbf{Servidores MPEG-DASH}: Conjunto de 8 instâncias de servidores \textit{web} responsáveis por servir o conteúdo de vídeo segmentado de acordo com o padrão MPEG-DASH. Cada servidor é executado em um \textit{contêiner} \textit{Docker} isolado e possui limites específicos de memória e taxa de leitura de disco, permitindo a simulação de servidores com capacidades heterogêneas. Os servidores também são responsáveis por coletar e publicar suas próprias métricas de consumo de recursos.
     
     \item \textbf{Balanceador de Carga}: Componente central do experimento, responsável por receber todas as requisições HTTP dos clientes e distribuí-las entre os servidores MPEG-DASH disponíveis de acordo com a estratégia de balanceamento configurada. O balanceador opera como um \textit{proxy} reverso HTTP e é implementado para suportar múltiplas estratégias de seleção de servidor, permitindo a comparação entre diferentes algoritmos.
     
@@ -51,9 +51,9 @@ Os módulos auxiliares fornecem serviços de suporte necessários para o funcion
 \begin{enumerate}
     \item \textbf{\textit{Broker} MQTT (NanoMQ)}: Serviço de mensageria que implementa o protocolo MQTT (\textit{Message Queuing Telemetry Transport}), um protocolo leve de comunicação \textit{publish-subscribe}. O \textit{broker} atua como intermediário, recebendo as métricas publicadas pelos servidores MPEG-DASH e disponibilizando-as para o balanceador de carga através de assinaturas em tópicos específicos. O uso do MQTT permite a comunicação assíncrona e desacoplada entre os componentes.
     
-    \item \textbf{Painel de Monitoramento em Tempo Real}: Interface web que oferece visualização gráfica e em tempo real das métricas de cada servidor e do balanceador de carga. O painel permite acompanhar o comportamento do sistema durante os experimentos, facilitando a detecção de anomalias e a compreensão do comportamento dinâmico do algoritmo de balanceamento.
+    \item \textbf{Painel de Monitoramento em Tempo Real}: Interface \textit{web} que oferece visualização gráfica e em tempo real das métricas de cada servidor e do balanceador de carga. O painel permite acompanhar o comportamento do sistema durante os experimentos, facilitando a detecção de anomalias e a compreensão do comportamento dinâmico do algoritmo de balanceamento.
     
-    \item \textbf{Coletor de Métricas (API)}: Serviço Python que expõe uma API REST para consulta das métricas dos contêineres através do acesso direto aos arquivos do \textit{cgroups}. Este componente complementa o monitoramento realizado internamente pelos servidores, permitindo a validação cruzada das métricas e fornecendo dados para o painel de monitoramento.
+    \item \textbf{Coletor de Métricas (API)}: Serviço Python que expõe uma API REST para consulta das métricas dos \textit{contêineres} através do acesso direto aos arquivos do \textit{cgroups}. Este componente complementa o monitoramento realizado internamente pelos servidores, permitindo a validação cruzada das métricas e fornecendo dados para o painel de monitoramento.
 \end{enumerate}
 
 \section{Detalhes de Implementação dos Módulos}
@@ -62,9 +62,9 @@ Esta seção apresenta os detalhes técnicos de implementação de cada módulo 
 
 \subsection{Servidores MPEG-DASH}
 
-Os servidores MPEG-DASH foram implementados utilizando ASP.NET Core 8.0, uma plataforma de desenvolvimento web moderna e de alto desempenho da Microsoft. A escolha desta tecnologia foi motivada por sua capacidade nativa de servir arquivos estáticos de forma eficiente, sua arquitetura assíncrona que permite alto nível de concorrência e a disponibilidade de bibliotecas para comunicação MQTT.
+Os servidores MPEG-DASH foram implementados utilizando ASP.NET Core 8.0, uma plataforma de desenvolvimento \textit{web} moderna e de alto desempenho da Microsoft. A escolha desta tecnologia foi motivada por sua capacidade nativa de servir arquivos estáticos de forma eficiente, sua arquitetura assíncrona que permite alto nível de concorrência e a disponibilidade de bibliotecas para comunicação MQTT.
 
-Cada servidor é configurado como uma aplicação web mínima que serve arquivos estáticos do diretório \texttt{wwwroot/Static}, onde estão armazenados os segmentos de vídeo MPEG-DASH. A aplicação não realiza processamento de vídeo em tempo real; ela apenas entrega os arquivos pré-processados aos clientes que os solicitam.
+Cada servidor é configurado como uma aplicação \textit{web} mínima que serve arquivos estáticos do diretório \texttt{wwwroot/Static}, onde estão armazenados os segmentos de vídeo MPEG-DASH. A aplicação não realiza processamento de vídeo em tempo real; ela apenas entrega os arquivos pré-processados aos clientes que os solicitam.
 
 \subsubsection{Monitoramento e Publicação de Métricas}
 
@@ -76,7 +76,7 @@ O \texttt{MetricsPublisher} realiza periodicamente as seguintes operações:
     \item Leitura do consumo atual de memória através do arquivo \texttt{/sys/fs/cgroup/memory.current} do \textit{cgroups v2};
     \item Obtenção das estatísticas de leitura através do arquivo \texttt{/sys/fs/cgroup/io.stat}, extraindo o total de \textit{bytes} lidos (\texttt{rbytes});
     \item Cálculo da taxa de leitura de disco através da diferença entre leituras consecutivas dividida pelo intervalo de tempo decorrido;
-    \item Normalização das métricas em relação aos limites configurados para o contêiner, gerando valores entre 0 e 1;
+    \item Normalização das métricas em relação aos limites configurados para o \textit{contêiner}, gerando valores entre 0 e 1;
     \item Publicação das métricas normalizadas em um tópico MQTT para consumo pelo balanceador de carga.
 \end{enumerate}
 
@@ -116,7 +116,7 @@ Esta abstração permite que o experimento compare diferentes algoritmos de bala
 Três estratégias de balanceamento foram implementadas para fins de comparação:
 
 \begin{enumerate}
-    \item \textbf{Round-Robin}: Estratégia determinística que seleciona os servidores de forma cíclica, garantindo uma distribuição uniforme das requisições ao longo do tempo. A implementação utiliza um contador atômico que é incrementado a cada seleção.
+    \item \textbf{\textit{Round-Robin}}: Estratégia determinística que seleciona os servidores de forma cíclica, garantindo uma distribuição uniforme das requisições ao longo do tempo. A implementação utiliza um contador atômico que é incrementado a cada seleção.
     
     \item \textbf{Seleção Aleatória}: Estratégia não-determinística que seleciona um servidor de forma uniformemente aleatória entre os disponíveis. Esta estratégia serve como linha de base para avaliar o ganho proporcionado por estratégias mais sofisticadas.
     
@@ -160,7 +160,7 @@ A aplicação implementa um \textit{player} de vídeo completo com as seguintes 
     \begin{itemize}
         \item \textbf{Gráfico de Qualidade (\textit{Quality Timeline})}: Exibe a evolução da qualidade (resolução e \textit{bitrate}) selecionada pelo algoritmo de adaptação do \texttt{dash.js} ao longo dos segmentos de vídeo reproduzidos. O eixo Y representa as diferentes resoluções disponíveis (144P a 1080P), e o eixo X representa a sequência de segmentos, permitindo visualizar as mudanças de qualidade durante a sessão.
         
-        \item \textbf{Gráfico de \textit{Bitrate} (\textit{Bitrate Timeline})}: Mostra a taxa de transferência média (\textit{throughput}) medida pelo \texttt{dash.js} para cada segmento baixado, em kilobits por segundo (kbps). Este gráfico utiliza uma escala logarítmica no eixo Y para melhor visualização da variação de \textit{bitrate} ao longo do tempo.
+        \item \textbf{Gráfico de \textit{Bitrate} (\textit{Bitrate Timeline})}: Mostra a taxa de transferência média (\textit{throughput}) medida pelo \texttt{dash.js} para cada segmento baixado, em kilo\textit{bits} por segundo (kbps). Este gráfico utiliza uma escala logarítmica no eixo Y para melhor visualização da variação de \textit{bitrate} ao longo do tempo.
         
         \item \textbf{Gráfico de Travamentos (\textit{Stall Timeline})}: Apresenta um gráfico de dispersão onde cada ponto representa um evento de travamento (\textit{stall}), com a posição no eixo X indicando o segmento onde ocorreu o travamento e o eixo Y mostrando a duração do travamento em segundos. Este gráfico permite identificar visualmente a frequência e a severidade dos travamentos durante a sessão.
     \end{itemize}
@@ -186,24 +186,24 @@ A Figura \ref{fig:dash-client} apresenta a interface da aplicação cliente dura
     \label{fig:dash-client}
 \end{figure}
 
-\subsection{Broker MQTT (NanoMQ)}
+\subsection{\textit{Broker} MQTT (NanoMQ)}
 
 O \textit{broker} MQTT utilizado no experimento é o NanoMQ, uma implementação leve e de alto desempenho do protocolo MQTT desenvolvida pela EMQ Technologies. O NanoMQ foi escolhido por sua simplicidade de configuração, baixo consumo de recursos e conformidade completa com o padrão MQTT 5.0.
 
-O \textit{broker} é executado em um contêiner Docker dedicado e expõe a porta 1883 para comunicação MQTT não criptografada. A configuração é realizada através de um arquivo \texttt{nanomq.conf} montado como volume no contêiner, permitindo ajustes finos de parâmetros como o número máximo de conexões simultâneas e o tamanho dos \textit{buffers} de mensagens.
+O \textit{broker} é executado em um \textit{contêiner} \textit{Docker} dedicado e expõe a porta 1883 para comunicação MQTT não criptografada. A configuração é realizada através de um arquivo \texttt{nanomq.conf} montado como volume no \textit{contêiner}, permitindo ajustes finos de parâmetros como o número máximo de conexões simultâneas e o tamanho dos \textit{buffers} de mensagens.
 
 No contexto do experimento, o \textit{broker} atua como canal de comunicação entre os servidores MPEG-DASH (publicadores) e o balanceador de carga (assinante), permitindo que as métricas sejam transmitidas de forma assíncrona e desacoplada, sem que os servidores precisem conhecer o endereço do balanceador ou vice-versa.
 
-\subsection{Orquestração com Docker Compose}
+\subsection{Orquestração com \textit{Docker} Compose}
 
-A orquestração de todos os componentes do sistema é realizada através do Docker Compose, uma ferramenta para definir e executar aplicações Docker multi-contêiner. O arquivo \texttt{docker-compose.yml} descreve de forma declarativa todos os serviços, suas configurações, limites de recursos, volumes e dependências.
+A orquestração de todos os componentes do sistema é realizada através do \textit{Docker} Compose, uma ferramenta para definir e executar aplicações \textit{Docker} multi-\textit{contêiner}. O arquivo \texttt{docker-compose.yml} descreve de forma declarativa todos os serviços, suas configurações, limites de recursos, volumes e dependências.
 
 Cada servidor MPEG-DASH é definido como um serviço separado com suas próprias configurações de recursos. Por exemplo, o servidor 1 é configurado com 4096 MB de memória e taxa máxima de leitura de disco de 512 MB/s, enquanto o servidor 8 possui apenas 512 MB de memória e 4 MB/s de leitura de disco. Esta heterogeneidade é fundamental para avaliar a capacidade do algoritmo de balanceamento em distribuir a carga de forma proporcional à capacidade de cada servidor.
 
 Os comandos principais para gerenciar o ambiente experimental são:
 
 \begin{verbatim}
-# Limpar cache e iniciar todos os serviços
+# Limpar \textit{cache} e iniciar todos os serviços
 echo 3 | sudo tee /proc/sys/vm/drop_caches && \
 docker compose down && \
 docker compose up -d --build
@@ -217,7 +217,7 @@ docker compose down
 
 \subsection{Painel de Monitoramento}
 
-O painel de monitoramento foi implementado como uma página HTML estática que utiliza a biblioteca Chart.js para renderizar gráficos em tempo real. A página é servida através de um contêiner nginx e se comunica com a API de métricas através de requisições HTTP periódicas utilizando JavaScript.
+O painel de monitoramento foi implementado como uma página HTML estática que utiliza a biblioteca Chart.js para renderizar gráficos em tempo real. A página é servida através de um \textit{contêiner} nginx e se comunica com a API de métricas através de requisições HTTP periódicas utilizando JavaScript.
 
 O painel exibe, para cada servidor e para o balanceador de carga:
 
@@ -228,7 +228,7 @@ O painel exibe, para cada servidor e para o balanceador de carga:
     \item Gráficos de séries temporais mostrando a evolução das métricas.
 \end{itemize}
 
-O painel é acessível através de um navegador web na porta 3001 do host e foi utilizado durante o desenvolvimento e depuração do sistema para validar o comportamento dos componentes e identificar problemas de configuração. A Figura \ref{fig:monitoring-dashboard} apresenta a interface do painel de monitoramento, mostrando as métricas de múltiplos servidores MPEG-DASH em tempo real.
+O painel é acessível através de um navegador \textit{web} na porta 3001 do \textit{host} e foi utilizado durante o desenvolvimento e depuração do sistema para validar o comportamento dos componentes e identificar problemas de configuração. A Figura \ref{fig:monitoring-dashboard} apresenta a interface do painel de monitoramento, mostrando as métricas de múltiplos servidores MPEG-DASH em tempo real.
 
 \begin{figure}[htbp]
     \caption{Painel de monitoramento em tempo real mostrando métricas de consumo de memória, taxa de leitura de disco e requisições ativas dos servidores MPEG-DASH.}
@@ -309,14 +309,14 @@ sudo rsync -a --progress ./server-1/ ./server-3/
 # ... continuando até server-8
 \end{verbatim}
 
-Cada subdiretório \texttt{/data/server-X} foi então montado como um volume no contêiner correspondente através da diretiva \texttt{volumes} no arquivo \texttt{docker-compose.yml}:
+Cada subdiretório \texttt{/data/server-X} foi então montado como um volume no \textit{contêiner} correspondente através da diretiva \texttt{volumes} no arquivo \texttt{docker-compose.yml}:
 
 \begin{verbatim}
 volumes:
   - /data/server-1:/app/wwwroot/Static
 \end{verbatim}
 
-Este mecanismo de \textit{bind mount} permite que cada servidor acesse apenas seu próprio conjunto de arquivos, simulando o cenário realista de uma CDN onde cada servidor de borda mantém uma cópia local do conteúdo. A utilização de \textit{bind mounts} também facilita a atualização do conteúdo sem necessidade de reconstruir as imagens Docker, uma vez que as modificações no diretório do host são imediatamente refletidas dentro dos contêineres.
+Este mecanismo de \textit{bind mount} permite que cada servidor acesse apenas seu próprio conjunto de arquivos, simulando o cenário realista de uma CDN onde cada servidor de borda mantém uma cópia local do conteúdo. A utilização de \textit{bind mounts} também facilita a atualização do conteúdo sem necessidade de reconstruir as imagens \textit{Docker}, uma vez que as modificações no diretório do \textit{host} são imediatamente refletidas dentro dos \textit{contêineres}.
 
 \section{Cenários de Teste}
 
@@ -334,7 +334,7 @@ Todos os cenários de teste compartilham os seguintes parâmetros:
 
 \subsection{Definição dos Cenários}
 
-Foram definidos quatro cenários principais, cada um testado com três estratégias de balanceamento diferentes (Round-Robin, Seleção Aleatória e Monitoramento de Memória com diferentes intervalos de atualização). A Tabela \ref{tab:test-scenarios} apresenta a especificação detalhada de cada cenário.
+Foram definidos quatro cenários principais, cada um testado com três estratégias de balanceamento diferentes (\textit{Round-Robin}, Seleção Aleatória e Monitoramento de Memória com diferentes intervalos de atualização). A Tabela \ref{tab:test-scenarios} apresenta a especificação detalhada de cada cenário.
 
 \begin{table}[htbp]
 \centering
@@ -371,7 +371,7 @@ Mesma configuração do Cenário 2 \\
 
 \subsubsection{Cenário 1: Baixa Concorrência com Servidores Heterogêneos}
 
-Este cenário simula uma situação de carga moderada com 100 usuários simultâneos acessando um conjunto de servidores com capacidades significativamente diferentes. A heterogeneidade dos recursos visa avaliar a capacidade do algoritmo proposto de identificar e priorizar servidores com maior disponibilidade de recursos. Espera-se que estratégias que ignoram o estado dos servidores (como Round-Robin e Seleção Aleatória) distribuam a carga de forma uniforme, potencialmente sobrecarregando os servidores menos capazes, enquanto o algoritmo de monitoramento de memória deve ser capaz de direcionar mais requisições para os servidores com maior capacidade.
+Este cenário simula uma situação de carga moderada com 100 usuários simultâneos acessando um conjunto de servidores com capacidades significativamente diferentes. A heterogeneidade dos recursos visa avaliar a capacidade do algoritmo proposto de identificar e priorizar servidores com maior disponibilidade de recursos. Espera-se que estratégias que ignoram o estado dos servidores (como \textit{Round-Robin} e Seleção Aleatória) distribuam a carga de forma uniforme, potencialmente sobrecarregando os servidores menos capazes, enquanto o algoritmo de monitoramento de memória deve ser capaz de direcionar mais requisições para os servidores com maior capacidade.
 
 \subsubsection{Cenário 2: Baixa Concorrência com Servidores Homogêneos}
 
@@ -390,7 +390,7 @@ O último cenário combina alta carga com servidores homogêneos, oferecendo um 
 Para cada um dos quatro cenários descritos, foram executados testes com as seguintes estratégias de balanceamento:
 
 \begin{enumerate}
-    \item \textbf{Round-Robin}: Estratégia de linha de base que distribui as requisições de forma cíclica entre os servidores.
+    \item \textbf{\textit{Round-Robin}}: Estratégia de linha de base que distribui as requisições de forma cíclica entre os servidores.
     
     \item \textbf{Seleção Aleatória}: Estratégia de linha de base que seleciona um servidor aleatoriamente para cada requisição.
     

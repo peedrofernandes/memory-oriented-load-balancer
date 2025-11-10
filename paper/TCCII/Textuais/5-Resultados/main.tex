@@ -408,37 +408,4 @@ Sintetizando todos os fatores de QoE, emerge um ranqueamento claro para cenário
 
 Este ranqueamento inverte-se parcialmente em cenários homogêneos, onde todas as estratégias convergem para QoE similar e aceitável, reforçando a conclusão de que o contexto de aplicação determina a escolha adequada da estratégia.
 
-\section{Discussão}
-
-Os resultados experimentais validam inequivocamente a hipótese central estabelecida na Seção 3: um algoritmo de balanceamento de carga baseado em monitoramento de memória e interpretação de dados obsoletos supera significativamente estratégias convencionais em cenários heterogêneos, mesmo com informações moderadamente desatualizadas.
-
-\subsection{Validação das Hipóteses}
-
-A hipótese de que o algoritmo proposto apresentaria desempenho superior aos métodos \textit{Round-Robin} e Aleatório foi comprovada nos cenários heterogêneos. Reduções de latência de 70-85\%, eliminação ou drástica redução de travamentos, e manutenção de qualidade alta e consistente demonstram superioridade inquestionável. A hipótese adicional de que o intervalo de 6 segundos forneceria melhores resultados que o intervalo de 30 segundos também foi confirmada, embora o intervalo maior tenha demonstrado robustez surpreendente.
-
-\subsection{Robustez com Dados Obsoletos}
-
-Um resultado particularmente significativo é o desempenho do algoritmo com intervalo de atualização de 30 segundos. Mesmo com informações cinco vezes mais antigas que o intervalo de 6 segundos, o algoritmo manteve vantagem substancial sobre estratégias convencionais. Esta robustez valida o conceito de \textit{Load Interpretation} adaptado das equações da Seção 3, onde as chegadas esperadas durante o período de obsolescência são incorporadas no cálculo probabilístico.
-
-Em termos práticos, esta robustez é crucial para escalabilidade. Sistemas de larga escala com milhares de servidores não podem sustentar monitoramento muito frequente de todos os nós sem sobrecarga significativa. A capacidade de operar eficientemente com intervalos maiores reduz os requisitos de infraestrutura de monitoramento e largura de banda para comunicação de métricas.
-
-\subsection{Heterogeneidade como Fator Crítico}
-
-Os resultados demonstram inequivocamente que a heterogeneidade dos servidores é o fator determinante para o valor do balanceamento inteligente. A divergência dramática de desempenho entre cenários heterogêneos e homogêneos não deixa dúvidas: monitoramento e adaptação são essenciais quando servidores possuem capacidades diferentes, mas oferecem valor marginal quando todos são equivalentes.
-
-Esta conclusão tem implicações importantes para a indústria de CDNs e edge computing, onde heterogeneidade é a norma. Servidores de diferentes gerações coexistem devido a atualizações graduais de infraestrutura. Recursos são compartilhados dinamicamente entre múltiplas aplicações. Condições de rede variam por localização geográfica. Nestes contextos, que representam a realidade operacional de sistemas de distribuição de conteúdo em produção, estratégias simples são fundamentalmente inadequadas.
-
-\subsection{Concorrência como Teste de Estresse}
-
-Alta concorrência funcionou como teste de estresse efetivo, revelando as limitações das estratégias convencionais. Sob carga moderada, mesmo estratégias subótimas conseguem funcionar razoavelmente porque há capacidade suficiente no sistema. Sob alta carga, a ineficiência na utilização de recursos manifesta-se dramaticamente na forma de colapso de qualidade e emergência de travamentos.
-
-O fato de que o algoritmo proposto manteve desempenho superior mesmo sob estresse (Cenário 3 com 1000 usuários) demonstra não apenas eficácia em condições normais, mas também resiliência sob picos de demanda. Esta característica é fundamental para sistemas de produção, que devem lidar graciosamente com variabilidade de carga.
-
-\subsection{Limitações e Trabalhos Futuros}
-
-Embora os resultados sejam fortemente positivos, reconhecem-se limitações. Os experimentos foram conduzidos em ambiente virtualizado em máquina única, não capturando efeitos de rede real como variação de latência geográfica, perda de pacotes, ou congestão de rede. Expansões futuras devem testar em ambientes distribuídos geograficamente.
-
-Adicionalmente, os experimentos focaram em cenários específicos de concorrência (100 e 1000 usuários). Estudos futuros devem explorar uma gama mais ampla de cargas e padrões de acesso (por exemplo, crescimento gradual vs. picos abruptos). A interação com algoritmos ABR diferentes do \texttt{dash.js} também merece investigação.
-
-Finalmente, o algoritmo atual utiliza apenas métricas de memória e disco. Incorporar métricas adicionais (CPU, largura de banda de rede, localização geográfica) pode proporcionar benefícios incrementais, tema para pesquisas futuras.
 

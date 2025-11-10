@@ -80,7 +80,7 @@ A estratégia \textit{Round-Robin} distribui as requisições de forma cíclica 
 
 \subsubsection{Desempenho em Cenários Heterogêneos}
 
-Nos Cenários 1 e 3, onde os servidores possuem capacidades drasticamente diferentes (de 4096MB/512MB/s até 512MB/4MB/s), o \textit{Round-Robin} apresentou o pior desempenho geral. No Cenário 1, a latência média foi de 2345,5ms, aproximadamente 7 vezes superior ao algoritmo de monitoramento de memória. A análise da Figura \ref{fig:quality-scenario1} revela que a qualidade de reprodução oscilou drasticamente entre 1080P e 144P, indicando que o algoritmo direcionava requisições igualmente para servidores sobrecarregados e ociosos.
+Nos Cenários 1 e 3, onde os servidores possuem capacidades drasticamente diferentes (de 4096MB/1024MB/s até 32MB/16MB/s), o \textit{Round-Robin} apresentou o pior desempenho geral. No Cenário 1, a latência média foi de 2345,5ms, aproximadamente 7 vezes superior ao algoritmo de monitoramento de memória. A análise da Figura \ref{fig:quality-scenario1} revela que a qualidade de reprodução oscilou drasticamente entre 1080P e 144P, indicando que o algoritmo direcionava requisições igualmente para servidores sobrecarregados e ociosos.
 
 \begin{figure}[htbp]
     \caption{Evolução da qualidade de vídeo no Cenário 1 (100 usuários, heterogêneo) para cada estratégia de balanceamento.}

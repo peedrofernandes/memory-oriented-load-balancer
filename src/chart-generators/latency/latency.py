@@ -92,7 +92,7 @@ def create_bar_chart(data: Dict[str, float], settings: Dict[str, Any], output_pa
     groups = [get_scenario_group(s) for s in scenarios]
 
     figure_size = tuple(settings.get('figure_size', [12, 8]))
-    colors = settings.get('colors', ['#1f77b4'])
+    colors = settings.get('colors', None)
     dpi = int(settings.get('dpi', 300))
 
     plt.figure(figsize=figure_size)

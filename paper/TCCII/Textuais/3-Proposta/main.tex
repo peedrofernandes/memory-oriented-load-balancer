@@ -123,7 +123,7 @@ O algoritmo é executado a cada nova requisição que chega ao balanceador. Ele 
 \end{algorithmic}
 \end{algorithm}
 
-% As duas variáveis globais necessárias para o funcionamento do algoritmo são $L_{tot}$ e $n$. Ambas são recalculadas durante a chegada de cada informação enviada de um dos servidores ao balanceador de carga e a detecção de novos servidores pode ser feita de forma automática por meio de um evento que caracteriza a entrada de um novo servidor no \textit{pool} de serviços através de uma identificação ainda não realizada. Dessa forma, é possível obter elasticidade, deterministicamente adicionando um novo serviço caso chegue um evento com sua identificação e heuristicamente removendo serviços usando um valor arbitrário de \textit{threshold} equivalente ao tempo sem receber atualizações daquele servidor.
+% As duas variáveis globais necessárias para o funcionamento do algoritmo são $L_{tot}$ e $n$. Ambas são recalculadas durante a chegada de cada informação enviada de um dos servidores ao balanceador de carga e a detecção de novos servidores pode ser feita de forma automática por meio de um evento que caracteriza a entrada de um novo servidor no \textit{pool} de serviços através de uma identificação ainda não realizada.
 
 Para o funcionamento do algoritmo, são empregadas duas variáveis globais: $L_{tot}$ e $n$. Ambas são variáveis dinâmicas e automaticamente recalculadas sempre que o balanceador de carga recebe informações de qualquer servidor. A detecção de novos servidores ocorre de forma automática e determinística quando um evento caracteriza a identificação de um servidor que ainda não foi adicionado ao \textit{pool} de serviços.
 

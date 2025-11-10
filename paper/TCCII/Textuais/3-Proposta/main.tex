@@ -65,7 +65,7 @@ A Equação \mbox{\ref{eq:basic_li}} utilizada no algoritmo corresponde a uma ve
 P_{i}=\frac{\frac{L_{tot}+arrive_{T}}{n}-L_{i}}{arrive_{T}}
 \end{gather}
 
-Note-se que no contexto do trabalho \cite{interpretingStaleLoadInformation2000}, "carga" é um termo genérico e abstrato. Para fins de implementação e aderência com o problema proposto por este trabalho, o parâmetro de carga ($L_i$ e consequentemente $L_{tot}$), aplicado na Equação \mbox{\ref{eq:basic_li}}, será calculado previamente através da coleta periódica das métricas de consumo de memória RAM e taxa de leitura de disco (cujo processo será descrito posteriormente), da normalização desses parâmetros em pontos percentuais e, finalmente, da mesclagem desses parâmetros para que possam ser inseridos na fórmula. Nesse sentido, a carga de um servidor ($L_i$) será determinada considerando:
+Note-se que no contexto do trabalho \cite{interpretingStaleLoadInformation2000}, "carga" é um termo que remete ao tamanho da fila de requisições em estado de processamento pendente. Para fins de implementação e aderência com o problema proposto por este trabalho, o parâmetro de carga ($L_i$ e consequentemente $L_{tot}$), aplicado na Equação \mbox{\ref{eq:basic_li}}, será calculado previamente através da coleta periódica das métricas de consumo de memória RAM e taxa de leitura de disco (cujo processo será descrito posteriormente), da normalização desses parâmetros em pontos percentuais e, finalmente, da mesclagem desses parâmetros para que possam ser inseridos na fórmula. Nesse sentido, a carga de um servidor ($L_i$) será determinada considerando:
 
 \begin{enumerate}
     \item[$n$]: Número do total de servidores.

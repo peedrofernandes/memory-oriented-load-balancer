@@ -10,7 +10,7 @@ A plataforma de conteinerização Docker foi empregada como ambiente de execuç�
 
 \subsection{Particularidades do Docker e cgroups}
 
-O Docker utiliza o sistema de \textit{cgroups} (grupos de controle) do kernel Linux para implementar limites de recursos e realizar o monitoramento de uso de CPU, memória e entrada/saída de disco. Especificamente, o experimento utiliza \textit{cgroups v2}, que oferece uma interface unificada e simplificada para o gerenciamento de recursos. Através dos arquivos de sistema disponibilizados pelo \textit{cgroups}, é possível ler diretamente as métricas de consumo de memória e taxa de leitura de disco de cada contêiner em tempo real.
+O Docker utiliza o sistema de \textit{cgroups} (grupos de controle) do kernel Linux para implementar limites de recursos e realizar o monitoramento de uso de CPU, memória e leitura de disco. Especificamente, o experimento utiliza \textit{cgroups v2}, que oferece uma interface unificada e simplificada para o gerenciamento de recursos. Através dos arquivos de sistema disponibilizados pelo \textit{cgroups}, é possível ler diretamente as métricas de consumo de memória e taxa de leitura de disco de cada contêiner em tempo real.
 
 Para garantir a consistência entre as execuções dos experimentos e eliminar o efeito de \textit{cache} do sistema operacional nos resultados, é fundamental realizar a limpeza do \textit{cache} de páginas do kernel Linux antes de cada execução. Esta operação é realizada através do comando:
 
@@ -74,7 +74,7 @@ O \texttt{MetricsPublisher} realiza periodicamente as seguintes operações:
 
 \begin{enumerate}
     \item Leitura do consumo atual de memória através do arquivo \texttt{/sys/fs/cgroup/memory.current} do \textit{cgroups v2};
-    \item Leitura das estatísticas de entrada/saída através do arquivo \texttt{/sys/fs/cgroup/io.stat}, extraindo o total de \textit{bytes} lidos (\texttt{rbytes});
+    \item Obtenção das estatísticas de leitura através do arquivo \texttt{/sys/fs/cgroup/io.stat}, extraindo o total de \textit{bytes} lidos (\texttt{rbytes});
     \item Cálculo da taxa de leitura de disco através da diferença entre leituras consecutivas dividida pelo intervalo de tempo decorrido;
     \item Normalização das métricas em relação aos limites configurados para o contêiner, gerando valores entre 0 e 1;
     \item Publicação das métricas normalizadas em um tópico MQTT para consumo pelo balanceador de carga.
@@ -356,7 +356,7 @@ Foram definidos quatro cenários principais, cada um testado com três estratég
 \textbf{S8}: 512MB / 4MB/s \\
 \hline
 2 & 100 & Homogênea & 
-Todos os servidores: 1024MB RAM e 256MB/s I/O \\
+Todos os servidores: 1024MB RAM e 256MB/s de leitura \\
 \hline
 3 & 1000 & Heterogênea & 
 Mesma configuração do Cenário 1 \\

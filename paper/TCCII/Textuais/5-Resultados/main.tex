@@ -224,7 +224,7 @@ A Figura \ref{fig:bitrate-scenario1} complementa esta análise, mostrando a taxa
 
 \subsection{Cenário 2: Baixa Concorrência com Servidores Homogêneos}
 
-O Cenário 2 utiliza a mesma carga do Cenário 1 (100 usuários), mas com todos os servidores possuindo capacidades idênticas (1024MB RAM, 256MB/s I/O). Este cenário serve como controle para isolar o efeito da heterogeneidade.
+O Cenário 2 utiliza a mesma carga do Cenário 1 (100 usuários), mas com todos os servidores possuindo capacidades idênticas (1024MB RAM, 256MB/s de leitura). Este cenário serve como controle para isolar o efeito da heterogeneidade.
 
 \subsubsection{Convergência de Desempenho}
 
@@ -334,7 +334,7 @@ A comparação entre cenários heterogêneos (Cenários 1 e 3) e homogêneos (Ce
 
 \subsection{Cenários Heterogêneos: Dramatização das Diferenças}
 
-Nos cenários heterogêneos, as diferenças de desempenho entre estratégias foram dramáticas. A heterogeneidade dos servidores (de 4096MB/512MB/s até 512MB/4MB/s, uma variação de 8x em memória e 128x em I/O) cria um ambiente onde a escolha do servidor impacta profundamente o tempo de resposta.
+Nos cenários heterogêneos, as diferenças de desempenho entre estratégias foram dramáticas. A heterogeneidade dos servidores (de 4096MB/512MB/s até 512MB/4MB/s, uma variação de 8x em memória e 128x em leitura de disco) cria um ambiente onde a escolha do servidor impacta profundamente o tempo de resposta.
 
 O \textit{Round-Robin}, ao distribuir uniformemente, efetivamente aplica a mesma carga a servidores com capacidades drasticamente diferentes. Isto resulta em servidores fracos saturados (respondendo lentamente ou não respondendo) enquanto servidores fortes permanecem ociosos. A Figura \ref{fig:latency} visualiza este efeito: latências extremamente altas nos cenários heterogêneos para estratégias convencionais, comparadas a latências baixas para o algoritmo proposto.
 

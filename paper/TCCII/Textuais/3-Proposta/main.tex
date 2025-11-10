@@ -45,7 +45,7 @@ Esta seção aborda pormenorizadamente os caminhos escolhidos para a implementa�
 
 O primeiro passo, crucial para a determinação do modelo de otimização de balanceadores de carga, é a definição do algoritmo de balanceamento. Basicamente, a tarefa principal de um algoritmo de balanceamento de carga é o modo como a escolha do servidor será feita em cada requisição que chega ao sistema balanceador de carga.
 
-Em particular, o algoritmo escolhido será \textbf{probabilístico}. Isso significa que, para cada servidor que poderá ser escolhido no processo, haverá uma probabilidade intrínseca baseada em parâmetros tanto individuais quanto gerais, e a estratégia de determinação dessa probabilidade é o que definirá o algoritmo em si. De acordo com o objetivo principal do trabalho, as duas principais (mas não únicas) métricas que exercerão influência sobre a determinação da probabilidade de escolha de cada servidor são o \textbf{consumo de memória RAM} e a \textbf{Taxa de Entrada e Saída de Disco}. Essas duas métricas são essenciais e vitais dentro do contexto de servidores que distribuem conteúdo, uma vez que sua única tarefa é recuperar estes arquivos do disco e efetivamente entregá-los ao solicitante. 
+Em particular, o algoritmo escolhido será \textbf{probabilístico}. Isso significa que, para cada servidor que poderá ser escolhido no processo, haverá uma probabilidade intrínseca baseada em parâmetros tanto individuais quanto gerais, e a estratégia de determinação dessa probabilidade é o que definirá o algoritmo em si. De acordo com o objetivo principal do trabalho, as duas principais (mas não únicas) métricas que exercerão influência sobre a determinação da probabilidade de escolha de cada servidor são o \textbf{consumo de memória RAM} e a \textbf{Taxa de Leitura de Disco}. Essas duas métricas são essenciais e vitais dentro do contexto de servidores que distribuem conteúdo, uma vez que sua única tarefa é recuperar estes arquivos do disco e efetivamente entregá-los ao solicitante. 
 
 Em paralelo, os servidores enviarão, periodicamente, os dados de monitoramento referentes ao consumo de memória principal e à taxa de leitura de disco. A ideia é que o balanceador mantenha uma estrutura dinâmica que será atualizada de forma contínua, atualizando os parâmetros necessários e efetivamente promovendo eficiência na distribuição das requisições. O método que será usado para realizar a implementação deste conceito, bem como a definição das taxas de atualização dos dados dos servidores para o balanceador de carga, serão discutidos posteriormente.
 
@@ -65,14 +65,14 @@ A Equação \mbox{\ref{eq:basic_li}} utilizada no algoritmo corresponde a uma ve
 P_{i}=\frac{\frac{L_{tot}+arrive_{T}}{n}-L_{i}}{arrive_{T}}
 \end{gather}
 
-Note-se que no contexto do trabalho \cite{interpretingStaleLoadInformation2000}, "carga" é um termo genérico e abstrato. Para fins de implementação e aderência com o problema proposto por este trabalho, o parâmetro de carga ($L_i$ e consequentemente $L_{tot}$), aplicado na Equação \mbox{\ref{eq:basic_li}}, será calculado previamente através da coleta periódica das métricas de consumo de memória RAM e taxa de entrada e saída de memória secundária (cujo processo será descrito posteriormente), da normalização desses parâmetros em pontos percentuais e, finalmente, da mesclagem desses parâmetros para que possam ser inseridos na fórmula. Nesse sentido, a carga de um servidor ($L_i$) será determinada considerando:
+Note-se que no contexto do trabalho \cite{interpretingStaleLoadInformation2000}, "carga" é um termo genérico e abstrato. Para fins de implementação e aderência com o problema proposto por este trabalho, o parâmetro de carga ($L_i$ e consequentemente $L_{tot}$), aplicado na Equação \mbox{\ref{eq:basic_li}}, será calculado previamente através da coleta periódica das métricas de consumo de memória RAM e taxa de leitura de disco (cujo processo será descrito posteriormente), da normalização desses parâmetros em pontos percentuais e, finalmente, da mesclagem desses parâmetros para que possam ser inseridos na fórmula. Nesse sentido, a carga de um servidor ($L_i$) será determinada considerando:
 
 \begin{enumerate}
     \item[$n$]: Número do total de servidores.
     \item[$LM_i$]: Consumo de memória principal no servidor $i$, representando a quantidade de memória usada para transferir o conteúdo no tempo T, normalizado em pontos percentuais com relação à capacidade total de memória do servidor $i$.
     \item[$LD_i$]: Carga do disco no servidor $i$, representando a velocidade do fluxo de busca e leitura das informações do disco no tempo T, normalizada em pontos percentuais com relação a capacidade total de leitura do disco no servidor $i$.
     \item[$TM$]: Taxa de uso geral de memória, determinado por $\sum_{i=0}^n \frac{LM_i}{n}$.
-    \item[$TD$]: Taxa de consumo geral de operações de disco, determinado por $\sum_{i=0}^n \frac{LD_i}{n}$. 
+    \item[$TD$]: Taxa de consumo geral de leitura de disco, determinado por $\sum_{i=0}^n \frac{LD_i}{n}$. 
 \end{enumerate}
 
 Sendo assim, a Equação \mbox{\ref{eq:limemory}} define a carga, no contexto deste trabalho, de um servidor de conteúdo.

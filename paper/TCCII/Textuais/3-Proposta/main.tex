@@ -127,6 +127,32 @@ O algoritmo é executado a cada nova requisição que chega ao balanceador. Ele 
 
 Para o funcionamento do algoritmo, são empregadas duas variáveis globais: $L_{tot}$ e $n$. Ambas são variáveis dinâmicas e automaticamente recalculadas sempre que o balanceador de carga recebe informações de qualquer servidor. A detecção de novos servidores ocorre de forma automática e determinística quando um evento caracteriza a identificação de um servidor que ainda não foi adicionado ao \textit{pool} de serviços.
 
+\subsection{Detalhes de implementação: cálculo de $arrive_T$ e normalização}
+
+Na implementação prática do algoritmo, o cálculo do parâmetro $arrive_T$ requer especial atenção, pois é fundamental para a correta interpretação de dados obsoletos. A abordagem implementada estabelece um valor mínimo para $arrive_T$ baseado na condição de que nenhum servidor deve ter probabilidade negativa de seleção. Este valor mínimo ($arrive_{T_{min}}$) é calculado como:
+
+\begin{gather} \label{eq:arrive_t_min}
+    arrive_{T_{min}} = \max(L_i) \times n - L_{tot}
+\end{gather}
+
+onde $\max(L_i)$ representa a maior carga entre todos os servidores. Este limite garante que, mesmo no pior cenário de distribuição de carga, o algoritmo não produzirá probabilidades negativas.
+
+O valor efetivo de $arrive_T$ é então calculado através de uma estimativa baseada na taxa de requisições observada ($r$), no tempo decorrido desde o início do sistema ($elapsed\_time$), no tempo médio de obsolescência das informações ($t$), na carga total do sistema ($L_{tot}$), e no número total de requisições ativas nos servidores ($total\_active\_requests$):
+
+\begin{gather} \label{eq:arrive_t_calc}
+    arrive_T = \max\left(arrive_{T_{min}}, \left(\frac{r}{elapsed\_time} \times t \times \frac{L_{tot}}{total\_active\_requests}\right) \times 0.1\right)
+\end{gather}
+
+O fator de 0.1 aplicado ao final da equação atua como um coeficiente de suavização, evitando oscilações abruptas no cálculo das probabilidades. Esta implementação assegura que o sistema sempre utilize o maior valor entre o mínimo teórico e o valor estimado dinamicamente, proporcionando estabilidade ao algoritmo.
+
+\textbf{Normalização e casos extremos}: Para garantir robustez em situações adversas, a implementação incorpora um mecanismo de normalização que entra em ação quando $arrive_T \leq 0$ ou quando não há servidores registrados no sistema. Nestes casos, o algoritmo automaticamente reverte para uma distribuição uniforme, onde cada servidor recebe probabilidade igual:
+
+\begin{gather} \label{eq:uniform}
+    P_i = \frac{1}{n} \quad \text{para todo } i
+\end{gather}
+
+Esta estratégia de \textit{fallback} evita comportamento indefinido ou divisões por zero, mantendo o sistema operacional mesmo em condições não ideais. Adicionalmente, após o cálculo de cada $P_i$ usando a Equação \ref{eq:basic_li}, a implementação verifica se o valor resultante é finito (não é NaN ou infinito), atribuindo zero caso contrário. Esta verificação adicional garante que erros numéricos não comprometam a seleção de servidores.
+
 % (OE 7) Definição conceitual da arquitetura e definição dos requisitos topológicos da rede e da estrutura dos servidores que definirão o contexto da aplicação da metodologia
 % (OE 5) Definição da estratégia escolhida de transmissão contínua de dados de monitoramento de servidores de distribuição de conteúdo para o serviço balanceador de carga
 \section{Os requisitos tecnológicos}

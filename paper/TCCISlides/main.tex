@@ -1,0 +1,839 @@
+\documentclass[10pt]{beamer}
+\usepackage{graphicx}
+\usepackage[dvipsnames,table]{xcolor}
+\usepackage {mathtools}
+\usepackage{multirow}
+\usepackage{array,tabularx}
+\usepackage{booktabs}	
+\usepackage{svg}
+\usepackage{csquotes}
+\usepackage[portuguese]{babel}
+\usepackage[font=footnotesize,labelfont=bf]{caption}
+\usepackage{listings, listings-rust}
+\usetheme{CambridgeUS}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode} 
+\usecolortheme{dolphin}
+\setcounter{tocdepth}{1} 
+\renewcommand{\figurename}{}
+
+\setlength{\parskip}{8pt}
+
+
+% Set Colors
+\definecolor{verde_escuro_fudesc}{RGB}{44, 78, 45}
+\definecolor{verde_claro_fudesc}{RGB}{87, 152, 89}
+\definecolor{vermelho_escuro_fudesc}{RGB}{195, 40, 44}
+\definecolor{vermelho_claro_fudesc}{RGB}{240, 63, 55}
+
+
+\setbeamercolor*{palette primary}{bg = verde_escuro_fudesc, fg = white}
+\setbeamercolor*{palette secondary}{bg = verde_escuro_fudesc, fg = white}
+\setbeamercolor*{palette tertiary}{bg = verde_escuro_fudesc, fg = white}
+\setbeamercolor{date in head/foot}{bg = verde_escuro_fudesc, fg = white}
+\setbeamercolor*{title}{bg = verde_escuro_fudesc, fg = white}
+\setbeamercolor*{item}{bg = white, fg = verde_escuro_fudesc}
+\setbeamercolor*{caption name}{bg = white, fg = verde_escuro_fudesc}
+\setbeamercolor*{frametitle}{bg = white, fg = verde_escuro_fudesc}
+
+\usefonttheme{professionalfonts}
+\usepackage{natbib}
+\usepackage{hyperref}
+%------------------------------------------------------------
+\titlegraphic{\includesvg[height=1.5cm]{imagens/udesc.svg}} 
+
+\setbeamerfont{title}{size=\large}
+\setbeamerfont{subtitle}{size=\small}
+\setbeamerfont{author}{size=\small}
+\setbeamerfont{date}{size=\small}
+\setbeamerfont{institute}{size=\small}
+\title[Otimização de balanceadores de carga de sistemas de distribuição
+de conteúdo por meio de monitoramento sistemático de memória]{Otimização de balanceadores de carga de sistemas de distribuição
+de conteúdo por meio de monitoramento sistemático de memória}
+\subtitle{}
+\author{Pedro Faria Fernandes}
+
+\institute[]{Universidade do Estado de Santa Catarina}
+\date[\today]
+{\today}
+
+\AtBeginSection[]{
+  \begin{frame}
+  \vfill
+  \centering
+  \begin{beamercolorbox}[sep=8pt,center,shadow=true,rounded=true]{title}
+    \usebeamerfont{title}\insertsectionhead\par%
+  \end{beamercolorbox}
+  \vfill
+  \end{frame}
+}
+
+%-------------------------------------------------
+
+\begin{document}
+\frame{\titlepage}
+\begin{frame}[allowframebreaks]{Sumário}
+    \tableofcontents
+\end{frame}
+
+%-------------------------------------------------
+
+\section{Introdução}
+
+\begin{frame}{Contexto}
+    \begin{columns}[t]
+    \begin{column}{0.45\textwidth}
+        \textbf{Evolução do Consumo de Vídeo}
+        \begin{itemize}
+            \item Popularização do consumo de conteúdo em vídeo (televisão);
+            \item Internet e \textit{streaming} transformaram o hábito para \textbf{sob demanda};
+            \item Crescimento \textbf{exponencial} de dados de vídeo na rede;
+            \item Pressão sem precedentes sobre a infraestrutura global, causada pela demanda;
+        \end{itemize}
+    \end{column}
+    \begin{column}{0.55\textwidth}
+        \textbf{Desafios de Otimização}
+            \begin{itemize}
+                \item Maximizar a Qualidade de Experiência (QoE) para usuários;
+                \item Considerando que QoE é responsabilidade compartilhada entre provedores de serviço e ISPs (\textit{Internet Service Providers}), o foco deste trabalho será a otimização da qualidade no \textbf{contexto do provedor de serviço};
+            \end{itemize}
+    \end{column}
+    \end{columns}
+\end{frame}
+
+% \begin{frame}{Solução para os desafios}
+%     \textbf{Redes de Distribuição de Conteúdo (CDNs)}
+%     \begin{itemize}
+%         \item A arquitetura de CDNs é complexa e geograficamente dispersa;
+%         \item O conteúdo é replicado em \textbf{servidores de borda} (edge servers) próximos ao usuário;
+%         \item Apresenta os benefícios de menor latência e tempo de carregamento;
+%         \item O \textbf{Balanceamento de carga} é essencial nesse contexto para distribuir tráfego, evitar sobrecarga e promover estabilidade geral no sistema;
+%     \end{itemize}
+% \end{frame}
+
+
+% \begin{frame}{Os balanceadores de carga}
+%     \textbf{Balanceadores de Carga}
+%     \begin{itemize}
+%         \item O \textbf{\textit{Load Balancer}} é peça fundamental na maximização do aproveitamento de recursos computacionais em sistemas replicados \cite{dos2019balanceamento};
+%         \item Sua efetividade reside em não sobrecarregar serviços, mesmo em alta demanda, por meio da \textbf{centralização de roteamento};
+%     \end{itemize}
+%     \textbf{Estratégias de Roteamento e Suas Limitações}
+%     \begin{itemize}
+%         \item Podem ser empregadas diversas estratégias: \textbf{seleção aleatória}, \textbf{\textit{Round-Robin}}, \textbf{eleição de sistemas distribuídos}, entre outras;
+%         \item Aleatória e \textit{Round-Robin} são simples, mas podem causar sobrecarga em servidores. Uma das alternativas sofisticadas é a eleição dinâmica do servidor mais apropriado com base em \textbf{parâmetros personalizados};
+%     \end{itemize}
+% \end{frame}
+
+% \begin{frame}{A memória}
+%     \textbf{Dispositivos de Armazenamento persistente}
+%     \begin{itemize}
+%         \item Podem ser pontos de gargalo, especialmente em sistemas de \textit{streaming} que exigem acesso aleatório à memória \cite{sivathanu2013IOWorkloads} e exibem altos custos arquiteturais \cite{arpaciDusseau98};
+%         \item Falhas são comuns em Data Centers de larga escala \cite{wuEtalIOWorkload}, exigindo tolerância a falhas;
+%     \end{itemize}
+%     \textbf{Uso de memória principal}
+%     \begin{itemize}
+%         \item O armazenamento em dispositivos de memória voláteis (memória principal) é uma técnica difundida para escalar sistemas na \textit{Web}, devido à elevada velocidade de acesso. Por isso, a taxa de consumo de memória principal também é uma métrica valiosa para decisão de balanceadores de carga de servidores de distribuição de conteúdo;
+%     \end{itemize}
+% \end{frame}
+
+\begin{frame}{Problema e Justificativa}
+    \begin{itemize}
+        \item Sistemas de distribuição de conteúdo $\approx$ múltiplos servidores, um balanceador de carga;
+        \item O uso de memória (principal e secundária) é correlacionado com o desempenho de servidores de distribuição de conteúdo e é um cenário comum em CDNs (\textit{Content Delivery Networks}) com \textbf{servidores de borda} (\textit{Edge Servers} ou \textit{Cache Servers}) \cite{surveyCDNArchitectures2025};
+        \item Há uma lacuna em estratégias convencionais de balanceamento de carga que ignoram o estado dos recursos de memória ou consideram outros recursos computacionais em conjunto;
+    \end{itemize}
+
+    \vfill
+    {\scriptsize \textit{\textbf{Observação}: Os termos "uso de memória" e "consumo de memória", no contexto deste trabalho, correspondem às métricas de \textbf{consumo de memória principal} e \textbf{taxa de entrada e saída (I/O) de memória secundária}.}}
+\end{frame}
+
+\begin{frame}{Objetivo}
+    \textbf{Objetivo do trabalho}
+    \begin{itemize}
+        \item O objetivo do trabalho é seguir pela abordagem da consideração exclusiva do uso de memória de modo a avaliar uma estratégia de otimização da escolha do servidor em balanceadores de carga para sistemas de distribuição de conteúdo.
+        \item O objetivo será atingido por meio da implementação, amparada pelo estabelecimento de uma arquitetura de simulação para testes, de um algoritmo de balanceamento de carga e posterior análise comparativa.
+    \end{itemize}
+\end{frame}
+
+% \begin{frame}{Justificativa}
+
+% A eficiência de \textbf{Sistemas de Distribuição de Conteúdo} depende da entrega rápida de dados estáticos pelos servidores.
+
+% Nesse contexto, a memória (tanto principal quanto secundária) emerge como um \textbf{recurso crítico} cujo estado reflete diretamente a aptidão de um servidor para responder a novas requisições de conteúdo.
+
+% Portanto, a proposta de elaboração e implementação de um algoritmo de balanceamento de carga amparado por um cenário de teste justifica-se pela necessidade premente de explorar uma estratégia mais especializada e alinhada com a natureza operacional dos servidores de distribuição de conteúdo.
+% \end{frame}
+
+\section{Trabalhos relacionados}
+
+\begin{frame}[allowframebreaks]{Trabalhos Relacionados}
+
+\begin{itemize}
+    \item \textbf{NGINX:} Sistema popular que utiliza algoritmos como \textit{Round-Robin} que podem levar a desequilíbrios, pois não monitoram o \textbf{uso de memória} dos servidores em tempo real para tomar decisões \cite{nginxAlgorithmsEvaluationYuhong2022}.
+
+    \item \textbf{HAProxy:} É reconhecido pela alta eficiência e baixo consumo de recursos, mas também carece de um mecanismo nativo de monitoramento de memória para otimizar a distribuição de tráfego \cite{haproxy}.
+
+    \item \textbf{Docker Swarm:} Embora um estudo tenha explorado adicionar a \textbf{influência da memória} em seu balanceador, o foco foi exclusivo do ecossistema Docker, sem aplicação em servidores de distribuição de conteúdo \cite{dockerswarmmemory2018}.
+
+    \item \textbf{Algoritmo Dinâmico (Cloud):} Uma solução foi proposta para lidar com \textit{Flash Crowds} em aplicações na nuvem usando múltiplas métricas, mas sem especificidade para o gargalo de memória em CDNs \cite{novelWeightAssignmentLoadBalancingAlgorithmForCloudApps2023}.
+    
+    \item \textbf{Revisão de Parâmetros:} Uma revisão de algoritmos dinâmicos mostrou que, embora alguns usem \textbf{memória e disco} como parâmetros, nenhum os utiliza como fator principal ou exclusivo de avaliação de desempenho \cite{webServerPerformanceImprovement2021Review}.
+    
+    \item \textbf{Streaming de Vídeo (iSCON):} A estratégia iSCON foca em replicar conteúdo popular para balancear a carga, mas utiliza a \textbf{largura de banda} como principal indicador, ignorando a pressão sobre a memória \cite{dynamicLoadBalancingForEfficientVideoStreamingService2015}.
+    
+    \item \textbf{Servidores de Vídeo Distribuídos:} Um trabalho propôs uma solução de duas fases que mede a carga pelo \textbf{número de streams ativas}, uma abstração que não considera gargalos de recursos de baixo nível como a memória \cite{dataAllocationAndDynamicLoadBalancingForDistributedVideoStorageServer1999}.
+\end{itemize}
+
+\end{frame}
+
+% \begin{frame}{NGINX}
+
+% O NGINX é um sistema popular, amplamente utilizado como servidor web, proxy reverso e balanceador de carga para lidar com aplicações de alta concorrência.
+
+% \textbf{Uso e Algoritmos Nativos}
+% \begin{itemize}
+%     \item Algoritmos comuns: \textbf{\textit{Weighted Round-Robin}}, \textbf{\textit{Least Connections}} e \textbf{\textit{IP hash}};
+%     \item A função de \textit{hash} nativa é simples, levando a \textbf{colisões de hash} e distribuição não uniforme \cite{nginxAlgorithmsEvaluationYuhong2022};
+%     \item Em algumas situações, servidores podem ficar sobrecarregados enquanto outros são subutilizados;
+%     \item Não há monitoramento de \textbf{uso de memória em tempo real} para decisões dinâmicas, crucial em distribuição de conteúdo;
+%     \item Adição de monitoramento de memória pode \textbf{aprimorar a inteligência} do balanceador de carga;
+% \end{itemize}
+% \end{frame}
+
+% \begin{frame}{HAProxy}
+
+% O HAProxy é um software de código aberto para balanceamento de carga e proxy reverso em aplicações TCP/IP e HTTP \cite{haproxy}.
+
+% \begin{itemize}
+%     \item É reconhecido por sua eficiência e baixo uso de memória;
+%     \item Não há indicações de monitoramento de memória em tempo real para otimizar a distribuição de tráfego - a integração dessa funcionalidade poderia aprimorar a alocação de recursos e prevenir sobrecargas nos servidores de cache;
+% \end{itemize}
+% \end{frame}
+
+% \begin{frame}{Docker}
+
+% No contexto da moderna prática de conteinerização de servidores, o \textit{Docker} é uma plataforma de código aberto que orquestra contêineres em sistemas complexos e descentralizados para esse propósito.
+
+% \begin{itemize}
+% \item Seu mecanismo de balanceamento usa técnicas simples como Round-Robin e distribuição aleatória;
+% \item Um experimento de 2018 buscou aumentar a eficiência do balanceador de carga ao introduzir a influência do consumo de memória nos servidores \cite{dockerswarmmemory2018}. No entanto, a pesquisa teve foco exclusivo nas especificidades do Docker e não analisou servidores de distribuição de conteúdo;
+% \end{itemize}
+% \end{frame}
+
+% \begin{frame}{Balanceamento de Carga Dinâmico}
+
+% Em um estudo, um algoritmo de \textbf{Balanceamento de Carga Dinâmico} foi desenvolvido usando recursos computacionais como métrica \cite{novelWeightAssignmentLoadBalancingAlgorithmForCloudApps2023}.
+
+% \begin{itemize}
+%     \item O algoritmo utiliza métricas como número de \textbf{threads}, tamanho do \textbf{buffer de rede}, consumo de \textbf{CPU}, consumo de \textbf{memória} e \textbf{largura de banda};
+%     \item O objetivo é resolver o problema de \textit{\textbf{Flash Crowds}} (aumento abrupto de requisições);
+%     \item O trabalho, além de abranger uma grande quantidade de parâmetros baseados no consumo de recursos computacionais, foca em aplicações \textbf{cloud} em geral, sem especificidade para servidores de distribuição de conteúdo;
+% \end{itemize}
+% \end{frame}
+
+% \begin{frame}{Parâmetros de Algoritmos Dinâmicos}
+
+% Uma revisão \cite{webServerPerformanceImprovement2021Review} analisou os 15 algoritmos mais utilizados para balanceamento de carga. Quase todos são \textbf{dinâmicos} e usam múltiplos parâmetros.
+
+% \begin{center}
+% \begin{tabular}{|l|l|}
+% \hline % Borda horizontal superior (substitui \toprule)
+% \textbf{Parâmetro Utilizado} & \textbf{Número de Algoritmos} \\
+% \hline % Borda horizontal após o cabeçalho (substitui \midrule)
+% Tempo de resposta da requisição & 11 \\
+% \hline % Borda horizontal após cada linha
+% Vazão de dados & 9 \\
+% \hline
+% Consumo de memória & 6 \\
+% \hline
+% Consumo de disco & 6 \\
+% \hline
+% Consumo geral de recursos computacionais & 5 \\
+% \hline
+% Consumo de CPU & 4 \\
+% \hline
+% Duração média das requisições & 4 \\
+% \hline
+% Técnicas simples & 2 \\
+% \hline
+% Taxa de falha de requisições & 1 \\
+% \hline
+% Número de conexões ativas & 1 \\
+% \hline % Borda horizontal inferior (substitui \bottomrule)
+% \end{tabular}
+% \end{center}
+
+% Apesar de 6 algoritmos usarem consumo de memória e disco (respectivamente), nenhum deles usa esse parâmetro com exclusividade para avaliação de resultados.
+
+% \end{frame}
+
+% \begin{frame}{Balanceamento de Carga Dinâmico para Streaming de Vídeo}
+
+% O trabalho \textit{"Dynamic Load Balancing for Efficient Video Streaming Service"} \cite{dynamicLoadBalancingForEfficientVideoStreamingService2015} aborda o desequilíbrio de carga em servidores de streaming.
+
+% \textbf{Estratégia Proposta e Lacunas}
+% \begin{itemize}
+%     \item A concentração de requisições em conteúdos populares causa o desequilíbrio;
+%     \item A estratégia iSCON monitora servidores em tempo real e redistribui a carga replicando conteúdos populares para servidores com menor tráfego, sendo a largura de banda de transmissão o principal indicador de carga para o algoritmo;
+%     \item O algoritmo é ativado quando a largura de banda de um servidor excede um limite;
+%     \item O \textbf{monitoramento do uso de memória não é um parâmetro} para as decisões de balanceamento de carga, apesar das especificações detalhadas dos servidores. Há uma lacuna na otimização de cenários onde a pressão sobre a memória pode ser o gargalo;
+% \end{itemize}
+% \end{frame}
+
+% \begin{frame}{Alocação de Dados e Balanceamento de Carga Dinâmico para Servidores de Vídeo Distribuídos}
+
+% O trabalho \cite{dataAllocationAndDynamicLoadBalancingForDistributedVideoStorageServer1999} propõe uma solução de duas fases para aumentar a disponibilidade em um cluster de servidores de vídeo.
+
+% \begin{itemize}
+%     \item \textbf{Fase 1: Alocação Inicial de Dados} — Distribui réplicas de vídeo com base em probabilidades de acesso esperadas para balanceamento de carga estático;
+%     \item \textbf{Fase 2: Deslocamento de Carga (\textit{Load Shifting})} — Uma estratégia dinâmica onde requisições bloqueadas em um servidor sobrecarregado são admitidas migrando requisições em andamento para outros nós;
+%     \item O acionamento é baseado em limiares predefinidos que comparam a carga do servidor (número de \textbf{streams ativas} - $P_{i,j}$) com a de seus vizinhos ou capacidade máxima ($A_{max}$). O conceito de "carga" foca no número de \textbf{streams ativas} vs. capacidade máxima, ignorando o uso de recursos de baixo nível como \textbf{memória} ou \textbf{CPU};
+%     \item Essa abstração, embora eficaz para balancear requisições, não aborda gargalos de desempenho por esgotamento de memória, especialmente em servidores com cache intensivo de vídeo;
+% \end{itemize}
+% \end{frame}
+
+\section{Fundamentação Teórica}
+
+\begin{frame}{Content Delivery Networks (CDNs)}
+
+\textbf{CDNs} são infraestruturas cruciais para entregar conteúdo rápido, confiável e eficiente, distribuindo-o em servidores geograficamente dispersos.
+
+\begin{itemize}
+    \item São \textbf{sistemas distribuídos de computadores}, administrados no nível da aplicação, que encaminham requisições para o servidor mais próximo do usuário, reduzindo latência e sobrecarga \cite{Preston2021Finding};
+    \item \textbf{Arquitetura}: Servidores de origem (conteúdo original) e servidores de borda (cópias redundantes) em PoPs (\textit{Points of Presence});
+    \item \textbf{Cache}: Conteúdo é servido do PoP mais próximo, otimizando a distância física e reduzindo a carga na rede global;
+    \item \textbf{Roteamento}: Utilizam DNS para direcionar usuários ao servidor ideal com base na localização geográfica;
+    \item \textbf{Balanceamento de Carga}: Distribuem requisições para evitar sobrecarga em PoPs, usando localização geográfica e técnicas como \textit{anycast} \cite{Preston2021Finding};
+\end{itemize}
+\end{frame}
+
+% \subsection{Balanceadores de carga}
+
+\begin{frame}{Balanceadores de Carga}
+
+Balanceadores de carga são cruciais em sistemas distribuídos, incluindo CDNs.
+
+\textbf{Função e Importância}
+\begin{itemize}
+    \item Distribuem eficientemente cargas de trabalho (requisições, tráfego) entre múltiplos servidores e são essenciais para a \textbf{escalabilidade horizontal}, preferencial à vertical por flexibilidade e custo \cite{scalabilityIssuesInDatabaseSystems};
+    \item Melhoram o desempenho, a escalabilidade, a confiabilidade e a disponibilidade (ex: redirecionamento em caso de falha);
+    \item A eficácia do sistema distribuído depende da sofisticação do balanceamento de carga;
+    \item Categorias principais: \textbf{Nível de aplicação} e \textbf{nível de rede}; \cite{Pandian2022ICCBI};
+\end{itemize}
+\end{frame}
+
+% \subsection{MPEG-DASH}
+
+\begin{frame}{MPEG-DASH}
+
+\textbf{\textit{HTTP (Hypertext Transfer Protocol) Streaming}} é padrão para multimídia, levando ao \textbf{DASH} (\textit{Dynamic Adaptive Streaming over HTTP}) \cite{thang2012adaptive}.
+
+\textbf{DASH: Arquitetura e Componentes}
+\begin{itemize}
+    \item \textbf{Vantagem}: Abordagem \textit{stateless} do HTTP é escalável, contrastando com RTP \cite{sodagar2011mpegdash};
+    \item \textbf{Orientado ao Cliente}: Servidor disponibiliza; cliente gerencia a inteligência da sessão \cite{stockhammer2011dynamic};
+    \item \textbf{MPD (Media Presentation Description)}: Manifesto XML com URLs e versões do conteúdo (Períodos, Adaptation Sets, Representações) \cite{sodagar2011mpegdash};
+    \item \textbf{Segmentos}: Conteúdo dividido em blocos, requisitados via HTTP GET, facilmente \textit{cacheáveis} por CDNs \cite{stockhammer2011dynamic};
+    \item \textbf{Content Steering}: Cliente decide \textit{de onde} buscar o conteúdo via múltiplas URLs base no MPD \cite{sodagar2011mpegdash};
+\end{itemize}
+\end{frame}
+
+% \subsection{Servidores de distribuição de conteúdo e CDNs}
+
+% \subsection{Monitoramento de memória}
+
+% \begin{frame}{Cloud Computing e Monitoramento de Recursos}
+
+% A necessidade de modernizar e escalar sistemas levou à \textbf{Computação em Nuvem} \cite{boss2007cloud}, demandando monitoramento flexível de recursos.
+
+% \textbf{Monitoramento de Recursos Computacionais}
+% \begin{itemize}
+%     \item Evolução dos processos de monitoramento de vazão, latência, CPU, memória (principal/secundária), etc;
+% \end{itemize}
+% \end{frame}
+
+% \begin{frame}{APIs e Aplicações para Monitoramento de Memória}
+
+% \textbf{APIs fornecidas pelos Sistemas Operacionais}:
+% \begin{itemize}
+%     \item Principal forma de obter métricas de consumo de memória;
+%     \item Kernels armazenam e atualizam constantemente informações sobre uso de memória/disco;
+%     \item \textbf{Linux}: \texttt{/proc/meminfo} (RAM) \cite{linux_procfs_doc} e \texttt{/proc/diskstats} (disco) \cite{linux_iostats_doc};
+%     \item \textbf{macOS}: Utiliza subsistemas \cite{macos_iokit_doc} \cite{macos_virtmem_doc};
+%     \item \textbf{Windows}: API \textit{Performance Counters} \cite{windows_disk_counters} \cite{windows_mem_counters};
+% \end{itemize}
+
+% \textbf{Aplicações de Monitoramento}:
+% \begin{itemize}
+%     \item Soluções de nível de aplicação que processam e transportam informações de monitoramento;
+%     \item Exemplos: IBM Tivoli® Monitoring \cite{boss2007cloud}, Task Manager (Windows), \texttt{top}, \texttt{htop}, \texttt{free} (Linux);
+% \end{itemize}
+% \end{frame}
+
+% \subsection{Transmissão contínua de dados}
+
+% \begin{frame}{Técnicas de Transmissão de Dados em Sistemas Distribuídos (Parte 1)}
+
+% Em sistemas distribuídos, há diversas práticas que podem ser utilizadas para a criação de ferramentas de transmissão contínua de dados. Algumas delas são:
+
+% \begin{itemize}
+%     \item \textbf{REST (Representational State Transfer)}:
+%     \begin{itemize}
+%         \item Estilo arquitetural \textit{stateless} usando verbos HTTP (GET, POST);
+%         \item Simples, escalável e fácil de implementar \cite{rest_api_guide};
+%     \end{itemize}
+%     \item \textbf{SOAP (Simple Object Access Protocol)}:
+%     \begin{itemize}
+%         \item Protocolo baseado em XML com especificação rígida e WSDL;
+%         \item Mais verboso, mas oferece segurança e transações avançadas \cite{soap_spec};
+%     \end{itemize}
+%     \item \textbf{WebSockets}:
+%     \begin{itemize}
+%         \item Conexão TCP de longa duração, bidirecional e em tempo real;
+%         \item Baixa latência, ideal para \textit{push} de dados contínuos \cite{websocket_rfc};
+%     \end{itemize}
+% \end{itemize}
+% \end{frame}
+
+% \begin{frame}{Técnicas de Transmissão de Dados em Sistemas Distribuídos (Parte 2)}
+
+% \begin{itemize}
+%     \item \textbf{gRPC (Google Remote Procedure Call)}:
+%     \begin{itemize}
+%         \item Alta performance via HTTP/2 e \textit{Protocol Buffers} (binário);
+%         \item Suporta \textit{streaming} bidirecional, eficiente em latência e banda \cite{grpc_docs};
+%     \end{itemize}
+%     \item \textbf{Publish/Subscribe (Message Brokers)}:
+%     \begin{itemize}
+%         \item Arquitetura desacoplada; sistemas publicam em tópicos e inscritos recebem;
+%         \item Exemplos: MQTT (leve) e AMQP (robusto). Altamente escalável e resiliente \cite{amqp_spec} \cite{mqtt_spec};
+%     \end{itemize}
+%     \item \textbf{Polling de Arquivos}:
+%     \begin{itemize}
+%         \item Simples: Sistema gera e deposita arquivo; receptor varre periodicamente;
+%         \item Maior latência, mas robusto para \textit{batch} onde instantaneidade não é crítica \cite{ftp_rfc};
+%     \end{itemize}
+%     \item \textbf{Sockets (TCP/UDP)}:
+%     \begin{itemize}
+%         \item Controle máximo, menor \textit{overhead} de protocolo;
+%         \item TCP: Confiável e orientado à conexão \cite{tcp_rfc};
+%         \item UDP: Não confiável, foca em velocidade \cite{udp_rfc};
+%         \item Requer implementação manual do protocolo de aplicação;
+%     \end{itemize}
+% \end{itemize}
+% \end{frame}
+
+% \subsection{Interpretação de dados obsoletos}
+
+% \begin{frame}{Obsolescência de Dados em Balanceamento de Carga}
+
+% Informações desatualizadas em balanceadores de carga podem \textbf{sobrecarregar máquinas}, em vez de preveni-lo \cite{adaptiveLoadSharing1986, analysisDelaysLoadSharing1989}.
+
+% \textbf{Problema da Obsolescência}
+% \begin{itemize}
+%     \item Servidores que parecem subutilizados podem rapidamente ficar sobrecarregados;
+%     \item Todos os clientes direcionam requisições para as mesmas máquinas devido à defasagem da informação;
+% \end{itemize}
+
+% \textbf{Abordagens Comuns}
+% \begin{itemize}
+%     \item Ignorar dados de carga (aleatório, Round-Robin);
+%     \item Usar subconjunto aleatório de servidores para decisão;
+% \end{itemize}
+% \end{frame}
+
+% \begin{frame}{Algoritmos de Interpretação de Carga (LI)}
+
+% O trabalho \textit{"Interpreting Stale Load Information"} \cite{interpretingStaleLoadInformation2000} interpreta a informação de carga baseada em sua idade para otimizar o sistema. A ideia central é utilizar a última carga reportada ($L_{i}$), a idade da informação ($T$) e a taxa de chegada de novos trabalhos ($\lambda$).
+
+% \textbf{Algoritmos Propostos}
+% \begin{itemize}
+%     \item \textbf{Basic Load Interpretation (Basic LI)}:
+%     \begin{itemize}
+%         \item Calcula a probabilidade ($P_{i}$) de uma requisição ir para o servidor $i$;
+%         \item Objetivo: Equalizar o tamanho das filas (carga) em todos os servidores ao final de um período (fase);
+%     \end{itemize}
+%     \item \textbf{Aggressive Load Interpretation (Aggressive LI)}:
+%     \begin{itemize}
+%         \item Otimiza o Basic LI subdividindo a fase para nivelar a carga mais rapidamente;
+%     \end{itemize}
+% \end{itemize}
+% \end{frame}
+
+% \begin{frame}{Algoritmos de Interpretação de Carga (LI) e Desempenho}
+
+% \begin{itemize}
+%     \item LI é eficaz em diversas condições;
+%     \item \textbf{Resultados}:
+%     \begin{itemize}
+%         \item Igualam desempenho de algoritmos agressivos com informação recente;
+%         \item Superam alternativas em até 60\% com informação moderadamente obsoleta;
+%         \item Evitam comportamento problemático mesmo com informação extremamente obsoleta;
+%     \end{itemize}
+%     \item São algoritmos robustos para padrões de chegada intermitentes e tamanhos de trabalho variáveis e ajustam o comportamento conforme a informação se torna obsoleta;
+% \end{itemize}
+% \end{frame}
+
+% \subsection{Filas de mensagens}
+
+% \begin{frame}{Filas de Mensagens em Sistemas Distribuídos}
+
+% As \textbf{filas de mensagens} são um elemento arquitetônico essencial para mediar a comunicação e distribuir cargas de trabalho de forma eficiente em sistemas distribuídos. Seu funcionamento consiste nas seguintes características:
+
+% \begin{itemize}
+%     \item Empregam um modelo de comunicação assíncrona \cite{messageQueueingThallapally2025};
+%     \item Os componentes independem de mútua disponibilidade;
+%     \item Possui serviço intermediário;
+% \end{itemize}
+
+% \textbf{Componentes Chave}
+% \begin{itemize}
+%     \item \textbf{Produtores (\textit{producers})}: Criam e enviam mensagens;
+%     \item \textbf{\textit{Broker} de Mensagens (\textit{Message Broker})}: Atua como \textit{middleware} central, gerenciando armazenamento, roteamento e entrega;
+%     \item \textbf{Consumidores (\textit{Consumers})}: Recebem e processam as mensagens da fila;
+% \end{itemize}
+% \end{frame}
+
+% \begin{frame}{Benefícios e aplicações}
+%     \begin{itemize}
+%     \item \textbf{Desacoplamento de serviços}: Permite que produtores e consumidores operem independentemente, facilitando escalabilidade e manutenção \cite{messageQueueingThallapally2025};
+%     \item \textbf{Escalabilidade horizontal}: Mensagens distribuídas para múltiplos consumidores processarem em paralelo;
+%     \item \textbf{Tolerância a falhas e confiabilidade}: Armazenamento persistente e uso de \textit{Dead Letter Queues} (DLQs) para mensagens com falha;
+%     \item \textbf{Aplicações comuns}: E-commerce, setor financeiro, IoT e mídias sociais;
+% \end{itemize}
+% \end{frame}
+
+% \subsection{Virtualização de redes para simulação de cenários}
+
+% \begin{frame}{Virtualização de Redes}
+
+% A \textbf{virtualização de redes} flexibiliza a adição de novas tecnologias na Internet, permitindo a coexistência de múltiplas arquiteturas heterogêneas sobre uma infraestrutura física compartilhada \cite{aSurveyOfNetworkVirtualization2010}.
+
+% Nesse sentido, uma \textbf{rede virtual} é uma coleção de nós e links virtuais, representando um \textbf{subconjunto dos recursos da rede física}.
+
+% \end{frame}
+
+% \begin{frame}{Virtualização baseada em Containers Linux e SDN}
+
+% A \textbf{virtualização baseada em \textit{containers} Linux} é uma abordagem mais leve que a virtualização tradicional por VMs.
+
+% \begin{itemize}
+%     \item O \textit{kernel} do sistema operacional hospedeiro é modificado para suportar múltiplas instâncias isoladas do espaço de usuário (\textit{contêineres});
+%     \item Mínimo \textit{overhead} de virtualização, pois programas usam diretamente a API do sistema hospedeiro;
+%     \item LXC (\textit{Linux Containers}) permite que múltiplos "\textit{netboxes}" (redes virtuais encapsuladas) executem em um único PC com recursos isolados;
+% \end{itemize}
+
+% Essa prática fornece uma abstração de interfaces de rede via interfaces virtuais, permitindo a interconectividade entre contêineres dentro e fora de um sistema hospedeiro.
+
+% \end{frame}
+
+\section{Proposta}
+
+\subsection{Algoritmo}
+
+\begin{frame}{Objetivo do Algoritmo}
+
+\begin{itemize}
+    \item O objetivo principal é definir o método de escolha de um servidor para cada nova requisição;
+    
+    \bigskip
+    
+    \item A natureza do algoritmo é \textbf{probabilística};
+    \begin{itemize}
+        \item A chance de um servidor ser escolhido é baseada em uma probabilidade calculada dinamicamente (de acordo com a Equação \mbox{\ref{eq:basic_li}});
+    \end{itemize}
+    
+    \bigskip
+    
+    \item A probabilidade é influenciada principalmente pelo Consumo de \textbf{Memória RAM} e pela taxa de entrada e saída de \textbf{Disco (I/O)};
+    
+    \bigskip
+    
+    \item O funcionamento do algoritmo é \textbf{dinâmico};
+    \begin{itemize}
+        \item Os servidores enviam dados de monitoramento (carga) periodicamente para o balanceador, que atualiza os parâmetros para as próximas requisições;
+    \end{itemize}
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Cálculo da probabilidade}
+
+A probabilidade ($P_i$) de uma requisição ser enviada para um servidor $i$ é baseada em uma versão adaptada do algoritmo \textit{Basic Load Interpretation} (\textit{Basic LI}) \cite{interpretingStaleLoadInformation2000}. A equação utilizada corresponde exatamente à equação determinada pelo \textit{Basic LI}:
+
+\begin{equation}\label{eq:basic_li}
+    P_{i}=\frac{\frac{L_{tot}+arrive_{T}}{n}-L_{i}}{arrive_{T}}
+\end{equation}
+
+\begin{center}
+\begin{minipage}{0.9\textwidth}
+\begin{itemize}
+    \item[$P_i$]: Probabilidade de escolha do servidor $i$;
+    \item[$n$]: Número total de servidores disponíveis;
+    \item[$L_i$]: Carga individual reportada pelo servidor $i$;
+    \item[$L_{tot}$]: Somatório de todas as cargas reportadas ($\sum L_i$);
+    \item[$arrive_T$]: Número total de requisições esperadas no sistema inteiro para o tempo médio ($T$) das informações de carga ($\sum R_i$);
+\end{itemize}
+\end{minipage}
+\end{center}
+
+\end{frame}
+
+\begin{frame}{Adaptação do Parâmetro de Carga ($L_i$)}
+
+No contexto deste trabalho, o termo "carga" ($L_i$) é adaptado (de tamanho de fila de requisições para uso de memória) para refletir o desempenho de um servidor de conteúdo. A carga é calculada a partir de métricas específicas por meio da Equação \ref{eq:limemory}.
+
+\begin{equation}\label{eq:limemory}
+    L_i = CM \cdot LM_i + CD \cdot LD_i
+\end{equation}
+
+\begin{center}
+\begin{minipage}{0.8\textwidth}
+\begin{itemize}
+    \item[$LM_i$]: Consumo de \textbf{memória} normalizado do servidor $i$ (em \%);
+    \bigskip
+    \item[$LD_i$]: Carga de \textbf{disco} (I/O) normalizada do servidor $i$ (em \%);
+    \bigskip
+    \item[$CM, CD$]: Coeficientes dinâmicos que representam a importância geral da memória e do disco no sistema, respectivamente;
+\end{itemize}
+\end{minipage}
+\end{center}
+
+\end{frame}
+
+\begin{frame}{Cálculo dos Coeficientes Dinâmicos ($CM$ e $CD$)}
+
+Os coeficientes dão mais peso ao recurso que está mais sobrecarregado no sistema como um todo. Eles são calculados a partir das taxas de uso gerais de memória ($TM$) e disco ($TD$). A propriedade $CM + CD = 1$ garante que a importância seja distribuída de forma proporcional entre os dois recursos.
+
+\bigskip
+
+\begin{itemize}
+    \item Taxa de Memória: $TM = \sum_{i=0}^n \frac{LM_i}{n}$
+    \bigskip
+    \item Taxa de Disco: $TD = \sum_{i=0}^n \frac{LD_i}{n}$
+\end{itemize}
+
+\bigskip
+
+\noindent
+\begin{minipage}{.48\textwidth}
+    \begin{equation}
+        CM = \frac{TM}{TM + TD} \label{eq:cm}
+    \end{equation}
+\end{minipage}
+\hfill
+\begin{minipage}{.48\textwidth}
+    \begin{equation}
+        CD = \frac{TD}{TM + TD} \label{eq:cd}
+    \end{equation}
+\end{minipage}
+
+O algoritmo é executado a cada nova requisição que chega ao balanceador e sua execução é determinada conforme o pseudo-código a seguir.
+
+\end{frame}
+
+\begin{frame}{Pseudocódigo}
+    \begin{algorithm}[H]
+    \caption{Seleção de Servidor por Requisição}
+    \begin{algorithmic}[1]
+    \Statex \textbf{Gatilho}: Chegada de uma nova requisição $R$.
+    \Require
+        \Statex $S$: Lista de servidores com métricas $L_i$, $R_i$ e $T_i$ atualizadas.
+        \Statex Variáveis globais: $L_{tot}, n$.
+    \Ensure
+        \Statex Requisição $R$ encaminhada para um servidor $S_{i}$.
+    
+    \Procedure{SelecionarServidor}{$R, S, L_{tot}, n$}
+        \State $arrive_T \leftarrow \text{CalcularQtdRequisicoesEsperadas}(S)$
+        \State $P_{list} \leftarrow []$ \Comment{Lista de probabilidades}
+        
+        \ForAll{$S_i, L_i$ in $S$}
+            \State $P_i \leftarrow ((L_{tot} + arrive_T)/n - L_i) / arrive_T$ \Comment{Eq. \ref{eq:basic_li}}
+            \State Adicionar $(S_i, P_i)$ a $P_{list}$
+        \EndFor
+        
+        \State $s_{escolhido} \leftarrow \text{SelecaoAleatoriaComPesos}(P_{list})$
+        \State \text{Encaminhar}(R, $s_{escolhido}$)
+    \EndProcedure
+    \end{algorithmic}
+    \end{algorithm}
+\end{frame}
+
+\subsection{Arquitetura}
+
+% \begin{frame}{Infraestrutura Experimental e Arquitetura}
+
+% \begin{itemize}
+%     \item \textbf{Ambiente Controlado};
+%     \begin{itemize}
+%         \item O sistema será implementado em ambiente virtualizado com \textbf{Docker} em uma única máquina física, com o objetivo de isolar variáveis de rede externa (latência, instabilidade) e garantir a reprodutibilidade dos experimentos;
+%     \end{itemize}
+    
+%     \bigskip % Espaço vertical para clareza
+    
+%     \item \textbf{Componentes Principais}:
+%     \begin{itemize}
+%         \item \textbf{Balanceador de Carga}: Peça central da pesquisa, desenvolvido em \textbf{Rust} por segurança e desempenho;
+%         \item \textbf{Servidores de Conteúdo}: Contêineres MPEG-DASH que formam o \textit{pool} de nós;
+%         \item \textbf{Cliente de Teste}: Script Python para gerar requisições paralelas e simular alta demanda;
+%         \item \textbf{Gerenciador de Filas}: Broker MQTT para comunicação indireta entre os componentes;
+%         \item \textbf{Serviços Auxiliares}: Script de monitoramento e um player de vídeo para validação qualitativa (QoE);
+%     \end{itemize}
+% \end{itemize}
+% \end{frame}
+
+% \begin{frame}{Fluxo de Comunicação (Modelo \textit{Publish-Subscribe})}
+%     \begin{itemize}
+%         \item Os servidores \textbf{publicam} periodicamente seus dados de carga (memória/disco) na fila MQTT;
+%         \item O balanceador de carga \textbf{consome} esses dados da fila para realimentar e atualizar dinamicamente seus parâmetros de decisão;
+%     \end{itemize}
+% \end{frame}
+
+\begin{frame}{Arquitetura geral do sistema}
+    \centering
+    \label{fig:arch}
+    \includegraphics[
+        width=0.9\textwidth,
+        height=0.7\textheight,
+        keepaspectratio
+    ]{TCCISlides/imagens/arch.png}
+    \par
+    \footnotesize Fonte: Elaborado pelo autor (2025)
+\end{frame}
+
+\subsection{Análise Comparativa}
+
+\begin{frame}{Metodologia de Validação e Métricas}
+
+\begin{itemize}
+    \item \textbf{Estratégia de Validação}:
+    \begin{itemize}
+        \item Análise comparativa rigorosa executada em cenários de \textbf{alta carga};
+        \item O mesmo nível de sobrecarga é usado como linha de base para todos os testes, garantindo uma comparação justa;
+    \end{itemize}
+    
+    \bigskip % Espaço vertical para clareza
+    
+    \item \textbf{Definição de Sobrecarga}:
+    \begin{itemize}
+        \item Ponto definido empiricamente quando a Experiência do Usuário (QoE) se degrada, com \textbf{travamentos visíveis} (\textit{stalls}) no player de vídeo;
+    \end{itemize}
+    
+    \bigskip
+    
+    \item \textbf{Métricas de Avaliação (QoE)}:
+    \begin{itemize}
+        \item Número total de travamentos (\textit{stalls}) do vídeo;
+        \item Duração média de cada travamento;
+        \item Tempo total de ociosidade do serviço (soma das pausas);
+    \end{itemize}
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Critérios de Comparação e Cenários}
+
+\begin{itemize}
+    \item \textbf{Algoritmos Comparados}:
+    \begin{itemize}
+        \item \textbf{Proposto}: Baseado na interpretação de dados de carga (mesmo que obsoletos);
+        \item \textbf{Clássicos}: \textit{Round-Robin} e Seleção Aleatória, executados na mesma aplicação para uma comparação justa;
+    \end{itemize}
+    
+    \bigskip
+    
+    \item \textbf{Cenários de Execução}:
+    \begin{itemize}
+        \item Balanceamento com \textbf{Round-Robin};
+        \item Balanceamento com \textbf{Seleção Aleatória};
+        \item Balanceamento proposto (intervalo de atualização de \textbf{6 segundos});
+        \item Balanceamento proposto (intervalo de atualização de \textbf{60 segundos});
+        \item Balanceamento proposto (intervalo de atualização de \textbf{600 segundos});
+    \end{itemize}
+    
+    \bigskip
+    
+    \item \textbf{Hipótese Central}:
+    \begin{itemize}
+        \item O algoritmo proposto será superior aos clássicos, mesmo com dados de carga consideravelmente desatualizados (60s e 600s);
+    \end{itemize}
+\end{itemize}
+
+\end{frame}
+
+
+\section{Considerações parciais}
+
+\begin{frame}{Proposta Central do Trabalho}
+
+\begin{itemize}
+    \item \textbf{O Problema Identificado}:
+    \begin{itemize}
+        \item Estratégias clássicas (\textit{Round-Robin}, Aleatória) ignoram o estado real dos recursos dos servidores, impactando a Qualidade de Experiência (QoE);
+        \item A \textbf{memória} (principal e secundária) é um fator de gargalo crítico em servidores que entregam conteúdo a partir de arquivos;
+    \end{itemize}
+    
+    \item \textbf{A Solução Proposta}:
+    \begin{itemize}
+        \item Um algoritmo de balanceamento \textbf{probabilístico} que integra o monitoramento de recursos como fator decisório;
+        \item Adapta o conceito de \textit{Load Interpretation} para considerar não apenas o consumo de recursos, mas também a \textbf{idade da informação};
+    \end{itemize}
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Próximos Passos}
+
+De modo resumido, os próximos passos são definidos conforme a lista a seguir:
+
+\begin{itemize}
+    \item[1.] Configuração e testes do sistema publicar/assinar (\textit{broker} MQTT);
+    \item[2.] Implementação e configuração inicial do servidor MPEG-DASH;
+    \item[3.] Implementação do balanceador de carga;
+    \item[4.] Criação da aplicação cliente geradora de sobrecarga no sistema;
+    \item[5.] Configuração do \textit{player} simples no navegador;
+    \item[6.] Execução dos testes de qualidade com o \textit{player} simples;
+    \item[7.] Elaboração dos gráficos e descrição dos resultados finais;
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Cronograma}
+
+\begin{center}
+    \begin{tabular}{|c|c|c|c|c|c|c|}
+    \hline
+    \multirow{2}{*}{\textbf{\small{Atividades}}} &
+    \multicolumn{6}{|c|}{\textbf{\small{Meses}}} \\
+    \cline{2-7}
+    & \textbf{Jul} & \textbf{Ago} & \textbf{Set} &
+    \textbf{Out} & \textbf{Nov} & \textbf{Dez} \\
+    \hline
+    \textbf{\small{1}} & \cellcolor{gray} & & & & & \\
+    \hline
+    \textbf{\small{2}} & \cellcolor{gray} & & & & & \\
+    \hline
+    \textbf{\small{3}} & & \cellcolor{gray} & \cellcolor{gray} & & & \\
+    \hline
+    \textbf{\small{4}} & & & & \cellcolor{gray} & & \\
+    \hline
+    \textbf{\small{5}} & & & & \cellcolor{gray} & & \\
+    \hline
+    \textbf{\small{6}} & & & & & \cellcolor{gray} & \cellcolor{gray} \\
+    \hline
+    \textbf{\small{7}} & & & & & \cellcolor{gray} & \cellcolor{gray} \\
+    \hline
+    \end{tabular}
+\end{center}
+    
+\end{frame}
+
+\section{Referências}
+
+\begin{frame}[allowframebreaks]{Referências}
+    \bibliography{refs}
+    \bibliographystyle{plain}
+\end{frame}
+    
+\end{document}

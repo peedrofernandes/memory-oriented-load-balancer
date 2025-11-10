@@ -1,0 +1,38 @@
+Slides
+
+Estrutura: Seção -> Slide  (rec.)
+
+1. Introdução
+    1.1. Contextualização (ok)
+    1.2. O problema (ok)
+    1.3. Trabalhos relacionados (ok)
+    1.4. Justificativa (ok)
+
+2. Fundamentação teórica
+    2.1. Balanceadores de carga (ok - Revisar)
+        2.1.1. Balanceadores de carga à nível de aplicação
+        2.1.2. Balanceadores de carga à nível de rede
+    2.2. MPEG-DASH (ok - Revisar)
+        2.2.1. Content-Steering
+    2.3. Servidores de distribuição de conteúdo e CDNs (ok - Revisar)
+        2.3.1. Cache
+    2.4. Monitoramento de memória (ok - Revisar)
+        2.4.1. APIs
+        2.4.2. Aplicações
+    2.5. Transmissão contínua de dados (ok - Revisar)
+    2.6. Interpretação de dados obsoletos (ok - Revisar)
+        2.6.1. Algoritmos de interpretação de carga (Load Interpretation - LI)
+        2.6.2. Desempenho
+    2.7. Filas de mensagens para comunicação em sistemas distribuídos (ok - Revisar)
+    2.8. Virtualização de redes para simulação de cenários (ok - Revisar)
+        2.8.1. Virtualização em containers linux
+        2.8.2. Simulação de Redes Definidas por Software (SDN)
+
+3. Proposta (ok)
+    3.1. Algoritmo (ok)
+    3.2. Requisitos tecnológicos (ok)
+    3.3. Análise comparativa
+
+4. Considerações parciais
+    4.1. Próximos passos
+    4.2. Cronograma

@@ -163,11 +163,10 @@ O algoritmo proposto, baseado na interpretação de dados obsoletos, será compa
 \begin{enumerate}
     \item{Balanceamento com algoritmo Round-Robin.}
     \item{Balanceamento com algoritmo de Seleção Aleatória.}
-    \item{Balanceamento com o algoritmo proposto, utilizando um intervalo de atualização dos dados dos servidores de 6 segundos.}
-    \item{Balanceamento com o algoritmo proposto, utilizando um intervalo de atualização dos dados dos servidores de 60 segundos.}
-    \item{Balanceamento com o algoritmo proposto, utilizando um intervalo de atualização dos dados dos servidores de 600 segundos.}
+    \item{Balanceamento com o algoritmo proposto, utilizando um intervalo médio de atualização dos dados dos servidores de 6 segundos.}
+    \item{Balanceamento com o algoritmo proposto, utilizando um intervalo médio de atualização dos dados dos servidores de 30 segundos.}
 \end{enumerate}
 
-A hipótese central é que o algoritmo proposto, mesmo com informações consideravelmente desatualizadas (nos intervalos de 60s e 600s), apresentará um desempenho superior em termos de QoE quando comparado aos métodos Round-Robin e Aleatório. Adicionalmente, espera-se que, entre as variações do algoritmo proposto, o intervalo de 6 segundos forneça os melhores resultados, enquanto os intervalos maiores demonstrarão a capacidade do algoritmo de mitigar os efeitos negativos da obsolescência de dados de carga dos servidores envolvidos.
+A hipótese central é que o algoritmo proposto, mesmo com informações moderadamente desatualizadas (no intervalo de 30s), apresentará um desempenho superior em termos de QoE quando comparado aos métodos Round-Robin e Aleatório. Adicionalmente, espera-se que, entre as variações do algoritmo proposto, o intervalo de 6 segundos forneça os melhores resultados, enquanto o intervalo de 30 segundos demonstrará a capacidade do algoritmo de manter bom desempenho mesmo com dados menos atualizados.
 
 %\ul{acho que deves incluir mais um capítulo com as considerações parciais, onde além de resumir os objetivos e a arquitetura e elencar as próximas atividades, tens uma seção com um cronograma para as atividades a serem desenvolvidas no TCC II}

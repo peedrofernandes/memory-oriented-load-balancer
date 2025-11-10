@@ -234,7 +234,7 @@
                             <canvas id="memory-chart-${container.name}" class="chart-canvas"></canvas>
                         </div>
                         <div class="chart-wrapper">
-                            <div class="chart-title">Disk I/O %</div>
+                            <div class="chart-title">Disk Read %</div>
                             <canvas id="disk-chart-${container.name}" class="chart-canvas"></canvas>
                         </div>
                     </div>
@@ -383,7 +383,7 @@
             // Initialize charts
             chartInstances[containerName] = {
                 memory: initializeChart(`memory-chart-${containerName}`, 'Memory %', '#007acc'),
-                disk: initializeChart(`disk-chart-${containerName}`, 'Disk I/O %', '#28a745')
+                disk: initializeChart(`disk-chart-${containerName}`, 'Disk Read %', '#28a745')
             };
         }
 

@@ -8,7 +8,7 @@
 % R. A coleta será feita por meio de requisições ao sistema operacional, diretamente.
 
 % 2. (Prof. Paulo) Qual será a frequência da coleta?
-% R. Foram definidos três períodos distintos de coleta e atualização dos dados - 6s, 60s (1 min) e 600s (10min), com o propósito de avaliar, em diferentes ordens de grandeza, o impacto da obsolescência de dados no monitoramento.
+% R. Foram definidos três períodos distintos de coleta e atualização dos dados - 6s, 60s (1 min) e 600s (10min), com o propósito de avaliar, em diferentes ordens de grandeza, o impacto da desatualização de dados no monitoramento.
 
 % 3. (Prof. Paulo) Como será o monitoramento - Que comando será utilizado? Será criado um programa que coleta o uso de memória?
 % R. Nos servidores, haverá uma aplicação que periodicamente usa o sistema operacional para obter dados de consumo de memória (conforme as frequências de teste definidas anteriormente).
@@ -17,10 +17,10 @@
 % R. A própria aplicação de balanceamento de carga estará inscrita (subscriber) em um \textit{broker} MQTT que periodicamente receberá eventos de atualização dos dados. Reagindo à esse evento, o balanceador de carga atualiza seus dados periodicamente.
 
 % 5. (Prof. Paulo) Como as métricas serão utilizadas no critério de decisão do balanceador de carga (algoritmo)?
-% R. A ser definido (memória x disco), interpretação de dados obsoletos;
+% R. A ser definido (memória x disco), interpretação de dados desatualizados;
 
 % 6. (Prof. Paulo) Como serão os cenários de testes?
-% R. Análise perceptiva do travamento de vídeos (QoE final) usando \textit{round-robin}, seleção aleatória, MM 6s, MM 60s, MM 600s (todos com técnicas de interpretação de dados obsoletos).
+% R. Análise perceptiva do travamento de vídeos (QoE final) usando \textit{round-robin}, seleção aleatória, MM 6s, MM 60s, MM 600s (todos com técnicas de interpretação de dados desatualizados).
 
 % 7. (Prof. Paulo) Qual será a topologia dos testes?
 % R. Apenas uma rede virtual containerizada com alguns servidores e uma aplicação balanceadora de carga. O balanceamento será feito à nível de aplicação.
@@ -52,7 +52,7 @@ Em paralelo, os servidores enviarão, periodicamente, os dados de monitoramento 
 A Equação \ref{eq:basic_li} utilizada no algoritmo corresponde a uma versão adaptada do \textit{Basic LI} \cite{interpretingStaleLoadInformation2000} de modo que, dada uma requisição, a determinação da probabilidade de escolha de um servidor $P{i}$ será determinada de acordo com seus parâmetros, onde:
 
 \begin{enumerate}
-    %\item[$T$]: Tempo médio de obsolescência da informação de carga, em unidades de tempo de serviço por tarefa.
+    %\item[$T$]: Tempo médio de desatualização da informação de carga, em unidades de tempo de serviço por tarefa.
     \item[$n$]: Número total de servidores.
     %\item[$\lambda$]: Taxa média de chegada de requisições por servidor, como uma fração da vazão máxima do servidor. 
     \item[$L_{i}$]: Carga reportada no servidor $i$ (cálculo determinado na Equação \ref{eq:limemory}). 
@@ -65,16 +65,16 @@ A Equação \ref{eq:basic_li} utilizada no algoritmo corresponde a uma versão a
 P_{i}=\frac{\frac{L_{tot}+arrive_{T}}{n}-L_{i}}{arrive_{T}}
 \end{gather}
 
-Nota-se que $arrive_T$ é um parâmetro central deste processo. Ele cresce proporcionalmente ao tempo médio de obsolescência das informações e, de acordo com a equação anterior (\ref{eq:basic_li}), um valor grande de $arrive_T$ fará com que a distribuição de probabilidade seja uniforme, efetivamente diminuindo a informação de carga. Esse comportamento é esperado e otimizado porque, quanto mais antigas as informações de carga são, menos o algoritmo as considera no balanceamento, que apresentará comportamento similar à seleção aleatória (sem pesos). Todos os parâmetros envolvidos são mantidos e atualizados iterativamente no estado interno do balanceador de carga e são atualizados mediante à chegada de novas informações de carga. O cálculo de $arrive_T$ se dá da seguinte forma:
+Nota-se que $arrive_T$ é um parâmetro central deste processo. Ele cresce proporcionalmente ao tempo médio de desatualização das informações e, de acordo com a equação anterior (\ref{eq:basic_li}), um valor grande de $arrive_T$ fará com que a distribuição de probabilidade seja uniforme, efetivamente diminuindo a informação de carga. Esse comportamento é esperado e otimizado porque, quanto mais antigas as informações de carga são, menos o algoritmo as considera no balanceamento, que apresentará comportamento similar à seleção aleatória (sem pesos). Todos os parâmetros envolvidos são mantidos e atualizados iterativamente no estado interno do balanceador de carga e são atualizados mediante à chegada de novas informações de carga. O cálculo de $arrive_T$ se dá da seguinte forma:
 
 \begin{enumerate}
 \item[$arrive_T$]: Informação de carga total esperada para o tempo de vida médio das informações de carga dos servidores;
 \item[$R_{total}$]: Número total de requisições recebidas desde o início do processo da aplicação do balanceador de carga;
 \item[$T_{elapsed}$]: Tempo, em segundos, desde o início do processo da aplicação do balanceador de carga;
-\item[$T_{stale}$]: Tempo médio de obsolescência de dados de carga de todos os servidores;
+\item[$T_{stale}$]: Tempo médio de desatualização de dados de carga de todos os servidores;
 \item[$L_{tot}$]: Soma de todas as cargas reportadas;
 \item[$R_{active}$]: Número total de requisições ativas em todos os servidores, calculado como $R_{active} = \sum_{i=1}^{n} AR_i$, onde $AR_i$ representa o número de requisições ativas no servidor $i$ no momento da coleta da métrica;
-\item[$C$]: Coeficiente de suavização para relativização de obsolescência alta e baixa (definido heuristicamente mediante experimentação);
+\item[$C$]: Coeficiente de suavização para relativização de desatualização alta e baixa (definido heuristicamente mediante experimentação);
 \end{enumerate}
 
 \begin{gather} \label{eq:arrive_t} 
@@ -108,7 +108,7 @@ Nesse contexto, $CM$ e $CD$ são coeficientes que multiplicam as suas respectiva
 
 Os coeficientes $CM$ e $CD$ são valores entre $0$ e $1$ de modo que $CM + CD = 1$. Eles são determinados dessa forma para que o recurso computacional que mais esteja sendo utilizado de modo geral em todos os servidores efetivamente contribua mais para o valor da carga de cada servidor $L_i$, de forma diretamente proporcional à taxa de consumo de cada um dos parâmetros. Finalmente, para que o sistema efetivamente esteja apto para calcular o valor de cada servidor ($L_i$), basta que ele obtenha os valores de $LM_i$ e $LD_i$ de todos os servidores. Com eles, será possível calcular primeiramente $TM$ e $TD$, e, com esses valores, calcular $CM$ e $CD$ dinamicamente.
 
-O funcionamento do algoritmo ocorre em dois momentos distintos e independentes. O primeiro momento corresponde à \textbf{atualização da distribuição de probabilidade}, que é acionada sempre que uma nova informação de carga chega ao balanceador via MQTT. Neste processo, o balanceador atualiza as métricas do servidor que enviou a informação ($LM_i$, $LD_i$, $T_i$, $AR_i$) e, em seguida, recalcula todos os parâmetros globais necessários: as médias de uso de memória ($TM$) e disco ($TD$), o tempo médio de obsolescência ($T$), os coeficientes de ponderação ($CM$ e $CD$), a carga de cada servidor ($L_i$), a carga total ($L_{tot}$), o parâmetro de chegadas esperadas ($arrive_T$) e, finalmente, a probabilidade de seleção de cada servidor ($P_i$). É importante notar que, mesmo quando apenas um servidor envia novas métricas, todos os parâmetros são recalculados considerando todos os servidores conhecidos, garantindo que a distribuição de probabilidade seja sempre consistente e atualizada.
+O funcionamento do algoritmo ocorre em dois momentos distintos e independentes. O primeiro momento corresponde à \textbf{atualização da distribuição de probabilidade}, que é acionada sempre que uma nova informação de carga chega ao balanceador via MQTT. Neste processo, o balanceador atualiza as métricas do servidor que enviou a informação ($LM_i$, $LD_i$, $T_i$, $AR_i$) e, em seguida, recalcula todos os parâmetros globais necessários: as médias de uso de memória ($TM$) e disco ($TD$), o tempo médio de desatualização ($T$), os coeficientes de ponderação ($CM$ e $CD$), a carga de cada servidor ($L_i$), a carga total ($L_{tot}$), o parâmetro de chegadas esperadas ($arrive_T$) e, finalmente, a probabilidade de seleção de cada servidor ($P_i$). É importante notar que, mesmo quando apenas um servidor envia novas métricas, todos os parâmetros são recalculados considerando todos os servidores conhecidos, garantindo que a distribuição de probabilidade seja sempre consistente e atualizada.
 
 O segundo momento corresponde à \textbf{seleção do servidor}, que ocorre a cada requisição que chega ao balanceador. Neste processo, o balanceador simplesmente utiliza a distribuição de probabilidade mais recente (calculada no primeiro momento) para realizar uma seleção aleatória com pesos. Especificamente, o algoritmo incrementa o contador total de requisições ($R$), obtém um snapshot das probabilidades $P_i$ já calculadas e, então, realiza uma seleção aleatória ponderada, onde cada servidor tem uma chance de ser escolhido proporcional à sua probabilidade $P_i$. Caso nenhuma distribuição de probabilidade tenha sido calculada ainda (situação inicial antes da chegada da primeira métrica), o algoritmo utiliza uma distribuição uniforme, onde todos os servidores têm igual probabilidade de serem escolhidos.
 
@@ -126,7 +126,7 @@ O segundo momento corresponde à \textbf{seleção do servidor}, que ocorre a ca
     
     \State Calcular agregados globais:
     \State $TM \leftarrow \frac{1}{n} \sum_{i=1}^{n} LM_i$, $TD \leftarrow \frac{1}{n} \sum_{i=1}^{n} LD_i$
-    \State $T \leftarrow \frac{1}{n} \sum_{i=1}^{n} (T_{atual} - T_i)$ \Comment{Tempo médio de obsolescência}
+    \State $T \leftarrow \frac{1}{n} \sum_{i=1}^{n} (T_{atual} - T_i)$ \Comment{Tempo médio de desatualização}
     
     \State Calcular coeficientes $CM$ e $CD$ conforme Equações \ref{eq:cm} e \ref{eq:cd}
     

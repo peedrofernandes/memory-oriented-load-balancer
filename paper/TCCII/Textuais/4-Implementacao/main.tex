@@ -1,4 +1,4 @@
-\chapter{Implementação}
+\chapter{Implementação} \label{cap:Implementacao}
 
 Este capítulo apresenta uma descrição detalhada do ambiente experimental utilizado para validação da proposta, incluindo a configuração do ambiente de testes, a definição dos módulos principais e auxiliares do sistema, os detalhes de implementação de cada componente, o processo de geração de conteúdo multimídia e, por fim, a especificação dos cenários de teste utilizados para a análise comparativa dos algoritmos de balanceamento de carga.
 
@@ -121,7 +121,7 @@ Três estratégias de balanceamento foram implementadas para fins de comparaçã
     
     \item \textbf{Seleção Aleatória}: Estratégia não-determinística que seleciona um servidor de forma uniformemente aleatória entre os disponíveis. Esta estratégia serve como linha de base para avaliar o ganho proporcionado por estratégias mais sofisticadas.
     
-    \item \textbf{Monitoramento de Memória}: Estratégia proposta neste trabalho, que utiliza as métricas de consumo de memória e disco publicadas pelos servidores para calcular probabilidades de seleção baseadas na carga atual e na interpretação de dados potencialmente obsoletos, conforme descrito no Capítulo~\ref{cap:Proposta}.
+    \item \textbf{Monitoramento de Memória}: Estratégia proposta neste trabalho, que utiliza as métricas de consumo de memória e disco publicadas pelos servidores para calcular probabilidades de seleção baseadas na carga atual e na interpretação de dados desatualizados, conforme descrito no Capítulo~\ref{cap:Proposta}.
 \end{enumerate}
 
 A estratégia de monitoramento de memória mantém uma estrutura de dados interna com as métricas mais recentes de cada servidor, que é atualizada através de uma assinatura MQTT no tópico \texttt{loadbalancer/metrics}. Quando uma nova requisição chega, o algoritmo calcula as probabilidades de seleção de acordo com as Equações \ref{eq:basic_li} e \ref{eq:limemory}, e realiza uma seleção aleatória ponderada baseada nessas probabilidades.

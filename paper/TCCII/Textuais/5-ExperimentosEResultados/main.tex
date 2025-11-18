@@ -87,7 +87,7 @@ Para cada um dos quatro cenários descritos, foram executados testes com as segu
 
 Cada combinação de cenário e estratégia de balanceamento foi implementada como uma \textit{branch} Git específica no repositório do projeto, permitindo o isolamento e a reprodutibilidade de cada configuração experimental. Esta organização através de \textit{branches} facilitou a execução sistemática dos testes e garantiu que as diferentes configurações não interferissem entre si.
 
-A avaliação com diferentes intervalos de atualização visa demonstrar a robustez do algoritmo proposto mesmo quando operando com informações de carga moderadamente obsoletas, uma situação comum em sistemas distribuídos de larga escala onde o custo de monitoramento muito frequente pode ser proibitivo.
+A avaliação com diferentes intervalos de atualização visa demonstrar a robustez do algoritmo proposto mesmo quando operando com informações de carga moderadamente desatualizadas, uma situação comum em sistemas distribuídos de larga escala onde o custo de monitoramento muito frequente pode ser proibitivo.
 
 \section{Análise comparativa}
 
@@ -141,7 +141,7 @@ MM (30s) & 604,6 & 73,1 & 2183,3 & 671,3 \\
 
 %\noindent\small{MM = Monitoramento de Memória}
 
-Os resultados de latência revelam padrões importantes. Nos cenários com servidores heterogêneos (Cenários 1 e 3), o algoritmo de monitoramento de memória com intervalo de 6 segundos apresentou reduções dramáticas de latência: 85,7\% no Cenário 1 e 70,0\% no Cenário 3 em comparação com \textit{Round-Robin}. Nos cenários homogêneos (Cenários 2 e 4), todas as estratégias apresentaram latências similares, indicando que a heterogeneidade dos recursos é um fator determinante para a eficácia do balanceamento inteligente.
+Os resultados de latência revelam padrões importantes. Nos cenários com servidores heterogêneos (Cenários 1 e 3), o algoritmo de monitoramento de memória com intervalo de 6 segundos apresentou reduções dramáticas de latência: 85,7\% no Cenário 1 e 70,0\% no Cenário 3 em comparação com \textit{Round-Robin}. Nos cenários homogêneos (Cenários 2 e 4), todas as estratégias apresentaram latências similares, indicando que a heterogeneidade da capacidade dos recursos é um fator determinante para a eficácia do balanceamento inteligente.
 
 A Tabela \ref{tab:stalls-results} resume os eventos de travamento observados em cada configuração. Travamentos representam pausas forçadas na reprodução do vídeo devido à falta de dados no \textit{buffer} do cliente, sendo um dos principais fatores de degradação da QoE.
 
@@ -179,11 +179,11 @@ MM (30s) & 4 & 6,42 & 3 & 3,83 \\
 \end{tabular}
 \end{table}
 
-Os dados de travamentos evidenciam a superioridade do algoritmo de monitoramento de memória, especialmente no Cenário 3 (alta concorrência com servidores heterogêneos), onde as estratégias convencionais falharam completamente. O algoritmo com intervalo de 6 segundos eliminou totalmente os travamentos nos cenários críticos, enquanto o intervalo de 30 segundos apresentou apenas 4 travamentos de curta duração, demonstrando robustez mesmo com dados moderadamente obsoletos.
+Os dados de travamentos evidenciam a superioridade do algoritmo de monitoramento de memória, especialmente no Cenário 3 (alta concorrência com servidores heterogêneos), onde as estratégias convencionais falharam completamente. O algoritmo com intervalo de 6 segundos eliminou totalmente os travamentos nos cenários críticos, enquanto o intervalo de 30 segundos apresentou apenas 4 travamentos de curta duração, demonstrando robustez mesmo com dados moderadamente desatualizados.
 
 \section{Métricas}
 
-Conforme descrito no Capítulo \ref{cap:Implementacao}, durante cada execução experimental foram coletadas métricas detalhadas de QoE ao longo de toda a sessão de reprodução de vídeo. Os dados brutos --- sequências de qualidades escolhidas pelo \textit{player}, \textit{bitrate} estimado por segmento, eventos de \textit{stalling} e latências médias --- foram exportados em formato JSON e posteriormente processados pelos scripts localizados na pasta \texttt{src/chart-generators}, que geraram os gráficos consolidados armazenados em \texttt{./Textuais/5-ExperimentosEResultados/outputs}. Esta seção apresenta e discute essas métricas, comparando sistematicamente os quatro cenários e as quatro estratégias de balanceamento avaliadas.
+Conforme descrito no Capítulo \ref{cap:Implementacao}, durante cada execução experimental foram coletadas métricas detalhadas de QoE ao longo de toda a sessão de reprodução de vídeo. Os dados brutos --- sequências de qualidades escolhidas pelo \textit{player}, \textit{bitrate} estimado por segmento, eventos de \textit{stalling} e latências médias --- foram manualmente exportados em formato JSON e posteriormente processados pelos scripts localizados na pasta \texttt{src/chart-generators}, que geraram os gráficos consolidados. Esta seção apresenta e discute essas métricas, comparando sistematicamente os quatro cenários e as quatro estratégias de balanceamento avaliadas.
 
 \subsection{Qualidade}
 
@@ -225,7 +225,7 @@ Nos cenários com servidores heterogêneos (Cenários 1 e 3), observa-se um cont
 
 No Cenário 3, sob alta concorrência e heterogeneidade, o padrão se intensifica: as estratégias \textit{Round-Robin} e Aleatória degradam rapidamente a qualidade para níveis mínimos (predominância de 144p e 240p), enquanto o algoritmo proposto com intervalos de 6s e 30s consegue sustentar resoluções altas (720p e 1080p) durante praticamente toda a sessão. Isso evidencia que o monitoramento de recursos consegue evitar a concentração de requisições em servidores já saturados, preservando a qualidade mesmo em condições adversas.
 
-Nos cenários homogêneos (Cenários 2 e 4), as curvas de qualidade das quatro estratégias são muito próximas: em geral, todas mantêm a reprodução em 1080p, com poucas oscilações. Nesses ambientes, como esperado, a distribuição uniforme de requisições é naturalmente adequada, e o ganho proporcionado pelo algoritmo proposto em termos de qualidade percebida é pequeno, ainda que ele mantenha desempenho comparável sem prejuízo à QoE.
+Nos cenários homogêneos (Cenários 2 e 4), as curvas de qualidade das quatro estratégias são muito próximas: em geral, todas mantêm a reprodução em resoluções altas, com algumas oscilações no cenário de alta concorrência. Nesses ambientes, como esperado, a distribuição uniforme de requisições é naturalmente adequada, e o ganho proporcionado pelo algoritmo proposto em termos de qualidade percebida é pequeno, ainda que ele mantenha desempenho comparável.
 
 \subsection{Bitrate}
 
@@ -263,9 +263,9 @@ O \textit{bitrate} por segmento representa a taxa de transferência medida pelo 
     \label{fig:bitrate-scenario-4}
 \end{figure}
 
-Nos cenários heterogêneos, o \textit{bitrate} alcançado pelas estratégias \textit{Round-Robin} e Seleção Aleatória apresenta picos isolados seguidos de quedas acentuadas e prolongadas, coerentes com as oscilações de qualidade observadas anteriormente. Em diversos instantes, os valores de \textit{bitrate} caem para patamares muito baixos, sinalizando que os clientes estão recebendo dados em ritmo insuficiente para sustentar resoluções altas sem comprometer a experiência de reprodução.
+Nos cenários heterogêneos, o \textit{bitrate} alcançado pelas estratégias \textit{Round-Robin} e Seleção Aleatória se mantém relativamente estável mas abaixo dos valores alcançados pelas estratégias de Monitoramento de Memória, coerentes com as oscilações de qualidade observadas anteriormente. Isso sinaliza que os clientes estão recebendo dados em ritmo insuficiente para sustentar resoluções altas sem comprometer a experiência de reprodução.
 
-Já o algoritmo baseado em Monitoramento de Memória produz curvas de \textit{bitrate} mais estáveis, com valores consistentemente elevados ao longo dos segmentos. No Cenário 3, por exemplo, os dados JSON mostram que as variantes de Monitoramento de Memória mantêm \textit{bitrates} altos mesmo em momentos em que as estratégias tradicionais apresentam forte degradação. Isso reforça a hipótese de que considerar a carga real (memória e disco) permite explorar melhor a capacidade dos servidores mais robustos, evitando gargalos nos nós mais frágeis.
+Já o algoritmo baseado em Monitoramento de Memória produz curvas de \textit{bitrate} mais estáveis, com valores consistentemente elevados ao longo dos segmentos. No Cenário 3, por exemplo, os dados mostram que as variantes de Monitoramento de Memória mantêm \textit{bitrates} altos mesmo em momentos em que as estratégias tradicionais apresentam taxa menor. Isso reforça a hipótese de que considerar a carga real (memória e disco) permite explorar melhor a capacidade dos servidores mais robustos, evitando gargalos nos nós mais frágeis.
 
 Nos cenários homogêneos, todas as estratégias apresentam \textit{bitrate} elevado e relativamente estável, com diferenças pequenas entre si. Tal como na análise de qualidade, isso indica que, quando os servidores possuem capacidades equivalentes, o simples balanceamento uniforme de requisições é suficiente para utilizar adequadamente os recursos disponíveis.
 
@@ -305,7 +305,7 @@ Além do resumo de travamentos apresentado na Tabela~\ref{tab:stalls-results}, f
     \label{fig:stall-scenario-4}
 \end{figure}
 
-Os dados mostram que, nos cenários heterogêneos, os \textit{stalls} associados às estratégias \textit{Round-Robin} e Seleção Aleatória concentram-se em segmentos específicos, frequentemente com durações significativas (como os trechos de 8{,}16s e 13{,}38s observados no Cenário 3). Esses eventos longos tendem a ocorrer em momentos em que múltiplos clientes competem por servidores limitados, refletindo a incapacidade das estratégias tradicionais de evitar sobrecarga em nós com menos recursos disponíveis.
+Os dados mostram que, nos cenários heterogêneos, os \textit{stalls} associados às estratégias \textit{Round-Robin} e Seleção Aleatória concentram-se em segmentos específicos. Esses eventos longos tendem a ocorrer em momentos em que múltiplos clientes competem por servidores limitados, refletindo a incapacidade das estratégias tradicionais de evitar sobrecarga em nós com menos recursos disponíveis.
 
 Por outro lado, a variante de Monitoramento de Memória com intervalo de 6 segundos não registrou nenhum \textit{stall} nos cenários críticos, e a variante com 30 segundos apresentou poucos eventos, todos de curta duração, conforme já resumido na Tabela~\ref{tab:stalls-results}. Em cenários homogêneos (Cenários 2 e 4), os gráficos confirmam a inexistência de travamentos para todas as estratégias, reforçando a conclusão de que a heterogeneidade de recursos é o principal fator desencadeador de problemas severos de QoE.
 
@@ -321,9 +321,9 @@ Por fim, a latência média de resposta foi consolidada tanto na Tabela~\ref{tab
     \label{fig:latency-chart}
 \end{figure}
 
-O gráfico deixa evidente que as maiores diferenças ocorrem em ambientes heterogêneos. No Cenário 1, o Monitoramento de Memória com intervalo de 6 segundos reduz a latência média de aproximadamente 2{,}3 segundos (\textit{Round-Robin}) para cerca de 0{,}33 segundos, enquanto no Cenário 3 a redução é de quase 4 segundos para pouco menos de 1{,}2 segundos. A variante com intervalo de 30 segundos, embora apresente latências um pouco maiores que a de 6 segundos, ainda se mantém muito abaixo das estratégias tradicionais, demonstrando boa robustez mesmo com informação moderadamente obsoleta.
+O gráfico deixa evidente que as maiores diferenças ocorrem em ambientes heterogêneos. No Cenário 1, o Monitoramento de Memória com intervalo de 6 segundos reduz a latência média de aproximadamente 2{,}3 segundos (\textit{Round-Robin}) para cerca de 0{,}33 segundos, enquanto no Cenário 3 a redução é de quase 4 segundos para pouco menos de 1{,}2 segundos. A variante com intervalo de 30 segundos, embora apresente latências um pouco maiores que a de 6 segundos, ainda se mantém muito abaixo das estratégias tradicionais, demonstrando boa robustez mesmo com informação moderadamente desatualizada.
 
-Nos cenários homogêneos, as latências de todas as estratégias são bastante próximas, com valores sempre inferiores a 700 milissegundos. Isso indica que, quando os servidores possuem capacidades equivalentes, o impacto da estratégia de balanceamento na latência é relativamente pequeno, e que o overhead introduzido pelo monitoramento de memória e pela lógica probabilística do algoritmo proposto não compromete o tempo de resposta.
+Nos cenários homogêneos, as latências de todas as estratégias são bastante próximas, com valores sempre inferiores a 700 milissegundos. Isso indica que, quando os servidores possuem capacidades equivalentes, o impacto da estratégia de balanceamento na latência é relativamente pequeno, e que o \textit{overhead} introduzido pelo monitoramento de memória e pela lógica probabilística do algoritmo proposto não compromete o tempo de resposta.
 
 \section{Análise}
 
@@ -335,12 +335,12 @@ Nos cenários homogêneos (Cenários 2 e 4), por outro lado, as diferenças entr
 
 \subsection{Impacto do intervalo de atualização}
 
-O intervalo de atualização das métricas representa diretamente o grau de obsolescência da informação de carga utilizada pelo algoritmo de balanceamento. Os experimentos com 6 e 30 segundos demonstram que, embora a informação mais recente (6s) produza os melhores resultados absolutos em termos de latência e travamentos, o algoritmo mantém desempenho significativamente superior às estratégias tradicionais mesmo com dados mais antigos (30s).
+O intervalo de atualização das métricas representa diretamente o grau de desatualização da informação de carga utilizada pelo algoritmo de balanceamento. Os experimentos com 6 e 30 segundos demonstram que, embora a informação mais recente (6s) produza os melhores resultados absolutos em termos de latência e travamentos, o algoritmo mantém desempenho significativamente superior às estratégias tradicionais mesmo com dados mais antigos (30s).
 
-No Cenário 3, por exemplo, ambas as variantes de Monitoramento de Memória preservam a qualidade em resoluções altas e eliminam ou reduzem drasticamente os \textit{stalls}, mas a configuração de 6 segundos é a única que zera completamente os travamentos e apresenta a menor latência média. Já a variante de 30 segundos, embora apresente alguns \textit{stalls} curtos e latência um pouco maior, ainda se distancia amplamente de \textit{Round-Robin} e Seleção Aleatória. Esses resultados são coerentes com a fundamentação teórica discutida no Capítulo~\ref{cap:Proposta}: a interpretação adequada de dados obsoletos permite amortecer o impacto da defasagem temporal, mas intervalos menores de atualização potencializam o aproveitamento das informações mais recentes.
+No Cenário 3, por exemplo, ambas as variantes de Monitoramento de Memória preservam a qualidade em resoluções altas e eliminam ou reduzem drasticamente os \textit{stalls}, mas a configuração de 6 segundos é a única que zera completamente os travamentos e apresenta a menor latência média. Já a variante de 30 segundos, embora apresente alguns \textit{stalls} curtos e latência um pouco maior, ainda se distancia amplamente de \textit{Round-Robin} e Seleção Aleatória. Esses resultados são coerentes com a fundamentação teórica discutida no Capítulo~\ref{cap:Proposta}: a interpretação adequada de dados desatualizados permite amortecer o impacto da defasagem temporal, mas intervalos menores de atualização potencializam o aproveitamento das informações mais recentes.
 
 \subsection{Análise da QoE de modo geral}
 
 Sob a perspectiva da experiência do usuário final, o conjunto de métricas analisadas converge para um quadro consistente. Em cenários homogêneos, todas as estratégias fornecem uma QoE elevada, com reprodução contínua em alta definição, ausência de travamentos e tempos de resposta satisfatórios. Nesses casos, o algoritmo proposto mantém desempenho comparável às estratégias tradicionais, demonstrando que o custo adicional de monitoramento e cálculo probabilístico não introduz penalidades perceptíveis.
 
-Em cenários heterogêneos, entretanto, as diferenças são decisivas. A combinação de latências elevadas, múltiplos \textit{stalls} longos e degradação para resoluções muito baixas observada em \textit{Round-Robin} e Seleção Aleatória (especialmente no Cenário 3) representa uma deterioração significativa da QoE. O algoritmo de Monitoramento de Memória, por sua vez, praticamente elimina os travamentos, reduz substancialmente a latência e mantém a maior parte da sessão em 720p ou 1080p, mesmo sob alta concorrência. Assim, os resultados experimentais confirmam a hipótese central do trabalho: o uso de métricas de memória e disco, interpretadas à luz da obsolescência da informação de carga, é eficaz para melhorar a qualidade de experiência em sistemas de distribuição de conteúdo sujeitos a cenários de carga desafiadores.
+Em cenários heterogêneos, entretanto, as diferenças são decisivas. A combinação de latências elevadas, múltiplos \textit{stalls} longos e degradação para resoluções muito baixas observada em \textit{Round-Robin} e Seleção Aleatória (especialmente no Cenário 3) representa uma deterioração significativa da QoE. O algoritmo de Monitoramento de Memória, por sua vez, praticamente elimina os travamentos, reduz substancialmente a latência e mantém a maior parte da sessão em 720p ou 1080p, mesmo sob alta concorrência. Assim, os resultados experimentais confirmam a hipótese central do trabalho: o uso de métricas de memória e disco, interpretadas à luz da desatualização da informação de carga, é eficaz para melhorar a qualidade de experiência em sistemas de distribuição de conteúdo sujeitos a cenários de carga desafiadores.

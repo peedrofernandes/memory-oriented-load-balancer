@@ -2,7 +2,7 @@
 """
 Quality por Frame Chart Generator
 
-This script generates a line chart showing qualidade de vídeo ao longo do tempo
+This script generates a line chart showing qualidade de vídeo por frame
 for a single scenario, plotting one line per strategy (e.g., round-robin,
 random-selection, memory-monitoring-6s, memory-monitoring-30s).
 

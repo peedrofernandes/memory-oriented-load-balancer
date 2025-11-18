@@ -1,4 +1,4 @@
-\chapter{Conclusão}
+\chapter{Conclusão} \label{cap:Conclusao}
 
 Este trabalho abordou o desafio de otimizar o balanceamento de carga em Redes de Distribuição de Conteúdo (CDNs) para \textit{streaming} de vídeo adaptativo, propondo um algoritmo baseado em monitoramento de memória principal e taxa de leitura de disco dos servidores. A motivação central foi superar as limitações de estratégias convencionais como \textit{Round-Robin} e Seleção Aleatória, que operam sem considerar o estado real dos recursos dos servidores, resultando em distribuição ineficiente de carga e degradação da Qualidade de Experiência (QoE) dos usuários, especialmente em ambientes com servidores de distribuição de conteúdo com capacidades heterogêneas.
 
@@ -34,7 +34,7 @@ Estas validações demonstram que o algoritmo não apenas funciona conforme proj
 
 \section{Robustez do Algoritmo Proposto}
 
-Um resultado particularmente significativo e promissor para aplicações práticas é a robustez do algoritmo quando operando com dados relativamente desatualizados. O desempenho mantido com intervalo de atualização de 30 segundos valida o conceito de \textit{Load Interpretation} adaptado das equações propostas, onde as chegadas esperadas durante o período de obsolescência são incorporadas no cálculo probabilístico de seleção de servidores.
+Um resultado particularmente significativo e promissor para aplicações práticas é a robustez do algoritmo quando operando com dados relativamente desatualizados. O desempenho mantido com intervalo de atualização de 30 segundos valida o conceito de \textit{Load Interpretation} adaptado das equações propostas, onde as chegadas esperadas durante o período de desatualização são incorporadas no cálculo probabilístico de seleção de servidores.
 
 Esta robustez tem implicações práticas cruciais para escalabilidade. Sistemas de larga escala com centenas ou milhares de servidores enfrentam custos significativos de monitoramento: sobrecarga de processamento para coleta de métricas, largura de banda para comunicação via MQTT, latência de propagação de informações, e complexidade operacional. A capacidade de operar eficientemente com intervalos de atualização maiores reduz todos esses custos proporcionalmente.
 
@@ -48,9 +48,9 @@ A análise dos resultados revela dois fatores principais que determinam quando e
 
 Os resultados demonstram inequivocamente que a heterogeneidade dos servidores é o fator determinante primário para o valor do balanceamento inteligente. A divergência dramática de desempenho entre cenários heterogêneos (Cenários 1 e 3) e homogêneos (Cenários 2 e 4) não deixa dúvidas: monitoramento e adaptação são essenciais quando servidores possuem capacidades diferentes, mas oferecem valor marginal quando todos são equivalentes.
 
-Esta conclusão tem implicações importantes para a indústria de CDNs e \textit{edge computing}, onde heterogeneidade é a norma, não a exceção. Servidores de diferentes gerações coexistem devido a atualizações graduais de infraestrutura — é economicamente inviável substituir toda a frota simultaneamente. Recursos são compartilhados dinamicamente entre múltiplas aplicações e \textit{tenants} em ambientes de nuvem. Condições de rede variam por localização geográfica, com servidores em diferentes continentes ou mesmo cidades experimentando latências e larguras de banda distintas.
+Esta conclusão tem implicações importantes para a indústria de CDNs e \textit{edge computing}, onde heterogeneidade de disponibilidade de recursos é a norma, não a exceção. Embora ambientes virtualizados modernos frequentemente utilizem servidores com capacidades físicas homogêneas, a heterogeneidade manifesta-se através da variação dinâmica de carga de trabalho. Servidores em um cluster não se dedicam exclusivamente a servir conteúdo de vídeo — simultaneamente executam outras aplicações, processam tarefas de \textit{background}, respondem a requisições de diferentes \textit{tenants} em ambientes multi-inquilino, e lidam com processos do sistema operacional. Esta concorrência por recursos cria heterogeneidade dinâmica: mesmo servidores idênticos em \textit{hardware} apresentam disponibilidade drasticamente diferente de memória, \textit{CPU}, e largura de banda de disco a cada instante, dependendo das demandas concorrentes que enfrentam.
 
-Nestes contextos, que representam a realidade operacional da maioria dos sistemas de distribuição de conteúdo em produção, estratégias simples como \textit{Round-Robin} são fundamentalmente inadequadas. Ao distribuir uniformemente a carga, efetivamente aplicam a mesma demanda a servidores com capacidades drasticamente diferentes, resultando em servidores fracos saturados enquanto servidores fortes permanecem ociosos. O algoritmo proposto, ao observar e reagir à carga real, naturalmente direciona mais requisições para servidores capazes e menos para servidores limitados, aproximando-se de uma distribuição ótima.
+Nestes contextos, que representam a realidade operacional da maioria dos sistemas de distribuição de conteúdo em produção, estratégias simples como \textit{Round-Robin} são fundamentalmente inadequadas. Ao distribuir uniformemente a carga, efetivamente aplicam a mesma demanda a servidores com capacidades drasticamente diferentes, resultando em servidores com menor capacidade saturados enquanto servidores com maior capacidade permanecem ociosos. O algoritmo proposto, ao observar e reagir à carga real, naturalmente direciona mais requisições para servidores capazes e menos para servidores limitados, aproximando-se de uma distribuição ótima.
 
 \subsection{Concorrência como Teste de Estresse}
 
@@ -70,7 +70,7 @@ Proposta e implementação de um algoritmo de balanceamento de carga que utiliza
 
 \subsection{Mecanismo de Interpretação de Dados Desatualizados} 
 
-Desenvolvimento de um mecanismo de \textit{Load Interpretation} que permite ao balanceador operar eficientemente mesmo com informações moderadamente desatualizadas. Através do cálculo das chegadas esperadas durante o período de obsolescência, o algoritmo ajusta probabilidades de seleção para compensar a defasagem temporal, proporcionando robustez essencial para escalabilidade em sistemas de larga escala.
+Desenvolvimento de um mecanismo de \textit{Load Interpretation} que permite ao balanceador operar eficientemente mesmo com informações moderadamente desatualizadas. Através do cálculo das chegadas esperadas durante o período de desatualização, o algoritmo ajusta probabilidades de seleção para compensar a defasagem temporal, proporcionando robustez essencial para escalabilidade em sistemas de larga escala.
 
 \subsection{Validação Experimental Abrangente}
 
@@ -243,7 +243,7 @@ Esta organização permite não apenas validação independente dos resultados a
 
 Este trabalho demonstrou de forma conclusiva que o monitoramento inteligente de recursos, especificamente memória principal e taxa de leitura de disco, possibilita melhorias substanciais em Qualidade de Experiência para \textit{streaming} de vídeo adaptativo em Redes de Distribuição de Conteúdo com servidores heterogêneos. As reduções de latência de até 85,7\%, eliminação de travamentos em cenários críticos, e manutenção de qualidade de vídeo alta e consistente validam a abordagem proposta e demonstram sua superioridade sobre estratégias convencionais em contextos apropriados.
 
-A identificação da heterogeneidade como fator crítico determina claramente quando investir em balanceamento inteligente: essencial em CDNs reais com servidores de múltiplas gerações e capacidades, mas de valor marginal em ambientes homogêneos padronizados. A robustez demonstrada com dados moderadamente obsoletos resolve uma preocupação fundamental sobre escalabilidade, mostrando que o algoritmo pode operar eficientemente mesmo com intervalos de atualização maiores, reduzindo custos de monitoramento proporcionalmente.
+A identificação da heterogeneidade como fator crítico determina claramente quando investir em balanceamento inteligente: essencial em CDNs reais com servidores de múltiplas gerações e capacidades, mas de valor marginal em ambientes homogêneos padronizados. A robustez demonstrada com dados moderadamente desatualizados resolve uma preocupação fundamental sobre escalabilidade, mostrando que o algoritmo pode operar eficientemente mesmo com intervalos de atualização maiores, reduzindo custos de monitoramento proporcionalmente.
 
 Do ponto de vista prático, este trabalho oferece não apenas validação acadêmica de conceitos, mas uma solução implementável e testada que pode ser adaptada para sistemas de produção. A implementação de código aberto, infraestrutura experimental reutilizável, e análise detalhada de diferentes cenários fornecem base sólida para profissionais da indústria avaliarem aplicabilidade em seus contextos específicos.
 

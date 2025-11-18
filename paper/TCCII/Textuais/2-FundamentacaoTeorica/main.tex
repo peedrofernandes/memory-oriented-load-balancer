@@ -2,7 +2,7 @@
 
 % Devem ser incluídos os tópicos previstos no plano de TCC
 
-\chapter{Fundamentação Teórica}
+\chapter{Fundamentação Teórica} \label{cap:FundamentacaoTeorica}
 
 Para embasar a proposta central deste trabalho, este capítulo se dedica a revisar os conceitos fundamentais. A exploração detalhada destes pilares teóricos é essencial para contextualizar as decisões metodológicas, o planejamento e a implementação subsequentes e a análise dos resultados, conferindo uma base sólida e coesa ao desenvolvimento da pesquisa.
 
@@ -144,15 +144,15 @@ Para o sistema operacional Linux, por exemplo, a interface primária para monito
 
 Com base no princípio anterior, existem várias soluções em nível de aplicação que referenciam o sistema operacional de forma dinâmica para dispor, transportar e processar essas informações de monitoramento de forma sistemática. Alguns exemplos são: o sistema \textit{Tivoli® Monitoring} da IBM \cite{boss2007cloud}, o clássico \textit{Task Manager} do \textit{Windows}, as soluções de linha de comando \texttt{top}, \texttt{htop} e \texttt{free} do Linux, dentre outras aplicações que podem funcionar tanto de forma isolada quanto distribuída.
  
-\section{Interpretação de dados obsoletos}
+\section{Interpretação de dados desatualizados}
 
 Esta seção é crítica, pois o algoritmo proposto depende de informações de memória coletadas periodicamente, criando um intervalo entre a coleta e o uso durante o qual o estado dos servidores pode mudar. O trabalho "\textit{Interpreting Stale Load Information}" \cite{interpretingStaleLoadInformation2000} fornece a base teórica para o algoritmo implementado, através da adaptação do método \textit{Basic LI}.
 
-No contexto de balanceamento de carga, é fato que a estratégia de direcionamento da carga para a máquina com menos sobrecarga pode ter desempenho ruim se a informação de carga dos servidores estiver relativamente obsoleta \cite{adaptiveLoadSharing1986, analysisDelaysLoadSharing1989, howUsefulIsLoadInformation2000, loadDistributingInLocallyDistributedSystems1993}. Nesse sentido, sistemas de balanceamento de carga que possuem como estratégia a escolha de servidores pouco sobrecarregados que não tratam devidamente a obsolescência da informação de carga dos servidores podem produzir o efeito contrário ao desejado, efetivamente sobrecarregando as máquinas que processam requisições.
+No contexto de balanceamento de carga, é fato que a estratégia de direcionamento da carga para a máquina com menos sobrecarga pode ter desempenho ruim se a informação de carga dos servidores estiver relativamente desatualizada \cite{adaptiveLoadSharing1986, analysisDelaysLoadSharing1989, howUsefulIsLoadInformation2000, loadDistributingInLocallyDistributedSystems1993}. Nesse sentido, sistemas de balanceamento de carga que possuem como estratégia a escolha de servidores pouco sobrecarregados que não tratam devidamente a desatualização da informação de carga dos servidores podem produzir o efeito contrário ao desejado, efetivamente sobrecarregando as máquinas que processam requisições.
 
-A falta de tratamento devido a dados obsoletos pode causar um fenômeno no qual máquinas que aparentam estar subutilizadas rapidamente se tornam sobrecarregadas, uma vez que, durante a defasagem da propagação da informação, todos os clientes enviam suas requisições para as mesmas máquinas, que por sua vez ficam sobrecarregadas até que uma nova informação de carga seja propagada pelo sistema. Para combater esse problema, algumas abordagens comuns incluem o uso de algoritmos de seleção aleatória ou \textit{Round-Robin}, que ignoram completamente os dados de carga, ou o uso de um subconjunto aleatório de servidores para a tomada de decisão.
+A falta de tratamento devido a dados desatualizados pode causar um fenômeno no qual máquinas que aparentam estar subutilizadas rapidamente se tornam sobrecarregadas, uma vez que, durante a defasagem da propagação da informação, todos os clientes enviam suas requisições para as mesmas máquinas, que por sua vez ficam sobrecarregadas até que uma nova informação de carga seja propagada pelo sistema. Para combater esse problema, algumas abordagens comuns incluem o uso de algoritmos de seleção aleatória ou \textit{Round-Robin}, que ignoram completamente os dados de carga, ou o uso de um subconjunto aleatório de servidores para a tomada de decisão.
 
-Por outro lado, se for imprescindível que os dados de sobrecarga de um ou mais recursos computacionais dos servidores gerenciados sejam considerados como variáveis utilizadas pela estratégia de balanceamento de carga, existem algumas estratégias para resolver o problema da obsolescência dos dados. O trabalho "\textit{Interpreting Stale Load Information}" \cite{interpretingStaleLoadInformation2000} desenvolve estratégias que interpretam a informação de carga com base em sua idade em vez de arriscar um desempenho extremamente baixo ou ignorar a oportunidade de usar essa informação para otimizar o sistema.
+Por outro lado, se for imprescindível que os dados de sobrecarga de um ou mais recursos computacionais dos servidores gerenciados sejam considerados como variáveis utilizadas pela estratégia de balanceamento de carga, existem algumas estratégias para resolver o problema da desatualização dos dados. O trabalho "\textit{Interpreting Stale Load Information}" \cite{interpretingStaleLoadInformation2000} desenvolve estratégias que interpretam a informação de carga com base em sua idade em vez de arriscar um desempenho extremamente baixo ou ignorar a oportunidade de usar essa informação para otimizar o sistema.
 
 \section{Virtualização de redes para simulação de cenários}
 
@@ -190,10 +190,8 @@ Este capítulo apresentou os fundamentos teóricos essenciais para o desenvolvim
 
 O estudo do padrão MPEG-DASH e do funcionamento das CDNs forneceu o contexto de aplicação específico, evidenciando que servidores de distribuição de conteúdo dependem intensivamente de operações de memória, tanto principal quanto secundária. Esta característica operacional fundamenta a escolha do monitoramento de memória como métrica central para o algoritmo de balanceamento proposto.
 
-A revisão das técnicas de monitoramento de memória e das estratégias para interpretação de dados obsoletos forneceu os mecanismos técnicos e teóricos necessários para a implementação prática. Especificamente, o trabalho "\textit{Interpreting Stale Load Information}" oferece a base algorítmica para lidar com a defasagem temporal inerente ao processo de monitoramento distribuído.
+A revisão das técnicas de monitoramento de memória e das estratégias para interpretação de dados desatualizados forneceu os mecanismos técnicos e teóricos necessários para a implementação prática. Especificamente, o trabalho "\textit{Interpreting Stale Load Information}" oferece a base algorítmica para lidar com a defasagem temporal inerente ao processo de monitoramento distribuído.
 
 A análise dos trabalhos relacionados demonstrou que, embora existam diversas abordagens de balanceamento de carga dinâmico, não há trabalhos que se concentrem exclusivamente no monitoramento de memória para balanceamento em servidores de distribuição de conteúdo, estabelecendo assim a originalidade e relevância da proposta apresentada.
 
 Por fim, a exploração da virtualização de redes, especialmente baseada em contêineres, justificou as escolhas arquiteturais para a implementação experimental, permitindo a realização de experimentos controlados em um ambiente isolado.
-
-A consolidação desses conhecimentos fornece uma base sólida para o desenvolvimento da proposta detalhada no próximo capítulo, no qual serão apresentados o algoritmo de balanceamento de carga, os requisitos tecnológicos e a metodologia de implementação e avaliação.

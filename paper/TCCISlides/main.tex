@@ -129,7 +129,7 @@ de conteúdo por meio de monitoramento sistemático de memória}
 %     \textbf{Dispositivos de Armazenamento persistente}
 %     \begin{itemize}
 %         \item Podem ser pontos de gargalo, especialmente em sistemas de \textit{streaming} que exigem acesso aleatório à memória \cite{sivathanu2013IOWorkloads} e exibem altos custos arquiteturais \cite{arpaciDusseau98};
-%         \item Falhas são comuns em \textit{Data Centers} de larga escala \cite{wuEtalIOWorkload}, exigindo tolerância a falhas;
+%         \item Falhas são comuns em Data Centers de larga escala \cite{wuEtalIOWorkload}, exigindo tolerância a falhas;
 %     \end{itemize}
 %     \textbf{Uso de memória principal}
 %     \begin{itemize}
@@ -189,12 +189,12 @@ de conteúdo por meio de monitoramento sistemático de memória}
 
 % \begin{frame}{NGINX}
 
-% O NGINX é um sistema popular, amplamente utilizado como servidor web, \textit{proxy} reverso e balanceador de carga para lidar com aplicações de alta concorrência.
+% O NGINX é um sistema popular, amplamente utilizado como servidor web, proxy reverso e balanceador de carga para lidar com aplicações de alta concorrência.
 
 % \textbf{Uso e Algoritmos Nativos}
 % \begin{itemize}
 %     \item Algoritmos comuns: \textbf{\textit{Weighted Round-Robin}}, \textbf{\textit{Least Connections}} e \textbf{\textit{IP hash}};
-%     \item A função de \textit{hash} nativa é simples, levando a \textbf{colisões de \textit{hash}} e distribuição não uniforme \cite{nginxAlgorithmsEvaluationYuhong2022};
+%     \item A função de \textit{hash} nativa é simples, levando a \textbf{colisões de hash} e distribuição não uniforme \cite{nginxAlgorithmsEvaluationYuhong2022};
 %     \item Em algumas situações, servidores podem ficar sobrecarregados enquanto outros são subutilizados;
 %     \item Não há monitoramento de \textbf{uso de memória em tempo real} para decisões dinâmicas, crucial em distribuição de conteúdo;
 %     \item Adição de monitoramento de memória pode \textbf{aprimorar a inteligência} do balanceador de carga;
@@ -207,7 +207,7 @@ de conteúdo por meio de monitoramento sistemático de memória}
 
 % \begin{itemize}
 %     \item É reconhecido por sua eficiência e baixo uso de memória;
-%     \item Não há indicações de monitoramento de memória em tempo real para otimizar a distribuição de tráfego - a integração dessa funcionalidade poderia aprimorar a alocação de recursos e prevenir sobrecargas nos servidores de \textit{cache};
+%     \item Não há indicações de monitoramento de memória em tempo real para otimizar a distribuição de tráfego - a integração dessa funcionalidade poderia aprimorar a alocação de recursos e prevenir sobrecargas nos servidores de cache;
 % \end{itemize}
 % \end{frame}
 
@@ -289,7 +289,7 @@ de conteúdo por meio de monitoramento sistemático de memória}
 %     \item \textbf{Fase 1: Alocação Inicial de Dados} — Distribui réplicas de vídeo com base em probabilidades de acesso esperadas para balanceamento de carga estático;
 %     \item \textbf{Fase 2: Deslocamento de Carga (\textit{Load Shifting})} — Uma estratégia dinâmica onde requisições bloqueadas em um servidor sobrecarregado são admitidas migrando requisições em andamento para outros nós;
 %     \item O acionamento é baseado em limiares predefinidos que comparam a carga do servidor (número de \textbf{streams ativas} - $P_{i,j}$) com a de seus vizinhos ou capacidade máxima ($A_{max}$). O conceito de "carga" foca no número de \textbf{streams ativas} vs. capacidade máxima, ignorando o uso de recursos de baixo nível como \textbf{memória} ou \textbf{CPU};
-%     \item Essa abstração, embora eficaz para balancear requisições, não aborda gargalos de desempenho por esgotamento de memória, especialmente em servidores com \textit{cache} intensivo de vídeo;
+%     \item Essa abstração, embora eficaz para balancear requisições, não aborda gargalos de desempenho por esgotamento de memória, especialmente em servidores com cache intensivo de vídeo;
 % \end{itemize}
 % \end{frame}
 
@@ -302,7 +302,7 @@ de conteúdo por meio de monitoramento sistemático de memória}
 \begin{itemize}
     \item São \textbf{sistemas distribuídos de computadores}, administrados no nível da aplicação, que encaminham requisições para o servidor mais próximo do usuário, reduzindo latência e sobrecarga \cite{Preston2021Finding};
     \item \textbf{Arquitetura}: Servidores de origem (conteúdo original) e servidores de borda (cópias redundantes) em PoPs (\textit{Points of Presence});
-    \item \textbf{\textit{Cache}}: Conteúdo é servido do PoP mais próximo, otimizando a distância física e reduzindo a carga na rede global;
+    \item \textbf{Cache}: Conteúdo é servido do PoP mais próximo, otimizando a distância física e reduzindo a carga na rede global;
     \item \textbf{Roteamento}: Utilizam DNS para direcionar usuários ao servidor ideal com base na localização geográfica;
     \item \textbf{Balanceamento de Carga}: Distribuem requisições para evitar sobrecarga em PoPs, usando localização geográfica e técnicas como \textit{anycast} \cite{Preston2021Finding};
 \end{itemize}

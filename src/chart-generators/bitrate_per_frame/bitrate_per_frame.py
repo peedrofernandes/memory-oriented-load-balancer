@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Bitrate per Frame Chart Generator
+Bitrate por Frame Chart Generator
 
-This script generates a line chart showing bitrate (in kbps) over time (per
+This script generates a line chart showing bitrate (in kbps) over time (por
 frame) for a single scenario, plotting one line per strategy (e.g.,
 round-robin, random-selection, memory-monitoring-6s, memory-monitoring-30s).
 
@@ -49,14 +49,14 @@ def _normalize_strategy_name(name: str) -> str:
         'round robin': 'Round Robin',
         'round-robin': 'Round Robin',
         'round_robin': 'Round Robin',
-        'random selection': 'Random Selection',
-        'random-selection': 'Random Selection',
-        'random_selection': 'Random Selection',
-        'memory monitoring': 'Memory Monitoring',
-        'memory-monitoring': 'Memory Monitoring',
-        'memory_monitoring': 'Memory Monitoring',
-        'memory-monitoring-6s': 'Memory Monitoring (6s)',
-        'memory-monitoring-30s': 'Memory Monitoring (30s)',
+        'random selection': 'Seleção Aleatória',
+        'random-selection': 'Seleção Aleatória',
+        'random_selection': 'Seleção Aleatória',
+        'memory monitoring': 'Monitoramento de Memória',
+        'memory-monitoring': 'Monitoramento de Memória',
+        'memory_monitoring': 'Monitoramento de Memória',
+        'memory-monitoring-6s': 'Monitoramento de Memória (6s)',
+        'memory-monitoring-30s': 'Monitoramento de Memória (30s)',
     }
     return mapping.get(n, name)
 
@@ -116,7 +116,7 @@ def create_bitrate_charts(config: Dict[str, Any], output_path: str) -> None:
     marker_size = float(chart_settings.get('marker_size', 3))
     dpi = int(chart_settings.get('dpi', 300))
 
-    base_title = chart_settings.get('title', 'Bitrate per Frame')
+    base_title = chart_settings.get('title', 'Taxa de Bits por Frame')
 
     # Consistent strategy colors across all scenarios (fixed palette)
     strategy_order = ['round-robin', 'random-selection', 'memory-monitoring-6s', 'memory-monitoring-30s']
@@ -168,21 +168,23 @@ def create_bitrate_charts(config: Dict[str, Any], output_path: str) -> None:
                 frame_numbers,
                 safe_y,
                 label=_normalize_strategy_name(orig_key),
-                linewidth=line_width,
+                linewidth=line_width * 1.5,
                 marker='o',
                 markersize=marker_size,
                 color=color,
-                linestyle=':',
+                linestyle='--',
                 alpha=0.9,
                 markeredgecolor='white',
                 markeredgewidth=0.7,
             )
 
-        plt.xlabel(chart_settings.get('x_label', 'Frame Number'), fontsize=12, fontweight='bold')
+        plt.xlabel(chart_settings.get('x_label', 'Número do Frame'), fontsize=12, fontweight='bold')
         # Y-axis: Kbps on logarithmic scale
-        plt.ylabel('Bitrate (Kbps)', fontsize=12, fontweight='bold')
+        plt.ylabel('Taxa de Bits (Kbps)', fontsize=12, fontweight='bold')
         plt.yscale('log')
-        plt.title(f"{base_title} - {scenario}", fontsize=14, fontweight='bold', pad=20)
+        # Convert scenario name to Portuguese
+        scenario_pt = scenario.replace('scenario-', 'Cenário ')
+        plt.title(f"{base_title} - {scenario_pt}", fontsize=14, fontweight='bold', pad=20)
 
         if 'y_axis_limits' in chart_settings:
             y_min, y_max = chart_settings['y_axis_limits']
@@ -217,7 +219,7 @@ def create_bitrate_charts(config: Dict[str, Any], output_path: str) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Generate a bitrate per frame chart and output to stdout",
+        description="Generate a bitrate por frame chart and output to stdout",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

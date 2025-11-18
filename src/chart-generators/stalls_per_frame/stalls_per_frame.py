@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Stalls per Frame (Segment) Chart Generator
+Stalls por Frame Chart Generator
 
-This script generates a grouped bar chart showing stall duration (in seconds)
-per segment for a single scenario. Within the selected scenario, it plots one
+This script generates a grouped bar chart showing duração de parada (in seconds)
+por frame for a single scenario. Within the selected scenario, it plots one
 bar per strategy (e.g., round-robin, random-selection, memory-monitoring-6s,
-memory-monitoring-30s) for each segment.
+memory-monitoring-30s) for each frame.
 
 The script reads configuration from a JSON file that contains:
 - datasets: { "scenario-1": { "round-robin": [{"segment": n, "seconds": x}, ...], ... }, ... }
@@ -17,7 +17,7 @@ Usage:
 The JSON configuration file should contain:
 - datasets: { "scenario-1": {"round-robin": [{"segment": 2, "seconds": 0.0}, ...], ...}, ... }
 - chart_settings: { "figure_size": [12, 8], "colors": ["#..."], "bar_width": 0.25, "dpi": 300,
-                   "title": "...", "x_label": "Segment", "y_label": "Stall Seconds",
+                   "title": "...", "x_label": "Número do Frame", "y_label": "Tempo de Parada (s)",
                    "y_axis_limits": [0, 1] }
 """
 
@@ -50,7 +50,7 @@ def load_config(config_path: str) -> Dict[str, Any]:
 
 
 def aggregate_stalls(dataset_entries: List[Dict[str, Any]]) -> Dict[int, float]:
-    """Aggregate stall seconds per segment, summing where segments repeat."""
+    """Aggregate tempo de parada por frame, summing where frames repeat."""
     stalls_per_segment: Dict[int, float] = {}
     for entry in dataset_entries:
         segment = int(entry.get('segment', 0))
@@ -65,14 +65,14 @@ def _normalize_strategy_name(name: str) -> str:
         'round robin': 'Round Robin',
         'round-robin': 'Round Robin',
         'round_robin': 'Round Robin',
-        'random selection': 'Random Selection',
-        'random-selection': 'Random Selection',
-        'random_selection': 'Random Selection',
-        'memory monitoring': 'Memory Monitoring',
-        'memory-monitoring': 'Memory Monitoring',
-        'memory_monitoring': 'Memory Monitoring',
-        'memory-monitoring-6s': 'Memory Monitoring (6s)',
-        'memory-monitoring-30s': 'Memory Monitoring (30s)',
+        'random selection': 'Seleção Aleatória',
+        'random-selection': 'Seleção Aleatória',
+        'random_selection': 'Seleção Aleatória',
+        'memory monitoring': 'Monitoramento de Memória',
+        'memory-monitoring': 'Monitoramento de Memória',
+        'memory_monitoring': 'Monitoramento de Memória',
+        'memory-monitoring-6s': 'Monitoramento de Memória (6s)',
+        'memory-monitoring-30s': 'Monitoramento de Memória (30s)',
     }
     return mapping.get(n, name)
 
@@ -178,9 +178,12 @@ def create_stalls_charts(config: Dict[str, Any], output_path: str) -> None:
                 )
                 labeled_strategies[strategy_name] = True
         
-        plt.xlabel(chart_settings.get('x_label', 'Segment'), fontsize=12, fontweight='bold')
-        plt.ylabel(chart_settings.get('y_label', 'Stall Seconds'), fontsize=12, fontweight='bold')
-        plt.title(chart_settings.get('title', 'Stall Duration per Segment') + f" - {scenario}", fontsize=14, fontweight='bold', pad=20)
+        # Convert scenario name to Portuguese
+        scenario_pt = scenario.replace('scenario-', 'Cenário ')
+        
+        plt.xlabel(chart_settings.get('x_label', 'Número do Frame'), fontsize=12, fontweight='bold')
+        plt.ylabel(chart_settings.get('y_label', 'Tempo de Parada (s)'), fontsize=12, fontweight='bold')
+        plt.title(chart_settings.get('title', 'Duração de Parada por Frame') + f" - {scenario_pt}", fontsize=14, fontweight='bold', pad=20)
 
         plt.xticks(indices, [str(s) for s in all_segments])
 
@@ -225,7 +228,7 @@ def create_stalls_charts(config: Dict[str, Any], output_path: str) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Generate a grouped bar chart of stall seconds per segment and output to stdout",
+        description="Generate a grouped bar chart of tempo de parada por frame and output to stdout",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

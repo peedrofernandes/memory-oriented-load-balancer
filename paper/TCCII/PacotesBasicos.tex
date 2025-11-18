@@ -1,9 +1,23 @@
 % ----------------------------------------------------------
 % Pacotes básicos 
 % ----------------------------------------------------------
-\usepackage{amsmath}							% Pacote matemático
-\usepackage{algorithm}                          %       Pacote para algoritmos
-\usepackage[noend]{algpseudocode}               %       Pacote para pseudo-códigos
+\usepackage[brazil]{babel}
+\usepackage{amsmath}
+\usepackage{algorithm}
+\usepackage{algorithmicx}
+\usepackage{algpseudocode}
+% Renomeia o título do "bloco" flutuante
+\floatname{algorithm}{Algoritmo}
+
+% Renomeia os comandos do "algpseudocode"
+\algrenewcommand\algorithmicrequire{\textbf{Requer:}}
+\algrenewcommand\algorithmicensure{\textbf{Garante:}}
+\algrenewcommand\algorithmicprocedure{\textbf{Procedimento}}
+\algrenewcommand\algorithmicforall{\textbf{Para todo}}
+\algrenewcommand\algorithmicend{\textbf{Fim}}
+\algrenewcommand\algorithmicfor{\textbf{Para}} % Específico para o \EndFor
+\algrenewcommand\algorithmicdo{\textbf{Faça}}
+\algrenewcommand\algorithmiccomment[1]{\textit{// #1}} % Muda o estilo do comentário (opcional)
 \usepackage{amssymb}							% Pacote matemático
 \usepackage{amsfonts}							% Pacote matemático
 \usepackage{tocloft}                            % Pacote de formatação de lista de equações
@@ -40,6 +54,7 @@
 \usepackage{chemformula}						% Pacote para fórmulas químicas
 \usepackage{chngcntr}							% Pacte usado para deixar numeração de equações sequencial (UDESC/CCT)
 \usepackage{soulutf8}
+\usepackage{threeparttable}
 \counterwithout{equation}{chapter}
 % fonte: https://latex.org/forum/viewtopic.php?t=15392
 

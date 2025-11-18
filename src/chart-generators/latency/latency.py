@@ -82,14 +82,44 @@ def create_bar_chart(data: Dict[str, float], settings: Dict[str, Any], output_pa
         return parts[0]
 
     def display_group_label(group: str) -> str:
-        # scenario-1 -> Scenario 1
+        # scenario-1 -> Cenário 1
         if group.startswith('scenario-'):
-            return 'Scenario ' + group.split('-', 1)[1]
+            return 'Cenário ' + group.split('-', 1)[1]
         return group.title()
 
     scenarios = list(data.keys())
     values = [float(data[k]) for k in scenarios]
     groups = [get_scenario_group(s) for s in scenarios]
+
+    # Translate scenario names to Portuguese
+    def translate_scenario_name(name: str) -> str:
+        if 'scenario-' in name.lower():
+            # Replace 'scenario-X-strategy' with 'Cenário X - strategy'
+            parts = name.split('-')
+            translated_parts = []
+            for i, part in enumerate(parts):
+                if part.lower() == 'scenario':
+                    translated_parts.append('Cenário')
+                elif i > 0 and parts[i-1].lower() == 'scenario':
+                    translated_parts.append(part)
+                elif part == 'round' and i+1 < len(parts) and parts[i+1] == 'robin':
+                    translated_parts.append('Round')
+                elif part == 'robin' and i > 0 and parts[i-1] == 'round':
+                    translated_parts.append('Robin')
+                elif part == 'random':
+                    translated_parts.append('Seleção')
+                elif part == 'selection' and i > 0 and parts[i-1] == 'random':
+                    translated_parts.append('Aleatória')
+                elif part == 'memory':
+                    translated_parts.append('Monitoramento')
+                elif part == 'monitoring' and i > 0 and parts[i-1] == 'memory':
+                    translated_parts.append('Memória')
+                else:
+                    translated_parts.append(part)
+            return ' '.join(translated_parts).replace('  ', ' ')
+        return name
+    
+    scenarios_pt = [translate_scenario_name(s) for s in scenarios]
 
     figure_size = tuple(settings.get('figure_size', [12, 8]))
     colors = settings.get('colors', None)
@@ -110,10 +140,10 @@ def create_bar_chart(data: Dict[str, float], settings: Dict[str, Any], output_pa
     bar_colors = [group_color_map[g] for g in groups]
     plt.bar(indices, values, color=bar_colors, edgecolor='black', linewidth=0.4)
 
-    plt.xlabel(settings.get('x_label', 'Scenario'), fontsize=12, fontweight='bold')
-    plt.ylabel(settings.get('y_label', 'Latency (ms)'), fontsize=12, fontweight='bold')
-    plt.title(settings.get('title', 'Latency by Scenario'), fontsize=14, fontweight='bold', pad=20)
-    plt.xticks(indices, scenarios, rotation=45, ha='right')
+    plt.xlabel(settings.get('x_label', 'Cenário'), fontsize=12, fontweight='bold')
+    plt.ylabel(settings.get('y_label', 'Latência (ms)'), fontsize=12, fontweight='bold')
+    plt.title(settings.get('title', 'Latência por Cenário'), fontsize=14, fontweight='bold', pad=20)
+    plt.xticks(indices, scenarios_pt, rotation=45, ha='right')
 
     # Dynamic upper limit based on data
     v_max = max(values) if values else 0.0

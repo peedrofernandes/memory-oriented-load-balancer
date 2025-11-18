@@ -401,9 +401,9 @@
     "marker_size": 3,
     "dpi": 300,
     "y_axis_limits": [0, 1000],
-    "title": "Bitrate per Frame",
-    "x_label": "Frame Number",
-    "y_label": "Bitrate (kbps)"
+    "title": "Taxa de Bits por Frame",
+    "x_label": "Número do Frame",
+    "y_label": "Taxa de Bits (kbps)"
   }
 }
 

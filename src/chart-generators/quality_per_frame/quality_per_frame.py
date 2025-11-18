@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Quality per Frame Chart Generator
+Quality por Frame Chart Generator
 
-This script generates a line chart showing video quality changes over time
+This script generates a line chart showing qualidade de vídeo ao longo do tempo
 for a single scenario, plotting one line per strategy (e.g., round-robin,
 random-selection, memory-monitoring-6s, memory-monitoring-30s).
 
@@ -61,14 +61,14 @@ def _normalize_strategy_name(name: str) -> str:
         'round robin': 'Round Robin',
         'round-robin': 'Round Robin',
         'round_robin': 'Round Robin',
-        'random selection': 'Random Selection',
-        'random-selection': 'Random Selection',
-        'random_selection': 'Random Selection',
-        'memory monitoring': 'Memory Monitoring',
-        'memory-monitoring': 'Memory Monitoring',
-        'memory_monitoring': 'Memory Monitoring',
-        'memory-monitoring-6s': 'Memory Monitoring (6s)',
-        'memory-monitoring-30s': 'Memory Monitoring (30s)',
+        'random selection': 'Seleção Aleatória',
+        'random-selection': 'Seleção Aleatória',
+        'random_selection': 'Seleção Aleatória',
+        'memory monitoring': 'Monitoramento de Memória',
+        'memory-monitoring': 'Monitoramento de Memória',
+        'memory_monitoring': 'Monitoramento de Memória',
+        'memory-monitoring-6s': 'Monitoramento de Memória (6s)',
+        'memory-monitoring-30s': 'Monitoramento de Memória (30s)',
     }
     return mapping.get(n, name)
 
@@ -157,18 +157,21 @@ def create_quality_charts(config: Dict, output_path: str) -> None:
             color = strategy_color_map.get(canonical, colors[i % len(colors)])
             plt.plot(frame_numbers, numeric_quality,
                      label=_normalize_strategy_name(strategy_name),
-                     linewidth=chart_settings['line_width'],
+                     linewidth=chart_settings['line_width'] * 1.5,
                      marker='o',
                      markersize=chart_settings['marker_size'],
                      color=color,
-                     linestyle=':',
+                     linestyle='--',
                      alpha=0.9,
                      markeredgecolor='white',
                      markeredgewidth=0.7)
 
-        plt.xlabel(chart_settings['x_label'], fontsize=12, fontweight='bold')
-        plt.ylabel(chart_settings['y_label'], fontsize=12, fontweight='bold')
-        plt.title(f"{chart_settings['title']} - {scenario}", fontsize=14, fontweight='bold', pad=20)
+        # Convert scenario name to Portuguese
+        scenario_pt = scenario.replace('scenario-', 'Cenário ')
+        
+        plt.xlabel(chart_settings.get('x_label', 'Número do Frame'), fontsize=12, fontweight='bold')
+        plt.ylabel(chart_settings.get('y_label', 'Qualidade'), fontsize=12, fontweight='bold')
+        plt.title(f"{chart_settings.get('title', 'Qualidade por Frame')} - {scenario_pt}", fontsize=14, fontweight='bold', pad=20)
 
         plt.yticks(quality_values, quality_labels)
         plt.ylim(tuple(chart_settings['y_axis_limits']))
@@ -186,7 +189,7 @@ def create_quality_charts(config: Dict, output_path: str) -> None:
 def main():
     """Main function to generate chart and output to stdout."""
     parser = argparse.ArgumentParser(
-        description="Generate a quality per frame chart and output to stdout",
+        description="Generate a quality por frame chart and output to stdout",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

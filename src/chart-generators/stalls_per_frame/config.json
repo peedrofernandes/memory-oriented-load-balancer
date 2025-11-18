@@ -115,9 +115,9 @@
     "bar_width": 0.25,
     "dpi": 300,
     "y_axis_limits": [0, 0.6],
-    "title": "Stall Duration per Segment",
-    "x_label": "Segment",
-    "y_label": "Stall Seconds"
+    "title": "Duração de Parada por Frame",
+    "x_label": "Número do Frame",
+    "y_label": "Tempo de Parada (s)"
   }
 }
 

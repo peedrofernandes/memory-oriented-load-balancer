@@ -1,4 +1,4 @@
-\chapter{Proposta}
+\chapter{Proposta} \label{cap:Proposta}
 
 % Obs: MM = Monitoramento de Memória
 
@@ -43,21 +43,21 @@ Esta seção aborda pormenorizadamente os caminhos escolhidos para a implementa�
 % (OE 6) Estabelecer, conceitualmente, algoritmo de escolha de servidores por parte do balanceador de carga com base nos dados históricos fornecidos
 \section{O algoritmo}
 
-O primeiro passo, crucial para a determinação do modelo de otimização de balanceadores de carga, é a definição do algoritmo de balanceamento. Basicamente, a tarefa principal de um algoritmo de balanceamento de carga é o modo como a escolha do servidor será feita em cada requisição que chega ao sistema balanceador de carga.
+O primeiro passo, crucial para a determinação do modelo de otimização de balanceamento de carga, é a definição do algoritmo de balanceamento. Basicamente, a tarefa principal de um algoritmo de balanceamento de carga é o modo como a escolha do servidor será feita a cada requisição que chega ao sistema balanceador de carga.
 
 Em particular, o algoritmo escolhido será \textbf{probabilístico}. Isso significa que, para cada servidor que poderá ser escolhido no processo, haverá uma probabilidade intrínseca baseada em parâmetros tanto individuais quanto gerais, e a estratégia de determinação dessa probabilidade é o que definirá o algoritmo em si. De acordo com o objetivo principal do trabalho, as duas principais (mas não únicas) métricas que exercerão influência sobre a determinação da probabilidade de escolha de cada servidor são o \textbf{consumo de memória RAM} e a \textbf{Taxa de Leitura de Disco}. Essas duas métricas são essenciais dentro do contexto de servidores que distribuem conteúdo, uma vez que sua única tarefa é recuperar estes arquivos do disco e efetivamente entregá-los ao solicitante. 
 
 Em paralelo, os servidores enviarão, periodicamente, os dados de monitoramento referentes ao consumo de memória principal e à taxa de leitura de disco. A ideia é que o balanceador mantenha uma estrutura dinâmica que será atualizada de forma contínua, atualizando os parâmetros necessários e efetivamente promovendo eficiência na distribuição das requisições. O método que será usado para realizar a implementação deste conceito, bem como a definição das taxas de atualização dos dados dos servidores para o balanceador de carga, serão discutidos posteriormente.
 
-A Equação \mbox{\ref{eq:basic_li}} utilizada no algoritmo corresponde a uma versão adaptada do \textit{Basic LI} \cite{interpretingStaleLoadInformation2000} de modo que, dada uma requisição, a determinação da probabilidade de escolha de um servidor $P{i}$ será determinada de acordo com seus parâmetros, onde:
+A Equação \ref{eq:basic_li} utilizada no algoritmo corresponde a uma versão adaptada do \textit{Basic LI} \cite{interpretingStaleLoadInformation2000} de modo que, dada uma requisição, a determinação da probabilidade de escolha de um servidor $P{i}$ será determinada de acordo com seus parâmetros, onde:
 
 \begin{enumerate}
     %\item[$T$]: Tempo médio de obsolescência da informação de carga, em unidades de tempo de serviço por tarefa.
-    \item[$n$]: Número do total de servidores.
+    \item[$n$]: Número total de servidores.
     %\item[$\lambda$]: Taxa média de chegada de requisições por servidor, como uma fração da vazão máxima do servidor. 
     \item[$L_{i}$]: Carga reportada no servidor $i$ (cálculo determinado na Equação \ref{eq:limemory}). 
     \item[$L_{tot}$]: Soma de todas as cargas reportadas ($\sum L_i$). 
-    \item[$arrive_T$]: Número esperado de requisições que chegarão para o balanceador de carga durante um período de tempo $T$, que corresponde ao \textit{lifetime} (tempo de vida) médio das informações de carga de cada servidor.
+    \item[$arrive_T$]: Informação de carga total esperada para o tempo de vida médio das informações de carga dos servidores (cálculo determinado na Equação \ref{eq:arrive_t}).
     \item[$P_i$]: Probabilidade de que uma requisição que chega seja enviada para o servidor $i$. 
 \end{enumerate}
 
@@ -65,14 +65,29 @@ A Equação \mbox{\ref{eq:basic_li}} utilizada no algoritmo corresponde a uma ve
 P_{i}=\frac{\frac{L_{tot}+arrive_{T}}{n}-L_{i}}{arrive_{T}}
 \end{gather}
 
+Nota-se que $arrive_T$ é um parâmetro central deste processo. Ele cresce proporcionalmente ao tempo médio de obsolescência das informações e, de acordo com a equação anterior (\ref{eq:basic_li}), um valor grande de $arrive_T$ fará com que a distribuição de probabilidade seja uniforme, efetivamente diminuindo a informação de carga. Esse comportamento é esperado e otimizado porque, quanto mais antigas as informações de carga são, menos o algoritmo as considera no balanceamento, que apresentará comportamento similar à seleção aleatória (sem pesos). Todos os parâmetros envolvidos são mantidos e atualizados iterativamente no estado interno do balanceador de carga e são atualizados mediante à chegada de novas informações de carga. O cálculo de $arrive_T$ se dá da seguinte forma:
+
+\begin{enumerate}
+\item[$arrive_T$]: Informação de carga total esperada para o tempo de vida médio das informações de carga dos servidores;
+\item[$R_{total}$]: Número total de requisições recebidas desde o início do processo da aplicação do balanceador de carga;
+\item[$T_{elapsed}$]: Tempo, em segundos, desde o início do processo da aplicação do balanceador de carga;
+\item[$T_{stale}$]: Tempo médio de obsolescência de dados de carga de todos os servidores;
+\item[$L_{tot}$]: Soma de todas as cargas reportadas;
+\item[$R_{active}$]: Número total de requisições ativas em todos os servidores, calculado como $R_{active} = \sum_{i=1}^{n} AR_i$, onde $AR_i$ representa o número de requisições ativas no servidor $i$ no momento da coleta da métrica;
+\item[$C$]: Coeficiente de suavização para relativização de obsolescência alta e baixa (definido heuristicamente mediante experimentação);
+\end{enumerate}
+
+\begin{gather} \label{eq:arrive_t} 
+arrive_T = \left( \frac{R_{total}}{T_{elapsed}} \right) \cdot T_{stale} \cdot \left( \frac{L_{tot}}{R_{active}} \right) \cdot C \end{gather}
+
 Note-se que no contexto do trabalho \cite{interpretingStaleLoadInformation2000}, "carga" é um termo que remete ao tamanho da fila de requisições em estado de processamento pendente. Para fins de implementação e aderência com o problema proposto por este trabalho, o parâmetro de carga ($L_i$ e consequentemente $L_{tot}$), aplicado na Equação \mbox{\ref{eq:basic_li}}, será calculado previamente através da coleta periódica das métricas de consumo de memória RAM e taxa de leitura de disco (cujo processo será descrito posteriormente), da normalização desses parâmetros em pontos percentuais e, finalmente, da mesclagem desses parâmetros para que possam ser inseridos na fórmula. Nesse sentido, a carga de um servidor ($L_i$) será determinada considerando:
 
 \begin{enumerate}
     \item[$n$]: Número do total de servidores.
     \item[$LM_i$]: Consumo de memória principal no servidor $i$, representando a quantidade de memória usada para transferir o conteúdo no tempo T, normalizado em pontos percentuais com relação à capacidade total de memória do servidor $i$.
     \item[$LD_i$]: Carga do disco no servidor $i$, representando a velocidade do fluxo de busca e leitura das informações do disco no tempo T, normalizada em pontos percentuais com relação a capacidade total de leitura do disco no servidor $i$.
-    \item[$TM$]: Taxa de uso geral de memória, determinado por $\sum_{i=0}^n \frac{LM_i}{n}$.
-    \item[$TD$]: Taxa de consumo geral de leitura de disco, determinado por $\sum_{i=0}^n \frac{LD_i}{n}$. 
+    \item[$TM$]: Taxa de uso geral de memória, determinado por $\displaystyle\sum_{i=0}^n \frac{LM_i}{n}$.
+    \item[$TD$]: Taxa de consumo geral de leitura de disco, determinado por $\displaystyle\sum_{i=0}^n \frac{LD_i}{n}$. 
 \end{enumerate}
 
 Sendo assim, a Equação \mbox{\ref{eq:limemory}} define a carga, no contexto deste trabalho, de um servidor de conteúdo.
@@ -81,7 +96,7 @@ Sendo assim, a Equação \mbox{\ref{eq:limemory}} define a carga, no contexto de
     L_i = CM * LM_i + CD * LD_i
 \end{gather}
 
-Nesse contexto, $CM$ e $CD$ são coeficientes que multiplicam as suas respectivas cargas normalizadas. Eles são definidos de acordo com as Equações \mbox{\ref{eq:cm}} e \mbox{\ref{eq:cd}}, respectivamente, e representam a fração normalizada de memória e disco totais, respectivamente, em relação ao total conjugado de memória e disco.
+Nesse contexto, $CM$ e $CD$ são coeficientes que multiplicam as suas respectivas cargas normalizadas. Eles são definidos de acordo com as Equações \ref{eq:cm} e \ref{eq:cd}, respectivamente, e representam a fração normalizada de memória e disco totais, respectivamente, em relação ao total conjugado de memória e disco.
 
 \begin{gather} \label{eq:cm}
     CM = \frac{TM}{TM + TD}
@@ -91,81 +106,58 @@ Nesse contexto, $CM$ e $CD$ são coeficientes que multiplicam as suas respectiva
     CD = \frac{TD}{TM + TD}
 \end{gather}
 
-Os coeficientes $CM$ e $CD$ são valores entre $0$ e $1$ de modo que $CM + CD = 1$. Eles são determinados dessa forma para que o recurso computacional que mais esteja sendo utilizado de modo geral em todos os servidores efetivamente contribua mais para o valor da carga de cada servidor $L_i$, de forma diretamente proporcional à taxa de consumo de cada um dos parâmetros. Finalmente, para que o sistema efetivamente esteja apto para calcular o valor de cada servidor $L_i$, basta que ele obtenha os valores de $LM_i$ e $LD_i$ de todos os servidores. Com eles, será possível calcular primeiramente $TM$ e $TD$, e, com esses valores, calcular $CM$ e $CD$ dinamicamente.
+Os coeficientes $CM$ e $CD$ são valores entre $0$ e $1$ de modo que $CM + CD = 1$. Eles são determinados dessa forma para que o recurso computacional que mais esteja sendo utilizado de modo geral em todos os servidores efetivamente contribua mais para o valor da carga de cada servidor $L_i$, de forma diretamente proporcional à taxa de consumo de cada um dos parâmetros. Finalmente, para que o sistema efetivamente esteja apto para calcular o valor de cada servidor ($L_i$), basta que ele obtenha os valores de $LM_i$ e $LD_i$ de todos os servidores. Com eles, será possível calcular primeiramente $TM$ e $TD$, e, com esses valores, calcular $CM$ e $CD$ dinamicamente.
 
-O algoritmo é executado a cada nova requisição que chega ao balanceador. Ele utiliza os dados de carga pré-calculados para determinar dinamicamente a probabilidade ($P_i$) de que cada servidor seja escolhido, aplicando a Equação 1. Com as probabilidades definidas, ele emprega um método de seleção aleatória ponderada para despachar a requisição, garantindo que servidores menos sobrecarregados tenham maior chance de serem selecionados. O seguinte pseudocódigo descreve seu funcionamento.
+O funcionamento do algoritmo ocorre em dois momentos distintos e independentes. O primeiro momento corresponde à \textbf{atualização da distribuição de probabilidade}, que é acionada sempre que uma nova informação de carga chega ao balanceador via MQTT. Neste processo, o balanceador atualiza as métricas do servidor que enviou a informação ($LM_i$, $LD_i$, $T_i$, $AR_i$) e, em seguida, recalcula todos os parâmetros globais necessários: as médias de uso de memória ($TM$) e disco ($TD$), o tempo médio de obsolescência ($T$), os coeficientes de ponderação ($CM$ e $CD$), a carga de cada servidor ($L_i$), a carga total ($L_{tot}$), o parâmetro de chegadas esperadas ($arrive_T$) e, finalmente, a probabilidade de seleção de cada servidor ($P_i$). É importante notar que, mesmo quando apenas um servidor envia novas métricas, todos os parâmetros são recalculados considerando todos os servidores conhecidos, garantindo que a distribuição de probabilidade seja sempre consistente e atualizada.
 
+O segundo momento corresponde à \textbf{seleção do servidor}, que ocorre a cada requisição que chega ao balanceador. Neste processo, o balanceador simplesmente utiliza a distribuição de probabilidade mais recente (calculada no primeiro momento) para realizar uma seleção aleatória com pesos. Especificamente, o algoritmo incrementa o contador total de requisições ($R$), obtém um snapshot das probabilidades $P_i$ já calculadas e, então, realiza uma seleção aleatória ponderada, onde cada servidor tem uma chance de ser escolhido proporcional à sua probabilidade $P_i$. Caso nenhuma distribuição de probabilidade tenha sido calculada ainda (situação inicial antes da chegada da primeira métrica), o algoritmo utiliza uma distribuição uniforme, onde todos os servidores têm igual probabilidade de serem escolhidos.
 
 \begin{algorithm}[H]
-\caption{Seleção de Servidor por Requisição}
+\caption{Atualização da distribuição de probabilidade}
 \begin{algorithmic}[1]
-\Statex \textbf{Gatilho}: Chegada de uma nova requisição $R$.
+\Statex \textbf{Gatilho}: Chegada de uma nova informação de carga via MQTT.
 \Require
-    \Statex $S$: Lista de servidores com métricas $L_i$ e $T_i$ atualizadas.
-    \Statex Variáveis globais: $L_{tot}, n$.
+    \Statex Para cada servidor $S_i$, suas métricas: $LM_i$, $LD_i$, $T_i$, $AR_i$.
 \Ensure
-    \Statex Requisição $R$ encaminhada para um servidor $S_{i}$.
+    \Statex Distribuição de probabilidade $P_i$ atualizada para todos os servidores.
 
-\Procedure{SelecionarServidor}{$R, S, L_{tot}, n$}
-    \State $T \leftarrow \text{CalcularMediaDeRequisicoes}(S)$
-    \State $arrive_T \leftarrow \text{CalcularChegadasEsperadas}(T)$
-    \State $P_{list} \leftarrow []$ \Comment{Lista de probabilidades}
+\Procedure{AtualizarDistribuicao}{$LM_i, LD_i, T_i, AR_i$}
+    \State Atualizar métricas do servidor $S_i$
     
-    \ForAll{$S_i, L_i$ in $S$}
-        \State $numerador \leftarrow (L_{tot} + arrive_T)/n - L_i$
-        \State $P_i \leftarrow ((L_{tot} + arrive_T)/n - L_i) / arrive_T$ \Comment{Eq. \ref{eq:basic_li}}
-        \State Adicionar $(S_i, P_i)$ a $P_{list}$
-    \EndFor
+    \State Calcular agregados globais:
+    \State $TM \leftarrow \frac{1}{n} \sum_{i=1}^{n} LM_i$, $TD \leftarrow \frac{1}{n} \sum_{i=1}^{n} LD_i$
+    \State $T \leftarrow \frac{1}{n} \sum_{i=1}^{n} (T_{atual} - T_i)$ \Comment{Tempo médio de obsolescência}
     
-    \State $s_{escolhido} \leftarrow \text{SelecaoAleatoriaComPesos}(P_{list})$
-    \State \text{Encaminhar}(R, $s_{escolhido}$)
+    \State Calcular coeficientes $CM$ e $CD$ conforme Equações \ref{eq:cm} e \ref{eq:cd}
+    
+    \State Calcular carga $L_i$ para cada servidor conforme Equação \ref{eq:limemory}
+    \State $L_{tot} \leftarrow \sum_{i=1}^{n} L_i$
+    
+    \State Calcular $arrive_T$ conforme Equação \ref{eq:arrive_t}
+    
+    \State Calcular probabilidade $P_i$ para cada servidor conforme Equação \ref{eq:basic_li}
+    \If{nenhum servidor disponível \textbf{ou} $arrive_T \leq 0$}
+        \State $P_i \leftarrow 1/n$ para todos os servidores \Comment{Distribuição uniforme}
+    \EndIf
 \EndProcedure
 \end{algorithmic}
 \end{algorithm}
 
-% As duas variáveis globais necessárias para o funcionamento do algoritmo são $L_{tot}$ e $n$. Ambas são recalculadas durante a chegada de cada informação enviada de um dos servidores ao balanceador de carga e a detecção de novos servidores pode ser feita de forma automática por meio de um evento que caracteriza a entrada de um novo servidor no \textit{pool} de serviços através de uma identificação ainda não realizada.
-
-Para o funcionamento do algoritmo, são empregadas duas variáveis globais: $L_{tot}$ e $n$. Ambas são variáveis dinâmicas e automaticamente recalculadas sempre que o balanceador de carga recebe informações de qualquer servidor. A detecção de novos servidores ocorre de forma automática e determinística quando um evento caracteriza a identificação de um servidor que ainda não foi adicionado ao \textit{pool} de serviços.
-
-\subsection{Detalhes de implementação: cálculo de $arrive_T$ e normalização}
-
-Na implementação prática do algoritmo, o cálculo do parâmetro $arrive_T$ requer especial atenção, pois é fundamental para a correta interpretação de dados obsoletos. A abordagem implementada estabelece um valor mínimo para $arrive_T$ baseado na condição de que nenhum servidor deve ter probabilidade negativa de seleção. Este valor mínimo ($arrive_{T_{min}}$) é calculado como:
-
-\begin{gather} \label{eq:arrive_t_min}
-    arrive_{T_{min}} = \max(L_i) \times n - L_{tot}
-\end{gather}
-
-onde $\max(L_i)$ representa a maior carga entre todos os servidores. Este limite garante que, mesmo no pior cenário de distribuição de carga, o algoritmo não produzirá probabilidades negativas.
-
-O valor efetivo de $arrive_T$ é então calculado através de uma estimativa baseada na taxa de requisições observada ($r$), no tempo decorrido desde o início do sistema ($elapsed\_time$), no tempo médio de obsolescência das informações ($t$), na carga total do sistema ($L_{tot}$), e no número total de requisições ativas nos servidores ($total\_active\_requests$):
-
-\begin{gather} \label{eq:arrive_t_calc}
-    arrive_T = \max\left(arrive_{T_{min}}, \left(\frac{r}{elapsed\_time} \times t \times \frac{L_{tot}}{total\_active\_requests}\right) \times 0.1\right)
-\end{gather}
-
-O fator de 0.1 aplicado ao final da equação atua como um coeficiente de suavização, evitando oscilações abruptas no cálculo das probabilidades. Esta implementação assegura que o sistema sempre utilize o maior valor entre o mínimo teórico e o valor estimado dinamicamente, proporcionando estabilidade ao algoritmo.
-
-\textbf{Normalização e casos extremos}: Para garantir robustez em situações adversas, a implementação incorpora um mecanismo de normalização que entra em ação quando $arrive_T \leq 0$ ou quando não há servidores registrados no sistema. Nestes casos, o algoritmo automaticamente reverte para uma distribuição uniforme, onde cada servidor recebe probabilidade igual:
-
-\begin{gather} \label{eq:uniform}
-    P_i = \frac{1}{n} \quad \text{para todo } i
-\end{gather}
-
-Esta estratégia de \textit{fallback} evita comportamento indefinido ou divisões por zero, mantendo o sistema operacional mesmo em condições não ideais. Adicionalmente, após o cálculo de cada $P_i$ usando a Equação \ref{eq:basic_li}, a implementação verifica se o valor resultante é finito (não é \textit{NaN} ou infinito), atribuindo zero caso contrário. Esta verificação adicional garante que erros numéricos não comprometam a seleção de servidores.
+Para o funcionamento do algoritmo, o balanceador de carga mantém em memória um conjunto de estruturas de dados que armazenam o estado atual do sistema. Essas estruturas incluem: as métricas individuais de cada servidor ($LM_i$, $LD_i$, $T_i$, $AR_i$), as cargas calculadas ($L_i$), as probabilidades de seleção ($P_i$), além de variáveis agregadas como $L_{tot}$ e $n$. Todas essas informações são dinamicamente atualizadas sempre que uma nova métrica chega via MQTT, e o número de servidores ($n$) é automaticamente ajustado quando novos servidores são detectados através da identificação única presente nas mensagens MQTT. A detecção de novos servidores ocorre de forma automática: quando uma métrica é recebida de um servidor ainda não conhecido, ele é automaticamente adicionado ao conjunto de servidores monitorados.
 
 % (OE 7) Definição conceitual da arquitetura e definição dos requisitos topológicos da rede e da estrutura dos servidores que definirão o contexto da aplicação da metodologia
 % (OE 5) Definição da estratégia escolhida de transmissão contínua de dados de monitoramento de servidores de distribuição de conteúdo para o serviço balanceador de carga
 \section{Os requisitos tecnológicos}
 
-A infraestrutura experimental para este trabalho será implementada em um ambiente virtualizado, contido integralmente em uma única máquina física. A escolha por esta abordagem, suportada pela tecnologia de \textit{contêineres} \textit{Docker}, é estratégica e visa mitigar a influência de variáveis de rede externas, como latência e instabilidade de conexão. Ao confinar toda a comunicação a uma rede virtual interna gerenciada pelo \textit{Docker}, o foco da análise é direcionado exclusivamente ao impacto do monitoramento de recursos, como a memória, no desempenho e na otimização do balanceador de carga, que é o objetivo central desta pesquisa. Adicionalmente, a utilização do \textit{Docker} como plataforma padrão para todos os componentes do sistema garante a padronização do ambiente de execução, eliminando problemas de dependência de sistemas operacionais e bibliotecas, o que assegura a consistência e a reprodutibilidade dos experimentos.
+A infraestrutura experimental para este trabalho foi implementada em um ambiente virtualizado, contido integralmente em uma única máquina física. A escolha por esta abordagem, suportada pela tecnologia de \textit{contêineres} \textit{Docker}, é estratégica e visa mitigar a influência de variáveis de rede externas, como latência e instabilidade de conexão. Ao confinar toda a comunicação a uma rede virtual interna gerenciada pelo \textit{Docker}, o foco da análise é direcionado exclusivamente ao impacto do monitoramento de recursos, como a memória, no desempenho e na otimização do balanceador de carga, que é o objetivo central deste trabalho. Adicionalmente, a utilização do \textit{Docker} como plataforma padrão para todos os componentes do sistema garante a padronização do ambiente de execução, eliminando problemas de dependência de sistemas operacionais e bibliotecas, o que assegura a consistência e a reprodutibilidade dos experimentos.
 
-Neste ecossistema controlado, quatro aplicações principais interagem para formar o sistema em estudo: As três principais são o servidor de conteúdo, que será replicado de modo redundante para que o cenário emule simplificadamente uma CDN, o cliente e o balanceador de carga. Em conjunto, ainda haverá mais um serviço auxiliar que fará interações diretamente com os servidores e com o balanceador de carga, sendo ele o \textit{broker} de mensagens MQTT. O servidor de conteúdo será responsável por fornecer segmentos de vídeo de acordo com o padrão MPEG-DASH. O balanceador de carga atuará como um intermediário, recebendo as requisições dos clientes e distribuindo-as de forma inteligente, baseado na avaliação de carga, entre os servidores disponíveis. A aplicação cliente iniciará várias requisições de modo paralelo, direcionando-as ao balanceador de carga (solicitando segmentos subsequentes conforme o MPEG-DASH) e, subsequentemente, consumindo o conteúdo de mídia retornado, fechando assim o ciclo de interação do sistema. Em paralelo, os próprios servidores, periodicamente, fornecerão seus dados de carga de memória principal e secundária publicando-os em tópicos específicos do \textit{broker} por meio do modelo de comunicação indireta \textit{publish-subscribe} \cite{eugster2003many}. O balanceador de carga, que estará inscrito como assinante desses tópicos, eventualmente consumirá esses dados de modo a realimentar os parâmetros internos utilizados para os cálculos envolvidos (ver Equações \mbox{\ref{eq:basic_li} e \ref{eq:limemory}}).
+Neste ecossistema controlado, quatro aplicações principais interagem para formar o sistema em estudo: As três principais são o servidor de conteúdo, que será replicado de modo redundante para que o cenário emule simplificadamente uma CDN, o cliente e o balanceador de carga. Em conjunto, ainda haverá mais um serviço auxiliar que fará interações diretamente com os servidores e com o balanceador de carga, sendo ele o \textit{broker} de mensagens MQTT. O servidor de conteúdo será responsável por fornecer segmentos de vídeo de acordo com o padrão MPEG-DASH. O balanceador de carga atuará como um intermediário, recebendo as requisições dos clientes e distribuindo-as de forma inteligente, baseado na avaliação de carga, entre os servidores disponíveis. A aplicação cliente iniciará várias requisições de modo paralelo, direcionando-as ao balanceador de carga (solicitando segmentos subsequentes conforme o MPEG-DASH) e, subsequentemente, consumindo o conteúdo de mídia retornado, fechando assim o ciclo de interação do sistema. Em paralelo, os próprios servidores, periodicamente, fornecerão seus dados de carga de memória principal e secundária publicando-os em tópicos específicos do \textit{broker} por meio do modelo de comunicação indireta \textit{publish-subscribe} \cite{eugster2003many}. O balanceador de carga, que estará inscrito como assinante desses tópicos, eventualmente consumirá esses dados de modo a realimentar os parâmetros internos utilizados para os cálculos envolvidos (ver Equações \ref{eq:basic_li} e \ref{eq:limemory}).
 
-A arquitetura do sistema foi dimensionada para simular um cenário de alta demanda e é composta por uma variedade de serviços. O conjunto de recursos consiste em 8 \textit{contêineres} atuando como servidores MPEG-DASH, constituindo o \textit{pool} de nós para os quais a carga será distribuída. Haverá um contêiner dedicado para atuar como \textit{broker} MQTT, com o propósito de mediar a comunicação publicar-assinar para a atualização dos parâmetros do balanceador de carga. Também haverá um serviço de monitoramento implementado na forma de um \textit{script}, com acesso direto tanto aos servidores quanto ao \textit{broker} MQTT. O sistema contará com um único balanceador de carga, que representa a peça central da investigação. Para gerar uma carga de trabalho realista e concorrente, será implementado um \textit{script} cliente simples, projetado para gerar múltiplas requisições paralelas, simulando o comportamento de um grande número de usuários acessando o serviço simultaneamente por meio de um \textit{player} MPEG-DASH. Finalmente, um simples \textit{player} de vídeo baseado em navegador será utilizado como ferramenta de validação, cujo propósito é permitir uma avaliação qualitativa da experiência do usuário (QoE) ao reproduzir o vídeo disposto pelos servidores, mesmo sob a sobrecarga imposta pela aplicação cliente de teste.
+A arquitetura do sistema foi dimensionada para simular um cenário de alta demanda e é composta por uma variedade de serviços. O conjunto de recursos consiste em 8 \textit{containers} atuando como servidores MPEG-DASH, constituindo o \textit{pool} de nós para os quais a carga será distribuída. Há um contêiner dedicado para atuar como \textit{broker} MQTT, com o propósito de mediar a comunicação publicar-assinar para a atualização dos parâmetros do balanceador de carga. Também haverá um serviço de monitoramento com acesso direto tanto aos servidores quanto ao \textit{broker} MQTT sob a finalidade de auxiliar no processo de desenvolvimento e depuração, fornecendo observabilidade. O sistema contará com um único balanceador de carga, que representa a peça central da investigação. Para gerar uma carga de trabalho realista e concorrente, será implementado um \textit{script} cliente simples, projetado para gerar múltiplas requisições paralelas, simulando o comportamento de um grande número de usuários acessando o serviço simultaneamente por meio de um \textit{player} MPEG-DASH. Finalmente, um simples \textit{player} de vídeo baseado em navegador será utilizado como ferramenta de validação, cujo propósito é permitir uma avaliação qualitativa da experiência do usuário (QoE) ao reproduzir o vídeo disposto pelos servidores, mesmo sob a sobrecarga imposta pela aplicação cliente de teste.
 
-A seleção de tecnologias para cada componente foi alinhada aos objetivos do projeto. Duas imagens \textit{Docker} pré-existentes serão configuradas e usadas para criar os servidores MPEG-DASH e o \textit{broker} MQTT (\textit{Message Queuing Telemetry Transport}), respectivamente. Uma aplicação será desenvolvida e encapsulada em um contêiner na forma de um \textit{script} \textit{Python}, de modo que será responsável por simular sobrecarga nos serviços e no balanceador de carga. Por fim, o balanceador de carga, componente central desta pesquisa, será desenvolvido em \textit{Rust}. A escolha por esta linguagem é motivada por suas características de linguagem de sistemas, que oferecem controle de baixo nível e, crucialmente, por suas garantias de segurança de memória, que eliminam classes inteiras de vulnerabilidades críticas em aplicações de rede. O \textit{design} do balanceador será modular e aberto, permitindo a fácil substituição e modificação da estratégia de balanceamento, o que viabilizará futuras comparações de desempenho com algoritmos generalistas, como \textit{Round-Robin} e Seleção Aleatória.
+A seleção de tecnologias para cada componente foi alinhada aos objetivos do projeto. Duas imagens \textit{Docker} pré-existentes serão configuradas e usadas para criar os servidores MPEG-DASH e o \textit{broker} MQTT (\textit{Message Queuing Telemetry Transport}), respectivamente. Uma aplicação será desenvolvida e encapsulada em um contêiner na forma de um \textit{script} \textit{Python}, de modo que será responsável por simular sobrecarga nos serviços e no balanceador de carga. Por fim, o balanceador de carga, componente central desta pesquisa, será desenvolvido com \textit{design} modular e aberto, permitindo a fácil substituição e modificação da estratégia de balanceamento, o que viabilizará futuras comparações de desempenho com algoritmos generalistas, como \textit{Round-Robin} e Seleção Aleatória.
 
-De modo abstrato, o panorama geral da arquitetura final do sistema que será criado pode ser visualizado na Figura \mbox{\ref{fig:arch}}.
+De modo abstrato, a Figura \ref{fig:arch} apresenta o panorama geral da arquitetura final do sistema criado de acordo com a Figura \mbox{\ref{fig:arch}}.
 
 \begin{figure}[htbp]
     \caption{Arquitetura geral do sistema.}
@@ -175,22 +167,12 @@ De modo abstrato, o panorama geral da arquitetura final do sistema que será cri
     \label{fig:arch}
 \end{figure}
 
-% Realização da análise comparativa, dentro do mesmo ambiente simulado, com outros algoritmos de balanceamento de carga
-\section{Análise comparativa}
+\section{Considerações}
 
-A validação da eficácia do algoritmo proposto será realizada por meio de uma análise comparativa rigorosa, executada em cenários de baixa e alta carga. Para estabelecer uma condição de teste relevante, o sistema será submetido a uma carga de trabalho constante, gerada pelo \textit{script} cliente que realiza múltiplas requisições paralelas. Este processo será monitorado empiricamente através do \textit{player} de vídeo final e através de ferramentas auxiliares (desenvolvidas no próprio trabalho), e o ponto de sobrecarga será definido como o momento em que a degradação da experiência do usuário (QoE), manifestada por travamentos visíveis, torna-se notável. Este mesmo nível de sobrecarga será então utilizado como linha de base para todos os testes comparativos, garantindo a consistência das avaliações.
+Este capítulo apresentou a proposta metodológica para a implementação de um sistema de balanceamento de carga baseado em monitoramento de recursos computacionais, especificamente memória RAM e taxa de leitura de disco. O algoritmo proposto, fundamentado no trabalho de \cite{interpretingStaleLoadInformation2000}, utiliza uma abordagem probabilística que adapta dinamicamente a distribuição de requisições entre servidores conforme o estado atual de carga de cada nó.
 
-A metodologia de avaliação será centrada em métricas quantitativas que impactam tanto direta quanto indiretamente a QoE do usuário final. Durante a execução de cada cenário de teste - que consistirá na reprodução de uma sessão de um vídeo do começo ao fim - serão coletados dados sobre: o número total de travamentos (\textit{stalls}) do vídeo, o \textit{bitrate}, a \textbf{qualidade média} de reprodução ao longo da sessão e a latência média de obtenção de cada segmento na sessão inteira. Essas métricas oferecem uma visão objetiva do desempenho de cada estratégia de balanceamento, tanto sob estresse quanto sob condições normais de uso.
+A escolha por métricas de memória e disco justifica-se pelo contexto de aplicação: servidores de distribuição de conteúdo que recuperam arquivos do disco e os transferem para clientes, sendo esses recursos críticos para o desempenho do sistema. A implementação do algoritmo em dois momentos distintos --- atualização da distribuição de probabilidade e seleção de servidor --- permite que o balanceador mantenha informações atualizadas sobre o estado do sistema sem impactar significativamente a latência de processamento de requisições.
 
-O algoritmo proposto, baseado na interpretação de dados obsoletos, será comparado com duas abordagens clássicas e amplamente utilizadas: \textit{Round-Robin} e Seleção Aleatória. Para assegurar uma comparação justa, a mesma aplicação de balanceamento de carga desenvolvida em Rust será utilizada em todos os testes, alterando-se apenas o módulo de decisão do algoritmo. Serão executados os seguintes cenários:
+A arquitetura proposta, baseada em contêineres \textit{Docker} e comunicação via MQTT, oferece um ambiente controlado e reproduzível para a avaliação do algoritmo, isolando variáveis externas e permitindo que o foco da análise seja direcionado exclusivamente ao impacto do monitoramento de recursos no balanceamento de carga. A modularidade do sistema, com estratégias de balanceamento intercambiáveis, viabiliza comparações futuras com algoritmos generalistas e permite a extensão da pesquisa para outros contextos de aplicação.
 
-\begin{enumerate}
-    \item{Balanceamento com algoritmo \textit{Round-Robin}.}
-    \item{Balanceamento com algoritmo de Seleção Aleatória.}
-    \item{Balanceamento com o algoritmo proposto, utilizando um intervalo médio de atualização dos dados dos servidores de 6 segundos.}
-    \item{Balanceamento com o algoritmo proposto, utilizando um intervalo médio de atualização dos dados dos servidores de 30 segundos.}
-\end{enumerate}
-
-A hipótese central é que o algoritmo proposto, mesmo com informações moderadamente desatualizadas (no intervalo de 30s), apresentará um desempenho superior em termos de QoE quando comparado aos métodos \textit{Round-Robin} e Aleatório. Adicionalmente, espera-se que, entre as variações do algoritmo proposto, o intervalo de 6 segundos forneça os melhores resultados, enquanto o intervalo de 30 segundos demonstrará a capacidade do algoritmo de manter bom desempenho mesmo com dados menos atualizados.
-
-%\ul{acho que deves incluir mais um capítulo com as considerações parciais, onde além de resumir os objetivos e a arquitetura e elencar as próximas atividades, tens uma seção com um cronograma para as atividades a serem desenvolvidas no TCC II}
+Os próximos capítulos detalharão a implementação prática desta proposta, os experimentos realizados e os resultados obtidos, fornecendo evidências empíricas sobre a eficácia da abordagem proposta e seu impacto na qualidade de experiência dos usuários finais.

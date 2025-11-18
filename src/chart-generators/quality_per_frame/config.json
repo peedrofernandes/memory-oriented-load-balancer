@@ -410,8 +410,8 @@
     "marker_size": 3,
     "dpi": 300,
     "y_axis_limits": [0.5, 7.5],
-    "title": "Video Quality Changes Over Time",
-    "x_label": "Frame Number",
-    "y_label": "Video Quality"
+    "title": "Qualidade de Vídeo ao Longo do Tempo",
+    "x_label": "Número do Frame",
+    "y_label": "Qualidade de Vídeo"
   }
 }

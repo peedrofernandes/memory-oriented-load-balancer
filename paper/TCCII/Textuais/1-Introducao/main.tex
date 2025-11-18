@@ -43,6 +43,18 @@ Como objetivos específicos pode-se listar os seguintes:
     \item Avaliar os resultados obtidos por meio de testes de carga, tendo como principais métricas a latência de resposta, número e duração de travamentos de vídeo, e qualidade de reprodução; 
 \end{itemize}
 
+\section{Hipóteses}
+
+Com base nos objetivos propostos e na fundamentação teórica que será apresentada, este trabalho parte das seguintes hipóteses a serem validadas experimentalmente:
+
+\textbf{Hipótese 1:} O algoritmo de balanceamento baseado em monitoramento de memória apresentará desempenho superior aos métodos \textit{Round-Robin} e Aleatório em cenários heterogêneos, onde os servidores possuem capacidades distintas de memória e processamento.
+
+\textbf{Hipótese 2:} O intervalo de atualização de 6 segundos das métricas de monitoramento fornecerá melhores resultados que o intervalo de 30 segundos, permitindo que o balanceador responda mais rapidamente às mudanças de estado dos servidores.
+
+\textbf{Hipótese 3:} O algoritmo proposto será robusto mesmo com informações moderadamente desatualizadas, operando eficientemente com intervalos de atualização maiores (30 segundos), demonstrando sua viabilidade em sistemas de larga escala onde atualizações muito frequentes podem ser impraticáveis.
+
+Essas hipóteses serão testadas por meio de experimentos controlados que simularão diferentes cenários de carga e heterogeneidade de servidores. Tanto os experimentos quanto os conceitos relacionados (intervalo de atualização, monitoramento de memória, desatualização de informações, etc.) serão descritos nos capítulos subsequentes.
+
 \section{Metodologia e Estrutura}
 
 Este trabalho consiste na realização das três principais tarefas a seguir: Apresentação e contextualização do problema; Realização de uma revisão de literatura com os objetivos de fundamentar teoricamente o tema e fornecer uma compreensão sólida; Proposição de um modelo de implementação com todos os detalhes técnicos e conceituais necessários. O restante do trabalho é organizado da seguinte maneira: O capítulo 2 apresenta contextualização e fundamentação teórica necessária, o capítulo 3 define a proposta deste trabalho e o capítulo 4 descreve o experimento a ser realizado cujos resultados serão apresentados no capítulo 5. Por fim, o capítulo 6 fornece uma conclusão acerca do experimento e dos resultados.

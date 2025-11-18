@@ -178,6 +178,67 @@ Uma direção promissora é instrumentar \textit{switches} SDN com informações
 
 Adicionalmente, SDN permite experimentação com esquemas de balanceamento sofisticados como \textit{flow-based routing} (diferentes fluxos para diferentes servidores) versus \textit{packet-based routing} (cada pacote pode ir para servidor diferente, requerendo estados complexos), e \textit{elephant vs. mice flow handling} (grandes sessões de \textit{streaming} tratadas diferentemente de pequenas requisições). A integração de monitoramento de recursos com SDN representa fronteira empolgante para balanceamento de carga de próxima geração.
 
+\section{Reprodutibilidade dos Experimentos}
+
+Todo o código-fonte, scripts de configuração, infraestrutura experimental, e dados utilizados estão disponibilizados publicamente em repositório Git no endereço:
+
+\begin{center}
+\url{https://github.com/peedrofernandes/memory-oriented-load-balancer.git}
+\end{center}
+
+O repositório está organizado de forma a facilitar a reprodução exata de cada cenário experimental.
+
+\begin{itemize}
+    \item Servidor MPEG-DASH implementado em \textit{C\#} com \textit{ASP.NET Core}
+    \item Cliente de validação com visualização em tempo real
+    \item Gerador de carga parametrizável em \textit{Python}
+    \item Sistema de monitoramento de recursos em \textit{Rust}
+    \item Infraestrutura de comunicação via MQTT
+    \item Arquivo de vídeo de teste codificado em múltiplas qualidades
+    \item Scripts de orquestração com \textit{Docker Compose}
+    \item Ferramentas de análise e geração de gráficos
+\end{itemize}
+
+Para reproduzir os experimentos específicos, foram criadas \textit{branches} dedicadas para cada combinação de cenário e estratégia de balanceamento, totalizando 16 configurações experimentais:
+
+\begin{itemize}
+    \item \textbf{Cenário 1} (100 usuários, servidores heterogêneos):
+    \begin{itemize}
+        \item \texttt{scenario-1-memory-monitoring-6s}
+        \item \texttt{scenario-1-memory-monitoring-30s}
+        \item \texttt{scenario-1-round-robin}
+        \item \texttt{scenario-1-random-selection}
+    \end{itemize}
+    
+    \item \textbf{Cenário 2} (100 usuários, servidores homogêneos):
+    \begin{itemize}
+        \item \texttt{scenario-2-memory-monitoring-6s}
+        \item \texttt{scenario-2-memory-monitoring-30s}
+        \item \texttt{scenario-2-round-robin}
+        \item \texttt{scenario-2-random-selection}
+    \end{itemize}
+    
+    \item \textbf{Cenário 3} (1000 usuários, servidores heterogêneos):
+    \begin{itemize}
+        \item \texttt{scenario-3-memory-monitoring-6s}
+        \item \texttt{scenario-3-memory-monitoring-30s}
+        \item \texttt{scenario-3-round-robin}
+        \item \texttt{scenario-3-random-selection}
+    \end{itemize}
+    
+    \item \textbf{Cenário 4} (1000 usuários, servidores homogêneos):
+    \begin{itemize}
+        \item \texttt{scenario-4-memory-monitoring-6s}
+        \item \texttt{scenario-4-memory-monitoring-30s}
+        \item \texttt{scenario-4-round-robin}
+        \item \texttt{scenario-4-random-selection}
+    \end{itemize}
+\end{itemize}
+
+Cada \textit{branch} contém configurações pré-ajustadas (arquivos \texttt{docker-compose.yml}, parâmetros de gerador de carga, configurações de servidores) correspondentes exatamente às condições experimentais descritas no Capítulo~\ref{cap:Resultados}. Para reproduzir um cenário específico, basta fazer \textit{checkout} da \textit{branch} correspondente e executar os scripts de orquestração fornecidos.
+
+Esta organização permite não apenas validação independente dos resultados apresentados, mas também facilita experimentação com variações dos cenários (diferentes números de usuários, outras configurações de heterogeneidade, intervalos de atualização alternativos) ou adaptação do sistema para outros contextos de pesquisa. A documentação completa, incluindo instruções detalhadas de execução e requisitos de sistema, está disponível no arquivo \texttt{README.md} do repositório.
+
 \section{Considerações Finais}
 
 Este trabalho demonstrou de forma conclusiva que o monitoramento inteligente de recursos, especificamente memória principal e taxa de leitura de disco, possibilita melhorias substanciais em Qualidade de Experiência para \textit{streaming} de vídeo adaptativo em Redes de Distribuição de Conteúdo com servidores heterogêneos. As reduções de latência de até 85,7\%, eliminação de travamentos em cenários críticos, e manutenção de qualidade de vídeo alta e consistente validam a abordagem proposta e demonstram sua superioridade sobre estratégias convencionais em contextos apropriados.
@@ -193,6 +254,3 @@ Olhando para o futuro, o \textit{streaming} de vídeo continua evoluindo: resolu
 Este trabalho estabelece fundação sólida, mas há muito a explorar. As direções de trabalho futuro delineadas — desde implantação em produção até aprendizado de máquina preditivo — representam apenas o início de uma jornada mais longa rumo a sistemas de distribuição de conteúdo verdadeiramente inteligentes, que aprendem, adaptam-se, e otimizam-se continuamente para proporcionar a melhor experiência possível aos usuários, independentemente de onde estejam ou quais recursos estejam disponíveis.
 
 A mensagem central permanece clara: em um mundo onde conteúdo de vídeo domina o tráfego da Internet e expectativas de usuários por qualidade aumentam continuamente, decisões informadas por dados sobre onde e como distribuir esse conteúdo não são apenas técnicas — são estratégicas. O balanceamento de carga baseado em monitoramento de recursos é um passo importante nessa direção, demonstrando que sistemas que observam, interpretam e respondem ao estado real de seus componentes superam aqueles que operam cegamente, especialmente quando confrontados com a heterogeneidade e variabilidade inerentes à infraestrutura moderna de Internet.
-
-
-\ul{Muito bem! Considerações Gerais: Há necessidade de reformulação da apresentação dos resultados. Da forma que está, é muito longa e com muitas subdivisões. Sugiro apresentar os resultados por métrica, ou outra forma que permita a comparação direta entre os cenários e estratégias de balanceamento de forma fluída e direta. Recomendo a criação de um Apêndice para dizeres via utlização de um link, onde ficará o código fonte, arquivos de dados e scripts de configuração, etc..., para possibilitar a reprodutibilidade dos experimentos. Há a possibilidade de colocares tudo em um arquivo zip e integrares no pdf usando o latex, como alternativa. Deixo um texto como referência como comentário aqui.}

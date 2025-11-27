@@ -128,3 +128,5 @@ files
 *.ps
 *.atfi
 *.brf
+
+**/*:Zone.Identifier

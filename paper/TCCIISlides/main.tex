@@ -478,6 +478,7 @@ Os coeficientes aumentam o peso do recurso mais pressionado no sistema como um t
     \centering
     \includegraphics[
         width=0.95\textwidth,
+        height=0.7\textheight,
         keepaspectratio
     ]{imagens/mpeg-dash-servers-monitoring.png}
     
@@ -489,6 +490,7 @@ Os coeficientes aumentam o peso do recurso mais pressionado no sistema como um t
     \centering
     \includegraphics[
         width=0.95\textwidth,
+        height=0.7\textheight,
         keepaspectratio
     ]{imagens/mpeg-dash-client-charts-and-video.png}
     
@@ -501,20 +503,25 @@ Os coeficientes aumentam o peso do recurso mais pressionado no sistema como um t
 \section{Experimentos e Resultados}
 
 \begin{frame}{Cenários de Teste}
-    \textbf{Parâmetros Globais}
-    \begin{itemize}
-        \item \textit{Timeout} de requisição: 30s;
-        \item Catálogo com 12 vídeos e 6 resoluções.
-    \end{itemize}
-
-    \vspace{6pt}
-    \textbf{Cenários Avaliados}
-    \begin{itemize}
-        \item \textbf{Cenário 1}: 100 usuários, servidores \textbf{heterogêneos};
-        \item \textbf{Cenário 2}: 100 usuários, servidores \textbf{homogêneos};
-        \item \textbf{Cenário 3}: 1000 usuários, servidores \textbf{heterogêneos};
-        \item \textbf{Cenário 4}: 1000 usuários, servidores \textbf{homogêneos}.
-    \end{itemize}
+    \centering
+    \scriptsize
+    \begin{tabular}{|c|c|c|p{5.5cm}|}
+        \hline
+        \textbf{Cenário} & \textbf{Usuários} & \textbf{Distribuição} & \textbf{Configuração dos Servidores} \\
+        \hline
+        1 & 100 & Heterogênea & 
+        \textbf{S1}: 4096MB / 1024MB/s; \textbf{S2}: 2048MB / 512MB/s; \textbf{S3}: 1024MB / 256MB/s; \textbf{S4}: 512MB / 128MB/s; \textbf{S5}: 256MB / 64MB/s; \textbf{S6}: 128MB / 32MB/s; \textbf{S7}: 64MB / 16MB/s; \textbf{S8}: 32MB / 8MB/s \\
+        \hline
+        2 & 100 & Homogênea & 
+        Todos os servidores: 1024MB RAM e 256MB/s de leitura \\
+        \hline
+        3 & 1000 & Heterogênea & 
+        Mesma configuração do Cenário 1 \\
+        \hline
+        4 & 1000 & Homogênea & 
+        Mesma configuração do Cenário 2 \\
+        \hline
+    \end{tabular}
 \end{frame}
 
 \begin{frame}{Estratégias de Balanceamento}

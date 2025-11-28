@@ -216,27 +216,81 @@ Balanceadores de carga são cruciais em sistemas distribuídos, incluindo CDNs.
 
 \section{Trabalhos Relacionados}
 
-\begin{frame}[allowframebreaks]{Trabalhos Relacionados}
-\begin{itemize}
-    \item \textbf{NGINX}: Utiliza algoritmos como \textit{Round-Robin} e \textit{Least Connections}; não monitora \textbf{uso de memória} em tempo real para decisões de balanceamento \cite{nginxAlgorithmsEvaluationYuhong2022, nginxDoc}.
+\begin{frame}{Trabalhos Relacionados (Parte 1)}
+    \centering
+    \scriptsize
+    \begin{tabular}{|p{0.22\textwidth}|p{0.35\textwidth}|p{0.35\textwidth}|}
+        \hline
+        \textbf{Título} & \textbf{Proposta} & \textbf{Limitações} \\
+        \hline
+        NGINX \cite{nginxAlgorithmsEvaluationYuhong2022, nginxDoc} &
+        Algoritmos clássicos de balanceamento HTTP (\textit{Round-Robin}, \textit{Least Connections}, \textit{IP hash}). &
+        Não usa métricas de \textbf{memória} e I/O de disco para decisões de roteamento. \\
+        \hline
+        HAProxy \cite{haproxy} &
+        Balanceador TCP/HTTP de alta eficiência e baixo consumo de recursos. &
+        Não oferece balanceamento nativo guiado por \textbf{uso de memória} dos servidores. \\
+        \hline
+        Docker Swarm (memória) \cite{dockerswarmmemory2018} &
+        Acrescenta consumo de \textbf{memória} como fator no balanceamento interno do Swarm. &
+        Restrito ao Docker; não trata CDNs nem métricas diretas de QoE em vídeo. \\
+        \hline
+        Algoritmo dinâmico em cloud \cite{novelWeightAssignmentLoadBalancingAlgorithmForCloudApps2023} &
+        Usa múltiplas métricas (CPU, memória, largura de banda, etc.) para lidar com \textit{flash crowds}. &
+        Focado em aplicações \textbf{cloud} genéricas; não é específico para servidores de conteúdo nem para gargalos de memória. \\
+        \hline
+    \end{tabular}
+\end{frame}
 
-    \item \textbf{HAProxy}: Balanceador eficiente e amplamente usado, mas sem mecanismo nativo de decisão baseado em memória \cite{haproxy}.
-
-    \item \textbf{Docker Swarm}: Experimentos adicionam influência da memória no balanceamento, porém focados apenas no ecossistema Docker, sem foco em servidores de distribuição de conteúdo \cite{dockerswarmmemory2018}.
-
-    \item \textbf{Algoritmos Dinâmicos em Cloud}: Abordagens que combinam múltiplas métricas (CPU, memória, largura de banda) para lidar com \textit{Flash Crowds}, mas sem especialização para gargalos de memória em CDNs \cite{novelWeightAssignmentLoadBalancingAlgorithmForCloudApps2023}.
-    
-    \item \textbf{Revisões Sistemáticas}: Estudos apontam que poucos algoritmos usam memória e disco como \textbf{parâmetros principais}, e nenhum deles de forma exclusiva \cite{webServerPerformanceImprovement2021Review}.
-    
-    \item \textbf{Streaming de Vídeo (iSCON)}: Balanceamento baseado em \textbf{largura de banda}, replicando conteúdo popular, mas sem considerar memória como gargalo central \cite{dynamicLoadBalancingForEfficientVideoStreamingService2015}.
-    
-    \item \textbf{Servidores de Vídeo Distribuídos}: Medem carga pelo número de \textbf{streams ativas}, ignorando gargalos de recursos de baixo nível como memória e disco \cite{dataAllocationAndDynamicLoadBalancingForDistributedVideoStorageServer1999}.
-\end{itemize}
+\begin{frame}{Trabalhos Relacionados (Parte 2)}
+    \centering
+    \scriptsize
+    \begin{tabular}{|p{0.22\textwidth}|p{0.35\textwidth}|p{0.35\textwidth}|}
+        \hline
+        \textbf{Título} & \textbf{Proposta} & \textbf{Limitações} \\
+        \hline
+        Revisão de algoritmos dinâmicos \cite{webServerPerformanceImprovement2021Review} &
+        Compara 15 algoritmos de balanceamento dinâmico para servidores web. &
+        Poucos usam memória/disco, e nenhum trata esses recursos como \textbf{parâmetro principal} exclusivo. \\
+        \hline
+        iSCON para vídeo \cite{dynamicLoadBalancingForEfficientVideoStreamingService2015} &
+        Replica vídeos populares e balanceia carga com base na \textbf{largura de banda} de saída. &
+        Considera predominantemente banda de rede; ignora gargalos de \textbf{memória} e disco. \\
+        \hline
+        Servidores de vídeo distrib. \cite{dataAllocationAndDynamicLoadBalancingForDistributedVideoStorageServer1999} &
+        Duas fases: alocação inicial de réplicas e \textit{load shifting} por \textbf{streams ativas}. &
+        Mede carga apenas por número de streams; ignora uso real de \textbf{memória} e I/O de disco. \\
+        \hline
+    \end{tabular}
 \end{frame}
 
 %-------------------------------------------------
 
 \section{Proposta}
+
+\subsection{Requisitos Tecnológicos e Arquitetura}
+
+\begin{frame}{Requisitos Tecnológicos}
+    \textbf{Componentes Principais}
+    \begin{itemize}
+        \item \textbf{Servidores de Conteúdo}: 8 servidores MPEG-DASH, com capacidades heterogêneas de memória e disco;
+        \item \textbf{Balanceador de Carga}: Implementado em \textit{Rust}, responsável por aplicar os algoritmos de seleção de servidor;
+        \item \textbf{Cliente Gerador de Carga}: Aplicação em \textit{Python} que simula múltiplos usuários MPEG-DASH concorrentes;
+        \item \textbf{Servidor MQTT}: \textit{Broker} NanoMQ utilizado para transporte assíncrono de métricas entre servidores e balanceador.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Arquitetura Geral do Sistema}
+    \centering
+    \includegraphics[
+        width=0.9\textwidth,
+        height=0.7\textheight,
+        keepaspectratio
+    ]{imagens/arch.png}
+    \par
+    \vspace{4pt}
+    \footnotesize Arquitetura geral do sistema experimental (autor, 2025).
+\end{frame}
 
 \subsection{Algoritmo}
 
@@ -267,6 +321,22 @@ A probabilidade ($P_i$) de uma requisição ser enviada para um servidor $i$ é 
     \item[$L_i$]: Carga individual reportada pelo servidor $i$;
     \item[$L_{tot}$]: Somatório de todas as cargas reportadas ($\sum L_i$);
     \item[$arrive_T$]: Número esperado de novas requisições durante o intervalo médio $T$ das informações de carga.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Cálculo de $arrive_T$}
+O parâmetro $arrive_T$ representa o número esperado de requisições durante o intervalo de desatualização:
+
+\begin{equation}\label{eq:arrive_t}
+arrive_T = \left( \frac{R_{total}}{T_{elapsed}} \right) \cdot T_{stale} \cdot \left( \frac{L_{tot}}{R_{active}} \right) \cdot C
+\end{equation}
+
+\begin{itemize}
+    \item[$R_{total}$]: Total de requisições recebidas pelo balanceador;
+    \item[$T_{elapsed}$]: Tempo total de execução do balanceador;
+    \item[$T_{stale}$]: Tempo médio de desatualização das métricas;
+    \item[$R_{active}$]: Requisições ativas ($\sum_{i=1}^{n} AR_i$);
+    \item[$C$]: Constante de ajuste (definida heuristicamente).
 \end{itemize}
 \end{frame}
 
@@ -311,55 +381,30 @@ Os coeficientes aumentam o peso do recurso mais pressionado no sistema como um t
 \end{minipage}
 \end{frame}
 
-\begin{frame}{Pseudocódigo de Seleção de Servidor}
+\begin{frame}{Pseudocódigo — Atualização da Distribuição}
+    \vspace{-0.5cm}
+    \tiny
     \begin{algorithm}[H]
-    \caption{Seleção de Servidor por Requisição}
+    \caption{Atualização da distribuição de probabilidade}
     \begin{algorithmic}[1]
-    \Statex \textbf{Gatilho}: Chegada de uma nova requisição $R$.
-    \Require
-        \Statex $S$: Lista de servidores com métricas $L_i$, $R_i$ e $T_i$ atualizadas.
-        \Statex Variáveis globais: $L_{tot}, n$.
-    \Ensure
-        \Statex Requisição $R$ encaminhada para um servidor $S_{i}$.
-    
-    \Procedure{SelecionarServidor}{$R, S, L_{tot}, n$}
-        \State $arrive_T \leftarrow \text{CalcularQtdRequisicoesEsperadas}(S)$
-        \State $P_{list} \leftarrow []$ \Comment{Lista de probabilidades}
-        
-        \ForAll{$S_i, L_i$ in $S$}
-            \State $P_i \leftarrow ((L_{tot} + arrive_T)/n - L_i) / arrive_T$ \Comment{Eq. \ref{eq:basic_li}}
-            \State Adicionar $(S_i, P_i)$ a $P_{list}$
-        \EndFor
-        
-        \State $s_{escolhido} \leftarrow \text{SelecaoAleatoriaComPesos}(P_{list})$
-        \State \text{Encaminhar}(R, $s_{escolhido}$)
+    \Statex \textbf{Gatilho}: Nova informação de carga via MQTT.
+    \Require Métricas $LM_i, LD_i, T_i, AR_i$ para cada servidor $S_i$
+    \Ensure Probabilidades $P_i$ atualizadas
+    \Procedure{AtualizarDistribuicao}{$LM_i, LD_i, T_i, AR_i$}
+        \State Atualizar métricas do servidor $S_i$
+        \State $TM \leftarrow \frac{1}{n} \sum_{i=1}^{n} LM_i$, \quad $TD \leftarrow \frac{1}{n} \sum_{i=1}^{n} LD_i$
+        \State $T \leftarrow \frac{1}{n} \sum_{i=1}^{n} (T_{atual} - T_i)$
+        \State Calcular $CM$ e $CD$ (Eq. \ref{eq:cm}, \ref{eq:cd})
+        \State Calcular $L_i$ para cada servidor (Eq. \ref{eq:limemory})
+        \State $L_{tot} \leftarrow \sum_{i=1}^{n} L_i$
+        \State Calcular $arrive_T$ (Eq. \ref{eq:arrive_t})
+        \State Calcular $P_i$ para cada servidor (Eq. \ref{eq:basic_li})
+        \If{$n = 0$ \textbf{ou} $arrive_T \leq 0$}
+            \State $P_i \leftarrow 1/n$ para todos os servidores
+        \EndIf
     \EndProcedure
     \end{algorithmic}
     \end{algorithm}
-\end{frame}
-
-\subsection{Requisitos Tecnológicos e Arquitetura}
-
-\begin{frame}{Requisitos Tecnológicos}
-    \textbf{Componentes Principais}
-    \begin{itemize}
-        \item \textbf{Servidores de Conteúdo}: 8 servidores MPEG-DASH, com capacidades heterogêneas de memória e disco;
-        \item \textbf{Balanceador de Carga}: Implementado em \textit{Rust}, responsável por aplicar os algoritmos de seleção de servidor;
-        \item \textbf{Cliente Gerador de Carga}: Aplicação em \textit{Python} que simula múltiplos usuários MPEG-DASH concorrentes;
-        \item \textbf{Servidor MQTT}: \textit{Broker} NanoMQ utilizado para transporte assíncrono de métricas entre servidores e balanceador.
-    \end{itemize}
-\end{frame}
-
-\begin{frame}{Arquitetura Geral do Sistema}
-    \centering
-    \includegraphics[
-        width=0.9\textwidth,
-        height=0.7\textheight,
-        keepaspectratio
-    ]{imagens/arch.png}
-    \par
-    \vspace{4pt}
-    \footnotesize Arquitetura geral do sistema experimental (autor, 2025).
 \end{frame}
 
 %-------------------------------------------------

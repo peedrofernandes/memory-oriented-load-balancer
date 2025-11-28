@@ -128,88 +128,13 @@ de conteúdo por meio de monitoramento sistemático de memória}
 \begin{frame}{Fundamentação Teórica}
     \textbf{Tópicos Centrais}
     \begin{itemize}
-        \item Balanceadores de carga em diferentes camadas (rede e aplicação) e balanceamento dinâmico;
-        \item Padrão \textbf{MPEG-DASH} para \textit{streaming} adaptativo sobre HTTP;
-        \item Arquitetura de \textbf{CDNs} e servidores de distribuição de conteúdo;
-        \item Monitoramento de memória via APIs de sistemas operacionais;
-        \item Interpretação de dados de carga desatualizados;
-        \item Virtualização de redes baseada em \textit{containers} para simulação controlada.
+        \item Balanceadores de carga em diferentes camadas (rede e aplicação) e balanceamento dinâmico \cite{scalabilityIssuesInDatabaseSystems, Pandian2022ICCBI};
+        \item Padrão \textbf{MPEG-DASH} para \textit{streaming} adaptativo sobre HTTP \cite{thang2012adaptive, sodagar2011mpegdash, stockhammer2011dynamic};
+        \item Arquitetura de \textbf{CDNs} e servidores de distribuição de conteúdo \cite{Preston2021Finding};
+        \item Monitoramento de memória via APIs de sistemas operacionais (linux) \cite{linux_procfs_doc, linux_iostats_doc};
+        \item Interpretação de dados de carga desatualizados \cite{interpretingStaleLoadInformation2000, adaptiveLoadSharing1986, analysisDelaysLoadSharing1989};
+        \item Virtualização de redes baseada em \textit{containers} para simulação controlada \cite{aSurveyOfNetworkVirtualization2010}.
     \end{itemize}
-\end{frame}
-
-\begin{frame}{Balanceadores de Carga}
-Balanceadores de carga são cruciais em sistemas distribuídos, incluindo CDNs.
-
-\textbf{Função e Importância}
-\begin{itemize}
-    \item Distribuem requisições entre múltiplos servidores, habilitando \textbf{escalabilidade horizontal} \cite{scalabilityIssuesInDatabaseSystems};
-    \item Aumentam desempenho, disponibilidade e tolerância a falhas;
-    \item Podem atuar no \textbf{nível de rede} (L3/L4) ou no \textbf{nível de aplicação} (L7) \cite{Pandian2022ICCBI};
-    \item Algoritmos clássicos: \textit{Round-Robin}, Seleção Aleatória, \textit{Least Connections}, entre outros.
-\end{itemize}
-\end{frame}
-
-\begin{frame}{MPEG-DASH}
-\textbf{\textit{HTTP Streaming}} é o padrão para distribuição de multimídia, culminando no \textbf{DASH} (\textit{Dynamic Adaptive Streaming over HTTP}) \cite{thang2012adaptive}.
-
-\textbf{Componentes Principais}
-\begin{itemize}
-    \item \textbf{MPD (Media Presentation Description)}: manifesto XML com metadados de representações e URLs \cite{sodagar2011mpegdash};
-    \item Conteúdo segmentado em \textbf{blocos} requisitados via HTTP GET, altamente \textit{cacheáveis} \cite{stockhammer2011dynamic};
-    \item Cliente decide \textbf{quando} e \textbf{em que qualidade} baixar cada segmento;
-    \item Integra-se naturalmente com CDNs e balanceadores de carga orientados a HTTP.
-\end{itemize}
-\end{frame}
-
-\begin{frame}{CDNs e Servidores de Conteúdo}
-\textbf{Content Delivery Networks (CDNs)}
-\begin{itemize}
-    \item Sistemas distribuídos que replicam conteúdo em servidores de borda, próximos ao usuário \cite{Preston2021Finding};
-    \item Arquitetura com servidores de origem e \textbf{servidores de borda} em múltiplos PoPs;
-    \item Uso intensivo de \textbf{cache} para reduzir latência e carga na infraestrutura central;
-    \item Dependem fortemente de \textbf{balanceamento de carga} eficiente.
-\end{itemize}
-\end{frame}
-
-\begin{frame}{Estrutura Básica de uma CDN}
-    \centering
-    \includegraphics[
-        width=0.95\textwidth,
-        height=0.65\textheight,
-        keepaspectratio
-    ]{imagens/cdn-diagram.png}
-    
-    \vspace{4pt}
-    \footnotesize Estrutura lógica simplificada de uma CDN com servidores de origem e de borda.
-\end{frame}
-
-\begin{frame}{Monitoramento de Memória}
-\textbf{APIs de Sistemas Operacionais}
-\begin{itemize}
-    \item Kernels mantêm estatísticas detalhadas de memória principal e I/O de disco;
-    \item \textbf{Linux}: arquivos como \texttt{/proc/meminfo} e \texttt{/proc/diskstats} e interfaces de \textit{cgroups} \cite{linux_procfs_doc, linux_iostats_doc};
-    \item \textbf{Windows} e \textbf{macOS} expõem contadores e APIs específicas \cite{windows_mem_counters, windows_disk_counters, macos_virtmem_doc, macos_iokit_doc};
-    \item Fornecem base para medir \textbf{uso de RAM} e \textbf{taxa de leitura de disco} por servidor ou contêiner.
-\end{itemize}
-\end{frame}
-
-\begin{frame}{Interpretação de Dados Desatualizados}
-\begin{itemize}
-    \item Em sistemas distribuídos, informações de carga chegam ao balanceador com \textbf{atraso};
-    \item Dados desatualizados podem \textbf{sobrecarregar} servidores em vez de evitá-lo \cite{adaptiveLoadSharing1986, analysisDelaysLoadSharing1989};
-    \item Alternativas ingênuas: ignorar dados de carga (algoritmos cegos) ou usar apenas um subconjunto aleatório de servidores;
-    \item O trabalho \textit{Interpreting Stale Load Information} propõe algoritmos que \textbf{interpretam} a carga em função de sua idade, como o \textbf{Basic LI} \cite{interpretingStaleLoadInformation2000};
-    \item Este conceito é adaptado neste TCC para métricas de memória.
-    \end{itemize}
-\end{frame}
-
-\begin{frame}{Virtualização de Redes e Containers}
-\begin{itemize}
-    \item \textbf{Virtualização de redes}: múltiplas redes virtuais sobre a mesma infraestrutura física \cite{aSurveyOfNetworkVirtualization2010};
-    \item \textbf{Containers Linux}: permitem múltiplos ambientes isolados compartilhando o mesmo kernel;
-    \item Ferramentas como \textbf{Docker} e LXC reduzem \textit{overhead} em comparação com VMs completas;
-    \item Viabilizam criação de \textbf{ambientes de teste reproduzíveis}, com controle fino sobre recursos (cgroups).
-\end{itemize}
 \end{frame}
 
 %-------------------------------------------------

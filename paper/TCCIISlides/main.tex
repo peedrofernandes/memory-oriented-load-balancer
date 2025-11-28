@@ -108,7 +108,7 @@ de conteúdo por meio de monitoramento sistemático de memória}
         \item Dispositivos de armazenamento persistente (discos) frequentemente são \textbf{gargalos} em cenários de \textit{streaming};
         \item Uso intensivo de \textbf{memória principal} como \textit{cache} alivia o disco, mas torna a memória um recurso crítico;
         \item Muitas estratégias clássicas de balanceamento de carga ignoram o estado real de memória dos servidores;
-        \item \textbf{Lacuna}: ausência de algoritmos que utilizem \textbf{exclusivamente} métricas de memória (RAM e I/O de disco) como parâmetro principal de decisão.
+        \item \textbf{Lacuna}: ausência de algoritmos que utilizem \textbf{exclusivamente} métricas de memória (RAM e leitura de disco) como parâmetro principal de decisão.
     \end{itemize}
 \end{frame}
 
@@ -150,7 +150,7 @@ de conteúdo por meio de monitoramento sistemático de memória}
         \hline
         NGINX \cite{nginxAlgorithmsEvaluationYuhong2022, nginxDoc} &
         Algoritmos clássicos de balanceamento HTTP (\textit{Round-Robin}, \textit{Least Connections}, \textit{IP hash}). &
-        Não usa métricas de \textbf{memória} e I/O de disco para decisões de roteamento. \\
+        Não usa métricas de \textbf{consumo de memória} e leitura de disco para decisões de roteamento. \\
         \hline
         HAProxy \cite{haproxy} &
         Balanceador TCP/HTTP de alta eficiência e baixo consumo de recursos. &
@@ -178,13 +178,13 @@ de conteúdo por meio de monitoramento sistemático de memória}
         Compara 15 algoritmos de balanceamento dinâmico para servidores web. &
         Poucos usam memória/disco, e nenhum trata esses recursos como \textbf{parâmetro principal} exclusivo. \\
         \hline
-        iSCON para vídeo \cite{dynamicLoadBalancingForEfficientVideoStreamingService2015} &
+        Sistema de replicação de conteúdo dinâmico \cite{dynamicLoadBalancingForEfficientVideoStreamingService2015} &
         Replica vídeos populares e balanceia carga com base na \textbf{largura de banda} de saída. &
         Considera predominantemente banda de rede; ignora gargalos de \textbf{memória} e disco. \\
         \hline
         Servidores de vídeo distrib. \cite{dataAllocationAndDynamicLoadBalancingForDistributedVideoStorageServer1999} &
         Duas fases: alocação inicial de réplicas e \textit{load shifting} por \textbf{streams ativas}. &
-        Mede carga apenas por número de streams; ignora uso real de \textbf{memória} e I/O de disco. \\
+        Mede carga apenas por número de streams; ignora uso real de \textbf{memória} taxa de leitura de disco. \\
         \hline
     \end{tabular}
 \end{frame}
@@ -198,7 +198,7 @@ de conteúdo por meio de monitoramento sistemático de memória}
 \begin{frame}{Requisitos Tecnológicos}
     \textbf{Componentes Principais}
     \begin{itemize}
-        \item \textbf{Servidores de Conteúdo}: 8 servidores MPEG-DASH, com capacidades heterogêneas de memória e disco;
+        \item \textbf{Servidores de Conteúdo}: 8 servidores MPEG-DASH, com capacidades variadas de memória e disco (de acordo com os cenários de teste);
         \item \textbf{Balanceador de Carga}: Implementado em \textit{Rust}, responsável por aplicar os algoritmos de seleção de servidor;
         \item \textbf{Cliente Gerador de Carga}: Aplicação em \textit{Python} que simula múltiplos usuários MPEG-DASH concorrentes;
         \item \textbf{Servidor MQTT}: \textit{Broker} NanoMQ utilizado para transporte assíncrono de métricas entre servidores e balanceador.
@@ -226,7 +226,7 @@ de conteúdo por meio de monitoramento sistemático de memória}
     \item Probabilidade de escolha de cada servidor ajustada dinamicamente de acordo com:
     \begin{itemize}
         \item Consumo de \textbf{memória RAM};
-        \item Taxa de entrada e saída de \textbf{disco} (I/O);
+        \item Taxa de leitura de \textbf{disco};
         \item \textbf{Idade} das informações de carga.
     \end{itemize}
     \item Servidores publicam periodicamente suas métricas de carga para o balanceador.
@@ -257,10 +257,10 @@ arrive_T = \left( \frac{R_{total}}{T_{elapsed}} \right) \cdot T_{stale} \cdot \l
 \end{equation}
 
 \begin{itemize}
-    \item[$R_{total}$]: Total de requisições recebidas pelo balanceador;
-    \item[$T_{elapsed}$]: Tempo total de execução do balanceador;
-    \item[$T_{stale}$]: Tempo médio de desatualização das métricas;
-    \item[$R_{active}$]: Requisições ativas ($\sum_{i=1}^{n} AR_i$);
+    \item[$R_{total}$]: Total de requisições recebidas pelo balanceador (em segundos);
+    \item[$T_{elapsed}$]: Tempo total de execução do balanceador (em segundos);
+    \item[$T_{stale}$]: Tempo médio de desatualização das métricas (em segundos);
+    \item[$R_{active}$]: Requisições ativas;
     \item[$C$]: Constante de ajuste (definida heuristicamente).
 \end{itemize}
 \end{frame}
@@ -273,8 +273,8 @@ No contexto deste trabalho, a \textbf{carga} ($L_i$) é medida a partir do uso d
 \end{equation}
 
 \begin{itemize}
-    \item[$LM_i$]: Consumo de \textbf{memória} normalizado do servidor $i$ (0--1);
-    \item[$LD_i$]: Carga de \textbf{disco} (I/O) normalizada do servidor $i$ (0--1);
+    \item[$LM_i$]: Consumo de \textbf{consumo de memória} normalizada do servidor $i$ (0--1);
+    \item[$LD_i$]: Carga de \textbf{leitura disco} normalizada do servidor $i$ (0--1);
     \item[$CM, CD$]: Coeficientes dinâmicos que refletem a importância relativa de memória e disco.
 \end{itemize}
 \end{frame}
@@ -339,7 +339,7 @@ Os coeficientes aumentam o peso do recurso mais pressionado no sistema como um t
 \begin{frame}{Ambiente Experimental}
     \begin{itemize}
         \item Ambiente em \textbf{Windows + WSL2}, todos os componentes em contêineres \textbf{Docker};
-        \item Uso de \textbf{cgroups v2} para monitorar e limitar recursos (memória, I/O de disco);
+        \item Uso de \textbf{cgroups v2} para monitorar e limitar recursos (memória, leitura de disco);
         \item 8 servidores MPEG-DASH (\textit{ASP.NET Core}) com conteúdo exclusivo via \textit{bind mounts};
         \item Balanceador de carga em \textit{Rust}, gerador de carga em \textit{Python};
         \item Métricas publicadas via \textbf{MQTT} (NanoMQ) a cada 6s ou 30s;
@@ -356,7 +356,7 @@ Os coeficientes aumentam o peso do recurso mais pressionado no sistema como um t
     ]{imagens/mpeg-dash-servers-monitoring.png}
     
     \vspace{4pt}
-    \footnotesize Painel de monitoramento em tempo real com métricas de memória, I/O de disco e requisições ativas.
+    \footnotesize Painel de monitoramento em tempo real com métricas de memória, leitura de disco e requisições ativas.
 \end{frame}
 
 \begin{frame}{Cliente MPEG-DASH para Validação}
@@ -475,7 +475,7 @@ Os coeficientes aumentam o peso do recurso mais pressionado no sistema como um t
 
 \begin{frame}{Contribuições do Trabalho}
     \begin{itemize}
-        \item Proposição de um \textbf{algoritmo de balanceamento} baseado em monitoramento de memória e I/O de disco;
+        \item Proposição de um \textbf{algoritmo de balanceamento} baseado em monitoramento de memória e leitura de disco;
         \item Adaptação do conceito de \textbf{Load Interpretation} para métricas de recursos de baixo nível;
         \item Implementação completa e aberta com \textit{C\#}, \textit{Rust}, \textit{Python}, Docker e MQTT;
         \item Infraestrutura experimental reutilizável para avaliação de algoritmos de balanceamento em \textit{streaming} MPEG-DASH;

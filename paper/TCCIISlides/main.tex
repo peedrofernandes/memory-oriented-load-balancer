@@ -338,64 +338,12 @@ Os coeficientes aumentam o peso do recurso mais pressionado no sistema como um t
 
 \begin{frame}{Ambiente Experimental}
     \begin{itemize}
-        \item Ambiente executado em uma única máquina física (\textbf{Windows} + \textbf{WSL2} com kernel Linux completo);
-        \item Todos os componentes são executados em contêineres \textbf{Docker};
+        \item Ambiente em \textbf{Windows + WSL2}, todos os componentes em contêineres \textbf{Docker};
         \item Uso de \textbf{cgroups v2} para monitorar e limitar recursos (memória, I/O de disco);
-        \item Limpeza do \textit{page cache} antes de cada bateria de testes para garantir reprodutibilidade.
-    \end{itemize}
-\end{frame}
-
-\begin{frame}{Organização do Conteúdo e Bind Mounts}
-    \begin{itemize}
-        \item Conteúdo de vídeo armazenado em \texttt{/data} no \textit{host} WSL, com diretórios específicos para cada servidor:
-        \begin{itemize}
-            \item \texttt{/data/server-1}, \texttt{/data/server-2}, \dots, \texttt{/data/server-8};
-        \end{itemize}
-        \item Cada servidor MPEG-DASH monta seu diretório via \textbf{bind mount} Docker;
-        \item Simula cenário real de CDNs com \textbf{conteúdo exclusivo} por servidor de borda;
-        \item Evita cópia de arquivos para dentro das imagens, reduzindo tamanho e facilitando atualização.
-    \end{itemize}
-\end{frame}
-
-\begin{frame}{Módulos Principais e Auxiliares}
-    \textbf{Módulos Principais}
-    \begin{itemize}
-        \item \textbf{Servidores MPEG-DASH} (\textit{ASP.NET Core}): servem segmentos de vídeo e publicam métricas de recursos;
-        \item \textbf{Balanceador de Carga} (\textit{Rust}): \textit{proxy} reverso HTTP com estratégias \textit{Round-Robin}, Aleatória e Monitoramento de Memória;
-        \item \textbf{Gerador de Carga} (\textit{Python}/\texttt{aiohttp}): simula múltiplos clientes concorrentes.
-    \end{itemize}
-
-    \vspace{8pt}
-    \textbf{Módulos Auxiliares}
-    \begin{itemize}
-        \item \textbf{\textit{Broker} MQTT (NanoMQ)};
-        \item \textbf{Coletor de Métricas} (API em Python);
-        \item \textbf{Painel de Monitoramento} em tempo real (HTML + \texttt{Chart.js});
-        \item \textbf{Cliente de Validação} MPEG-DASH (\texttt{dash.js}).
-    \end{itemize}
-\end{frame}
-
-\begin{frame}{Monitoramento e Publicação de Métricas}
-    \begin{itemize}
-        \item Servidores MPEG-DASH executam um serviço de fundo \texttt{MetricsPublisher};
-        \item Leituras periódicas de:
-        \begin{itemize}
-            \item \texttt{/sys/fs/cgroup/memory.current} (memória utilizada);
-            \item \texttt{/sys/fs/cgroup/io.stat} (bytes lidos de disco);
-        \end{itemize}
-        \item Métricas são normalizadas em relação aos limites configurados para cada contêiner;
-        \item Publicação em tópicos MQTT específicos, consumidos pelo balanceador de carga;
-        \item Intervalo de publicação configurável (por exemplo, 6s e 30s) para avaliar impacto de dados desatualizados.
-    \end{itemize}
-\end{frame}
-
-\begin{frame}{Geração de Conteúdo MPEG-DASH}
-    \begin{itemize}
-        \item Conteúdo gerado com \texttt{ffmpeg}, a partir de um vídeo de referência;
-        \item Criação de múltiplas representações (1080p, 720p, 480p, 360p, 240p, 144p);
-        \item Segmentação em blocos MPEG-DASH e geração de manifestos MPD;
-        \item Conteúdo é replicado para os diretórios de cada servidor, preservando estrutura;
-        \item Permite avaliar impacto do balanceamento na \textbf{qualidade adaptativa} do vídeo.
+        \item 8 servidores MPEG-DASH (\textit{ASP.NET Core}) com conteúdo exclusivo via \textit{bind mounts};
+        \item Balanceador de carga em \textit{Rust}, gerador de carga em \textit{Python};
+        \item Métricas publicadas via \textbf{MQTT} (NanoMQ) a cada 6s ou 30s;
+        \item Conteúdo MPEG-DASH com 6 resoluções (144p a 1080p) gerado via \texttt{ffmpeg}.
     \end{itemize}
 \end{frame}
 
@@ -507,36 +455,9 @@ Os coeficientes aumentam o peso do recurso mais pressionado no sistema como um t
     \vspace{4pt}
     \footnotesize Latência média de resposta por cenário e estratégia de balanceamento.
 \end{frame}
-
-\begin{frame}{Síntese dos Resultados}
-    \begin{itemize}
-        \item Em cenários \textbf{heterogêneos} (1 e 3), o algoritmo proposto (\textbf{MM 6s}) reduziu a latência média em até \textbf{85,7\%} em relação ao \textit{Round-Robin};
-        \item No Cenário 3, estratégias clássicas apresentaram múltiplos travamentos e queda de qualidade para 144p, enquanto o algoritmo proposto eliminou travamentos e manteve qualidade alta (720p--1080p);
-        \item A variante com \textbf{30s} de atualização, mesmo com dados desatualizados, superou consistentemente as estratégias clássicas;
-        \item Em cenários \textbf{homogêneos} (2 e 4), todas as estratégias apresentaram desempenho similar, evidenciando que o benefício do algoritmo está ligado à heterogeneidade.
-    \end{itemize}
-\end{frame}
-
 %-------------------------------------------------
 
 \section{Conclusão}
-
-\begin{frame}{Validação das Hipóteses}
-    \begin{itemize}
-        \item \textbf{Hipótese 1}: Algoritmo baseado em monitoramento de memória supera \textit{Round-Robin} e Aleatório em ambientes heterogêneos:
-        \begin{itemize}
-            \item Confirmada por reduções expressivas de latência e eliminação de travamentos.
-        \end{itemize}
-        \item \textbf{Hipótese 2}: Intervalo de 6s fornece melhores resultados que 30s:
-        \begin{itemize}
-            \item Confirmada, embora 30s ainda apresente desempenho superior às estratégias clássicas.
-        \end{itemize}
-        \item \textbf{Hipótese 3}: Robustez com dados moderadamente desatualizados:
-        \begin{itemize}
-            \item Confirmada: o algoritmo mantém bom desempenho mesmo com menor frequência de atualização.
-        \end{itemize}
-    \end{itemize}
-\end{frame}
 
 \begin{frame}{Fatores Determinantes do Desempenho}
     \begin{itemize}

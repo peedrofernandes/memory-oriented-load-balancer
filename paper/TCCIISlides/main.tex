@@ -144,58 +144,6 @@ de conteúdo por meio de monitoramento sistemático de memória}
 
 %-------------------------------------------------
 
-\section{Trabalhos Relacionados}
-
-\begin{frame}{Trabalhos Relacionados (Parte 1)}
-    \centering
-    \scriptsize
-    \begin{tabular}{|p{0.22\textwidth}|p{0.35\textwidth}|p{0.35\textwidth}|}
-        \hline
-        \textbf{Título} & \textbf{Proposta} & \textbf{Limitações} \\
-        \hline
-        NGINX \cite{nginxAlgorithmsEvaluationYuhong2022, nginxDoc} &
-        Algoritmos clássicos de balanceamento HTTP (\textit{Round-Robin}, \textit{Least Connections}, \textit{IP hash}). &
-        Não usa métricas de \textbf{consumo de memória} e leitura de disco para decisões de roteamento. \\
-        \hline
-        HAProxy \cite{haproxy} &
-        Balanceador TCP/HTTP de alta eficiência e baixo consumo de recursos. &
-        Não oferece balanceamento nativo guiado por \textbf{uso de memória} dos servidores. \\
-        \hline
-        Docker Swarm (memória) \cite{dockerswarmmemory2018} &
-        Acrescenta consumo de \textbf{memória} como fator no balanceamento interno do Swarm. &
-        Restrito ao Docker; não trata CDNs nem métricas diretas de QoE em vídeo. \\
-        \hline
-        Algoritmo dinâmico em cloud \cite{novelWeightAssignmentLoadBalancingAlgorithmForCloudApps2023} &
-        Usa múltiplas métricas (CPU, memória, largura de banda, etc.) para lidar com \textit{flash crowds}. &
-        Focado em aplicações \textbf{cloud} genéricas; não é específico para servidores de conteúdo nem para gargalos de memória. \\
-        \hline
-    \end{tabular}
-\end{frame}
-
-\begin{frame}{Trabalhos Relacionados (Parte 2)}
-    \centering
-    \scriptsize
-    \begin{tabular}{|p{0.22\textwidth}|p{0.35\textwidth}|p{0.35\textwidth}|}
-        \hline
-        \textbf{Título} & \textbf{Proposta} & \textbf{Limitações} \\
-        \hline
-        Revisão de algoritmos dinâmicos \cite{webServerPerformanceImprovement2021Review} &
-        Compara 15 algoritmos de balanceamento dinâmico para servidores web. &
-        Poucos usam memória/disco, e nenhum trata esses recursos como \textbf{parâmetro principal} exclusivo. \\
-        \hline
-        Sistema de replicação de conteúdo dinâmico \cite{dynamicLoadBalancingForEfficientVideoStreamingService2015} &
-        Replica vídeos populares e balanceia carga com base na \textbf{largura de banda} de saída. &
-        Considera predominantemente banda de rede; ignora gargalos de \textbf{memória} e disco. \\
-        \hline
-        Servidores de vídeo distrib. \cite{dataAllocationAndDynamicLoadBalancingForDistributedVideoStorageServer1999} &
-        Duas fases: alocação inicial de réplicas e \textit{load shifting} por \textbf{streams ativas}. &
-        Mede carga apenas por número de streams; ignora uso real de \textbf{memória} taxa de leitura de disco. \\
-        \hline
-    \end{tabular}
-\end{frame}
-
-%-------------------------------------------------
-
 \section{Proposta}
 
 \subsection{Requisitos Tecnológicos e Arquitetura}

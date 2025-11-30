@@ -172,7 +172,7 @@ de conteúdo por meio de monitoramento sistemático de memória}
 
 \subsection{Algoritmo}
 
-\begin{frame}{Objetivo do Algoritmo}
+\begin{frame}{Estratégia de Balanceamento}
 \begin{itemize}
     \item Definir o método de escolha de um servidor para cada nova requisição de vídeo;
     \item Algoritmo de natureza \textbf{probabilística}, baseado no \textbf{Basic Load Interpretation} \cite{interpretingStaleLoadInformation2000};
@@ -186,7 +186,7 @@ de conteúdo por meio de monitoramento sistemático de memória}
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Cálculo da Probabilidade}
+\begin{frame}{Cálculo da Probabilidade de Escolha do Servidor}
 A probabilidade ($P_i$) de uma requisição ser enviada para um servidor $i$ é baseada no \textbf{Basic Load Interpretation}:
 
 \begin{equation}\label{eq:basic_li}

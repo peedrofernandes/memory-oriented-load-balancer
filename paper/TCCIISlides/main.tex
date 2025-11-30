@@ -11,6 +11,18 @@
 \usepackage{listings}
 \usepackage{algorithm}
 \usepackage[noend]{algpseudocode} 
+
+% Tradução das palavras-chave do algoritmo para português
+\makeatletter
+\AtBeginDocument{\renewcommand{\ALG@name}{Algoritmo}}
+\makeatother
+\renewcommand{\algorithmicrequire}{\textbf{Requer:}}
+\renewcommand{\algorithmicensure}{\textbf{Garante:}}
+\algrenewcommand\algorithmicprocedure{\textbf{Procedimento}}
+\algrenewcommand\algorithmicif{\textbf{Se}}
+\algrenewcommand\algorithmicthen{\textbf{então}}
+\algrenewcommand\algorithmicend{\textbf{Fim}}
+
 \usecolortheme{dolphin}
 \setcounter{tocdepth}{1} 
 \renewcommand{\figurename}{}
@@ -198,84 +210,23 @@ A probabilidade ($P_i$) de uma requisição ser enviada para um servidor $i$ é 
     \item[$n$]: Número total de servidores disponíveis;
     \item[$L_i$]: Carga individual reportada pelo servidor $i$;
     \item[$L_{tot}$]: Somatório de todas as cargas reportadas ($\sum L_i$);
-    \item[$arrive_T$]: Número esperado de novas requisições durante o intervalo médio $T$ das informações de carga.
+    \item[$arrive_T$]: Carga esperada para os próximos $T$ segundos, haja vista que $T$ é o tempo médio de desatualização das informações de carga;
 \end{itemize}
-\end{frame}
-
-\begin{frame}{Cálculo de $arrive_T$}
-O parâmetro $arrive_T$ representa o número esperado de requisições durante o intervalo de desatualização:
-
-\begin{equation}\label{eq:arrive_t}
-arrive_T = \left( \frac{R_{total}}{T_{elapsed}} \right) \cdot T_{stale} \cdot \left( \frac{L_{tot}}{R_{active}} \right) \cdot C
-\end{equation}
-
-\begin{itemize}
-    \item[$R_{total}$]: Total de requisições recebidas pelo balanceador (em segundos);
-    \item[$T_{elapsed}$]: Tempo total de execução do balanceador (em segundos);
-    \item[$T_{stale}$]: Tempo médio de desatualização das métricas (em segundos);
-    \item[$R_{active}$]: Requisições ativas;
-    \item[$C$]: Constante de ajuste (definida heuristicamente).
-\end{itemize}
-\end{frame}
-
-\begin{frame}{Adaptação do Parâmetro de Carga ($L_i$)}
-No contexto deste trabalho, a \textbf{carga} ($L_i$) é medida a partir do uso de memória:
-
-\begin{equation}\label{eq:limemory}
-    L_i = CM \cdot LM_i + CD \cdot LD_i
-\end{equation}
-
-\begin{itemize}
-    \item[$LM_i$]: Consumo de \textbf{consumo de memória} normalizada do servidor $i$ (0--1);
-    \item[$LD_i$]: Carga de \textbf{leitura disco} normalizada do servidor $i$ (0--1);
-    \item[$CM, CD$]: Coeficientes dinâmicos que refletem a importância relativa de memória e disco.
-\end{itemize}
-\end{frame}
-
-\begin{frame}{Cálculo dos Coeficientes Dinâmicos ($CM$ e $CD$)}
-Os coeficientes aumentam o peso do recurso mais pressionado no sistema como um todo.
-
-\begin{itemize}
-    \item Taxa média de uso de memória:
-    \[
-        TM = \frac{1}{n}\sum_{i=1}^n LM_i
-    \]
-    \item Taxa média de uso de disco:
-    \[
-        TD = \frac{1}{n}\sum_{i=1}^n LD_i
-    \]
-\end{itemize}
-
-\begin{minipage}{.48\textwidth}
-    \begin{equation}
-        CM = \frac{TM}{TM + TD} \label{eq:cm}
-    \end{equation}
-\end{minipage}
-\hfill
-\begin{minipage}{.48\textwidth}
-    \begin{equation}
-        CD = \frac{TD}{TM + TD} \label{eq:cd}
-    \end{equation}
-\end{minipage}
 \end{frame}
 
 \begin{frame}{Pseudocódigo — Atualização da Distribuição}
     \vspace{-0.5cm}
     \tiny
     \begin{algorithm}[H]
-    \caption{Atualização da distribuição de probabilidade}
+    \caption*{\textbf{Algoritmo} Atualização da distribuição de probabilidade}
     \begin{algorithmic}[1]
     \Statex \textbf{Gatilho}: Nova informação de carga via MQTT.
-    \Require Métricas $LM_i, LD_i, T_i, AR_i$ para cada servidor $S_i$
     \Ensure Probabilidades $P_i$ atualizadas
-    \Procedure{AtualizarDistribuicao}{$LM_i, LD_i, T_i, AR_i$}
+    \Procedure{AtualizarDistribuicao}{}
         \State Atualizar métricas do servidor $S_i$
-        \State $TM \leftarrow \frac{1}{n} \sum_{i=1}^{n} LM_i$, \quad $TD \leftarrow \frac{1}{n} \sum_{i=1}^{n} LD_i$
-        \State $T \leftarrow \frac{1}{n} \sum_{i=1}^{n} (T_{atual} - T_i)$
-        \State Calcular $CM$ e $CD$ (Eq. \ref{eq:cm}, \ref{eq:cd})
-        \State Calcular $L_i$ para cada servidor (Eq. \ref{eq:limemory})
+        \State Calcular $L_i$ para cada servidor
         \State $L_{tot} \leftarrow \sum_{i=1}^{n} L_i$
-        \State Calcular $arrive_T$ (Eq. \ref{eq:arrive_t})
+        \State Calcular $arrive_T$
         \State Calcular $P_i$ para cada servidor (Eq. \ref{eq:basic_li})
         \If{$n = 0$ \textbf{ou} $arrive_T \leq 0$}
             \State $P_i \leftarrow 1/n$ para todos os servidores

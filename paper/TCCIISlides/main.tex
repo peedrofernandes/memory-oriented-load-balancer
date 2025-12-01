@@ -122,17 +122,17 @@ de conteúdo por meio de monitoramento sistemático de memória}
 \begin{frame}{O Problema}
     \begin{itemize}
         \item Sistemas de distribuição de conteúdo $\approx$ múltiplos servidores e um \textbf{balanceador de carga} central;
-        \item Dispositivos de armazenamento persistente (discos) frequentemente são \textbf{gargalos} em cenários de \textit{streaming};
-        \item Uso intensivo de \textbf{memória principal} como \textit{cache} alivia o disco, mas torna a memória um recurso crítico;
+        \item Dispositivos de armazenamento persistente frequentemente são \textbf{gargalos} em cenários de \textit{streaming} (consumo de conteúdo sob demanda);
+        \item Uso intensivo de \textbf{memória principal} como \textit{cache} alivia a memória persistente, mas torna a memória um recurso crítico;
         \item Muitas estratégias clássicas de balanceamento de carga ignoram o estado real de memória dos servidores;
-        \item \textbf{Lacuna}: ausência de algoritmos que utilizem \textbf{exclusivamente} métricas de memória (RAM e leitura de disco) como parâmetro principal de decisão.
+        \item \textbf{Lacuna}: ausência de algoritmos que utilizem \textbf{exclusivamente} métricas de memória (consumo de memória principal e taxa de leitura de memória de armazenamento persistente) como parâmetro principal de decisão.
     \end{itemize}
 \end{frame}
 
 \begin{frame}{Objetivo}
     \textbf{Objetivo do trabalho}
     \begin{itemize}
-        \item Avaliar uma estratégia de otimização da escolha de servidores em balanceadores de carga para sistemas de distribuição de conteúdo, baseada \textbf{exclusivamente} no uso de memória;
+        \item Avaliar uma estratégia de otimização da escolha de servidores em balanceadores de carga para sistemas de distribuição de conteúdo, baseada \textbf{exclusivamente} em métricas relevantes de memória;
         \item Implementar um algoritmo probabilístico de balanceamento de carga, apoiado em uma arquitetura de simulação completa;
         \item Realizar análise comparativa com algoritmos clássicos (\textit{Round-Robin} e Seleção Aleatória) sob diferentes cenários de carga e heterogeneidade.
     \end{itemize}
@@ -163,10 +163,11 @@ de conteúdo por meio de monitoramento sistemático de memória}
 \begin{frame}{Requisitos Tecnológicos}
     \textbf{Componentes Principais}
     \begin{itemize}
-        \item \textbf{Servidores de Conteúdo}: 8 servidores MPEG-DASH, com capacidades variadas de memória e disco (de acordo com os cenários de teste);
-        \item \textbf{Balanceador de Carga}: Implementado em \textit{Rust}, responsável por aplicar os algoritmos de seleção de servidor;
-        \item \textbf{Cliente Gerador de Carga}: Aplicação em \textit{Python} que simula múltiplos usuários MPEG-DASH concorrentes;
-        \item \textbf{Servidor MQTT}: \textit{Broker} NanoMQ utilizado para transporte assíncrono de métricas entre servidores e balanceador.
+        \item \textbf{Servidores de Conteúdo}: 8 servidores MPEG-DASH, com capacidades variadas de memória principal e secundária (de acordo com os cenários de teste);
+        \item \textbf{Balanceador de Carga}: Aplicação simples implementada do zero, responsável por aplicar os algoritmos de seleção de servidor;
+        \item \textbf{Cliente Gerador de Carga}: Aplicação que simula múltiplos usuários MPEG-DASH concorrentes, iniciando múltiplas threads que fazem requisição de conteúdo para o balanceador de carga;
+        \item \textbf{Cliente principal}: Serviço consumidor MPEG-DASH, que estará apontado para o balanceador de carga e possui o objetivo de coletar métricas e medir a QoE durante os cenários de teste;
+        \item \textbf{Servidor MQTT}: \textit{Broker} utilizado para transporte assíncrono de métricas entre servidores e balanceador.
     \end{itemize}
 \end{frame}
 
@@ -187,19 +188,19 @@ de conteúdo por meio de monitoramento sistemático de memória}
 \begin{frame}{Estratégia de Balanceamento}
 \begin{itemize}
     \item Definir o método de escolha de um servidor para cada nova requisição de vídeo;
-    \item Algoritmo de natureza \textbf{probabilística}, baseado no \textbf{Basic Load Interpretation} \cite{interpretingStaleLoadInformation2000};
+    \item Algoritmo de natureza \textbf{probabilística}, baseado no \textbf{\textit{Basic Load Interpretation}} \cite{interpretingStaleLoadInformation2000};
     \item Probabilidade de escolha de cada servidor ajustada dinamicamente de acordo com:
     \begin{itemize}
-        \item Consumo de \textbf{memória RAM};
-        \item Taxa de leitura de \textbf{disco};
-        \item \textbf{Idade} das informações de carga.
+        \item Consumo de \textbf{memória principal};
+        \item Taxa de leitura de \textbf{memória secundária};
+        \item \textbf{Tempo de vida} das informações de carga.
     \end{itemize}
     \item Servidores publicam periodicamente suas métricas de carga para o balanceador.
 \end{itemize}
 \end{frame}
 
 \begin{frame}{Cálculo da Probabilidade de Escolha do Servidor}
-A probabilidade ($P_i$) de uma requisição ser enviada para um servidor $i$ é baseada no \textbf{Basic Load Interpretation}:
+A probabilidade ($P_i$) de uma requisição ser enviada para um servidor $i$ é baseada no \textbf{\textit{Basic Load Interpretation}}:
 
 \begin{equation}\label{eq:basic_li}
     P_{i}=\frac{\frac{L_{tot}+arrive_{T}}{n}-L_{i}}{arrive_{T}}
@@ -243,10 +244,10 @@ A probabilidade ($P_i$) de uma requisição ser enviada para um servidor $i$ é 
 \begin{frame}{Ambiente Experimental}
     \begin{itemize}
         \item Ambiente em \textbf{Windows + WSL2}, todos os componentes em contêineres \textbf{Docker};
-        \item Uso de \textbf{cgroups v2} para monitorar e limitar recursos (memória, leitura de disco);
+        \item Uso de \textbf{cgroups v2} para monitorar e limitar recursos (memória principal, leitura de memória secundária);
         \item 8 servidores MPEG-DASH (\textit{ASP.NET Core}) com conteúdo exclusivo via \textit{bind mounts};
         \item Balanceador de carga em \textit{Rust}, gerador de carga em \textit{Python};
-        \item Métricas publicadas via \textbf{MQTT} (NanoMQ) a cada 6s ou 30s;
+        \item Métricas publicadas via \textbf{MQTT} (NanoMQ) periodicamente (tempo médio escolhido por cada servidor);
         \item Conteúdo MPEG-DASH com 6 resoluções (144p a 1080p) gerado via \texttt{ffmpeg}.
     \end{itemize}
 \end{frame}
@@ -260,7 +261,7 @@ A probabilidade ($P_i$) de uma requisição ser enviada para um servidor $i$ é 
     ]{imagens/mpeg-dash-servers-monitoring.png}
     
     \vspace{4pt}
-    \footnotesize Painel de monitoramento em tempo real com métricas de memória, leitura de disco e requisições ativas.
+    \footnotesize Painel de monitoramento em tempo real com métricas de consumo de memória principal e taxa de leitura de memória secundária.
 \end{frame}
 
 %-------------------------------------------------
@@ -278,7 +279,7 @@ A probabilidade ($P_i$) de uma requisição ser enviada para um servidor $i$ é 
         \textbf{S1}: 4096MB / 1024MB/s; \textbf{S2}: 2048MB / 512MB/s; \textbf{S3}: 1024MB / 256MB/s; \textbf{S4}: 512MB / 128MB/s; \textbf{S5}: 256MB / 64MB/s; \textbf{S6}: 128MB / 32MB/s; \textbf{S7}: 64MB / 16MB/s; \textbf{S8}: 32MB / 8MB/s \\
         \hline
         2 & 100 & Homogênea & 
-        Todos os servidores: 1024MB RAM e 256MB/s de leitura \\
+        Todos os servidores: 1024MB memória principal e 256MB/s de leitura de memória secundária \\
         \hline
         3 & 1000 & Heterogênea & 
         Mesma configuração do Cenário 1 \\
@@ -367,7 +368,7 @@ A probabilidade ($P_i$) de uma requisição ser enviada para um servidor $i$ é 
 
 \begin{frame}{Contribuições do Trabalho}
     \begin{itemize}
-        \item Proposição de um \textbf{algoritmo de balanceamento} baseado em monitoramento de memória e leitura de disco;
+        \item Proposição de um \textbf{algoritmo de balanceamento} baseado em monitoramento de consumo de memória principal e taxa de leitura de memória secundária;
         \item Adaptação do conceito de \textbf{Load Interpretation} para métricas de recursos de baixo nível;
         \item Implementação completa e aberta com \textit{C\#}, \textit{Rust}, \textit{Python}, Docker e MQTT;
         \item Infraestrutura experimental reutilizável para avaliação de algoritmos de balanceamento em \textit{streaming} MPEG-DASH;
@@ -379,7 +380,7 @@ A probabilidade ($P_i$) de uma requisição ser enviada para um servidor $i$ é 
     \begin{itemize}
         \item Experimentos conduzidos em ambiente virtualizado único, sem latência geográfica real;
         \item Uso de um único algoritmo ABR (\texttt{dash.js}) e conjunto limitado de cenários de carga;
-        \item Métricas focadas em memória e disco, sem considerar rede e CPU como co-fatores;
+        \item Métricas focadas em memória principal e secundária, sem considerar rede e CPU como co-fatores;
         \item \textbf{Trabalhos futuros}:
         \begin{itemize}
             \item Validação em ambientes distribuídos reais e CDNs de produção;

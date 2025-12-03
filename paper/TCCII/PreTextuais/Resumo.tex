@@ -5,15 +5,15 @@
 % resumo em português
 \setlength{\absparsep}{18pt} % ajusta o espaçamento dos parágrafos do resumo
 \begin{resumo}
-No século XXI, sistemas digitais na Internet se consolidaram como principal meio de consumo de conteúdo em áudio e vídeo.
+O crescimento exponencial do \textit{streaming} de vídeo impõe desafios críticos às Redes de Distribuição de Conteúdo (CDNs), especialmente quanto ao balanceamento eficiente de carga entre servidores heterogêneos.
 %
-Em decorrência disso, projetistas têm tido como desafio a realização da otimização contínua desses sistemas de modo a garantir que eles ofereçam a melhor QoE (\textit{Quality of Experience}) ao usuário final, sobretudo em meio à restrição econômica de compatibilidade com a tecnologia já implementada.
+Estratégias convencionais como \textit{Round-Robin} e Seleção Aleatória ignoram o estado real dos recursos dos servidores, resultando em sobrecarga de nós limitados e degradação da Qualidade de Experiência (QoE).
 %
-Devido ao grande volume de dados sendo trafegados, pode-se inferir que há padrões de consumo de conteúdo específicos e heterogêneos, variando de acordo com as especificações e contextos de cada sistema.
+Este trabalho propõe, implementa e valida um algoritmo probabilístico de balanceamento de carga baseado em monitoramento de memória RAM e taxa de leitura de disco, incorporando mecanismos de interpretação de dados desatualizados adaptados do método \textit{Interpreting Stale Load Information}.
 %
-Dessa forma, sabe-se que os balanceadores de carga são elementos-chave no processo de roteamento de requisições e, portanto, sua otimização é de grande valia para o processo de otimização de conteúdo.
+A solução foi implementada em arquitetura completa com servidores MPEG-DASH, balanceador em \textit{Rust}, comunicação via MQTT e ambiente virtualizado com \textit{Docker}.
 %
-Portanto, o presente trabalho propõe a elaboração, implementação análise de um algoritmo balanceador de carga especificamente para servidores de distribuição de conteúdo com base em monitoramento de memória principal e secundária.
+Experimentos em quatro cenários — variando concorrência (100/1000 usuários) e heterogeneidade de disponibilidade de recursos por servidor — demonstraram reduções de latência de até 85,7\% e eliminação de travamentos em ambientes heterogêneos sob alta carga, validando a superioridade do algoritmo proposto.
 
  \textbf{Palavras-chave}: 
  %

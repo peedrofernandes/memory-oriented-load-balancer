@@ -5,15 +5,15 @@
 % resumo em inglês
 \begin{resumo}[Abstract]
  \begin{otherlanguage*}{english}
-In the 21st century, digital systems on the Internet have established themselves as the primary means for consuming audio and video content.
+The exponential growth of video streaming imposes critical challenges on Content Delivery Networks (CDNs), particularly regarding efficient load balancing among heterogeneous servers.
 %
-Consequently, \textit{design}ers have faced the challenge of continuously optimizing these systems to ensure they offer the best Quality of Experience (QoE) to the end-user, especially amidst the economic constraint of maintaining compatibility with already implemented technology.
+Conventional strategies such as \textit{Round-Robin} and Random Selection ignore the actual resource state of servers, resulting in overload of limited nodes and degradation of Quality of Experience (QoE).
 %
-Due to the large volume of data being transferred, it can be inferred that there are specific and heterogeneous content consumption patterns, varying according to the specifications and contexts of each system.
+This work proposes, implements, and validates a probabilistic load balancing algorithm based on RAM memory consumption and disk read rate monitoring, incorporating stale load information interpretation mechanisms adapted from the \textit{Interpreting Stale Load Information} method.
 %
-Thus, it is known that load balancers are key elements in the request routing process, and therefore, their optimization is of great value to the content optimization process.
+The solution was implemented in a complete architecture with MPEG-DASH servers, \textit{Rust}-based load balancer, MQTT communication, and \textit{Docker}-virtualized environment.
 %
-Therefore, this work proposes the design, implementation, and subsequent analysis of a load balancing algorithm specifically for content delivery servers based on primary and secondary memory monitoring.
+Experiments across four scenarios — varying concurrency (100/1000 users) and heterogeneity of resource availability per server — demonstrated latency reductions up to 85.7\% and complete elimination of stalls in heterogeneous environments under high load, validating the superiority of the proposed algorithm.
 
  \textbf{Keywords}:
  %

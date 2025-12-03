@@ -73,14 +73,14 @@ O componente mais crítico da implementação dos servidores é o sistema de mon
 O \texttt{MetricsPublisher} realiza periodicamente as seguintes operações:
 
 \begin{enumerate}
-    \item Leitura do consumo atual de memória através do arquivo \texttt{/sys/fs/cgroup/memory.current} do \textit{cgroups v2};
-    \item Obtenção das estatísticas de leitura de memória secundária através do arquivo \texttt{/sys/fs/cgroup/io.stat}, extraindo o total de \textit{bytes} lidos (\texttt{rbytes});
+    \item Leitura do consumo atual de memória através do arquivo \texttt{/sys/fs/cgroup/\allowbreak memory.current} do \textit{cgroups v2};
+    \item Obtenção das estatísticas de leitura de memória secundária através do arquivo \texttt{/sys/fs/\allowbreak cgroup/io.stat}, extraindo o total de \textit{bytes} lidos (\texttt{rbytes});
     \item Cálculo da taxa de leitura de disco através da diferença entre leituras consecutivas dividida pelo intervalo de tempo decorrido;
     \item Normalização das métricas em relação aos limites configurados para o contêiner, gerando valores entre 0 e 1;
     \item Publicação das métricas normalizadas em um tópico MQTT para consumo pelo balanceador de carga.
 \end{enumerate}
 
-O intervalo de publicação é configurável através da variável de ambiente \texttt{METRICS\_PUBLISH\_INTERVAL\_SECONDS}, permitindo avaliar o impacto da frequência de atualização das métricas no desempenho do algoritmo de balanceamento.
+O intervalo de publicação é configurável através da variável de ambiente \texttt{METRICS\_PUBLISH\_\allowbreak INTERVAL\_SECONDS}, permitindo avaliar o impacto da frequência de atualização das métricas no desempenho do algoritmo de balanceamento.
 
 A estrutura de dados publicada contém os seguintes campos:
 
@@ -139,7 +139,7 @@ Cada \textit{worker} do gerador de carga executa o seguinte fluxo de operações
     
     \item \textbf{Requisição do Manifesto MPD}: A primeira requisição HTTP é feita para obter o arquivo MPD (\textit{Media Presentation Description}), que é um documento XML contendo metadados sobre o vídeo, incluindo as resoluções disponíveis, os \textit{bitrates}, a duração dos segmentos e os \textit{templates} de URL para acessar cada segmento.
     
-    \item \textbf{\textit{Parsing} do Manifesto}: O arquivo MPD é analisado utilizando a biblioteca padrão \texttt{xml.etree.ElementTree}, extraindo as informações sobre os segmentos de inicialização e os segmentos de mídia de todas as representações (resoluções) disponíveis.
+    \item \textbf{\textit{Parsing} do Manifesto}: O arquivo MPD é analisado utilizando a biblioteca padrão \texttt{xml.\allowbreak etree.ElementTree}, extraindo as informações sobre os segmentos de inicialização e os segmentos de mídia de todas as representações (resoluções) disponíveis.
     
     \item \textbf{Requisição dos Segmentos de Inicialização}: Para cada representação (resolução) do vídeo, o \textit{worker} solicita o segmento de inicialização correspondente, que contém informações de \textit{codec} e configuração necessárias para decodificar os segmentos subsequentes.
     

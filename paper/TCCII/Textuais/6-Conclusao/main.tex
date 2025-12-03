@@ -48,7 +48,7 @@ A análise dos resultados revela dois fatores principais que determinam quando e
 
 Os resultados demonstram inequivocamente que a heterogeneidade dos servidores é o fator determinante primário para o valor do balanceamento inteligente. A divergência dramática de desempenho entre cenários heterogêneos (Cenários 1 e 3) e homogêneos (Cenários 2 e 4) não deixa dúvidas: monitoramento e adaptação são essenciais quando servidores possuem capacidades diferentes, mas oferecem valor marginal quando todos são equivalentes.
 
-Esta conclusão tem implicações importantes para a indústria de CDNs e \textit{edge computing}, onde heterogeneidade de disponibilidade de recursos é a norma, não a exceção. Embora ambientes virtualizados modernos frequentemente utilizem servidores com capacidades físicas homogêneas, a heterogeneidade manifesta-se através da variação dinâmica de carga de trabalho. Servidores em um cluster não se dedicam exclusivamente a servir conteúdo de vídeo — simultaneamente executam outras aplicações, processam tarefas de \textit{background}, respondem a requisições de diferentes \textit{tenants} em ambientes multi-inquilino, e lidam com processos do sistema operacional. Esta concorrência por recursos cria heterogeneidade dinâmica: mesmo servidores idênticos em \textit{hardware} apresentam disponibilidade drasticamente diferente de memória, \textit{CPU}, e largura de banda de disco a cada instante, dependendo das demandas concorrentes que enfrentam.
+Esta conclusão tem implicações importantes para a indústria de CDNs e \textit{edge computing}, onde heterogeneidade de disponibilidade de recursos é a norma, não a exceção. Embora ambientes virtualizados modernos frequentemente utilizem servidores com capacidades físicas homogêneas, a heterogeneidade manifesta-se através da variação dinâmica de carga de trabalho. Servidores em um \textit{cluster} não se dedicam exclusivamente a servir conteúdo de vídeo — simultaneamente executam outras aplicações, processam tarefas de \textit{background}, respondem a requisições de diferentes \textit{tenants} em ambientes multi-inquilino, e lidam com processos do sistema operacional. Esta concorrência por recursos cria heterogeneidade dinâmica: mesmo servidores idênticos em \textit{hardware} apresentam disponibilidade drasticamente diferente de memória, \textit{CPU}, e largura de banda de disco a cada instante, dependendo das demandas concorrentes que enfrentam.
 
 Nestes contextos, que representam a realidade operacional da maioria dos sistemas de distribuição de conteúdo em produção, estratégias simples como \textit{Round-Robin} são fundamentalmente inadequadas. Ao distribuir uniformemente a carga, efetivamente aplicam a mesma demanda a servidores com capacidades drasticamente diferentes, resultando em servidores com menor capacidade saturados enquanto servidores com maior capacidade permanecem ociosos. O algoritmo proposto, ao observar e reagir à carga real, naturalmente direciona mais requisições para servidores capazes e menos para servidores limitados, aproximando-se de uma distribuição ótima.
 
@@ -86,7 +86,7 @@ Desenvolvimento de uma implementação completa e funcional utilizando tecnologi
 
 \subsection{Infraestrutura Experimental Reutilizável}
 
-Criação de uma infraestrutura experimental completa incluindo servidores MPEG-DASH configuráveis, cliente de validação com visualização em tempo real, gerador de carga parametrizável, painel de monitoramento, e scripts de geração de gráficos. Esta infraestrutura pode ser reutilizada por pesquisadores e profissionais para validar outros algoritmos ou estudar diferentes aspectos de sistemas de \textit{streaming}.
+Criação de uma infraestrutura experimental completa incluindo servidores MPEG-DASH configuráveis, cliente de validação com visualização em tempo real, gerador de carga parametrizável, painel de monitoramento, e \textit{scripts} de geração de gráficos. Esta infraestrutura pode ser reutilizada por pesquisadores e profissionais para validar outros algoritmos ou estudar diferentes aspectos de sistemas de \textit{streaming}.
 
 \section{Limitações}
 
@@ -98,7 +98,7 @@ Os experimentos foram conduzidos em ambiente virtualizado utilizando \textit{Doc
 
 \subsection{Escopo de Cenários de Concorrência}
 
-Os experimentos focaram em dois níveis específicos de concorrência: 100 e 1000 usuários simultâneos. Embora esta escolha permita comparação clara entre baixa e alta carga, sistemas de produção experimentam gama muito mais ampla de cargas, desde dezenas até milhões de usuários. Adicionalmente, padrões de acesso real incluem crescimento gradual, picos abruptos, oscilações cíclicas (padrões diurnos), e cargas flash (eventos virais), comportamentos não testados sistematicamente.
+Os experimentos focaram em dois níveis específicos de concorrência: 100 e 1000 usuários simultâneos. Embora esta escolha permita comparação clara entre baixa e alta carga, sistemas de produção experimentam gama muito mais ampla de cargas, desde dezenas até milhões de usuários. Adicionalmente, padrões de acesso real incluem crescimento gradual, picos abruptos, oscilações cíclicas (padrões diurnos), e cargas \textit{flash} (eventos virais), comportamentos não testados sistematicamente.
 
 \subsection{Algoritmo ABR Único}
 
@@ -116,7 +116,7 @@ Os experimentos utilizaram um único arquivo de vídeo codificado em múltiplas 
 
 Este trabalho assume que todos os servidores possuem cópia completa do conteúdo servido, simplificando o problema de balanceamento para apenas decidir qual servidor utilizar para cada requisição. Em CDNs reais, especialmente aquelas com grande catálogo de conteúdo, nem todos os servidores mantêm cópias de todo o conteúdo disponível. Estratégias de \textit{cache} parcial, replicação seletiva baseada em popularidade, e geo-distribuição de conteúdo introduzem complexidade adicional: o balanceador deve considerar não apenas a capacidade de recursos do servidor, mas também se o servidor possui o conteúdo requisitado em \textit{cache}.
 
-Cenários onde conteúdo não está garantidamente disponível em todos os servidores requerem coordenação entre decisões de balanceamento e políticas de \textit{cache}, potencialmente introduzindo trade-offs entre escolher servidor com melhor capacidade disponível (que pode precisar buscar conteúdo no servidor origem) versus servidor com menor capacidade mas que já possui conteúdo em \textit{cache}. Esta limitação representa oportunidade significativa para extensão do trabalho, explorando balanceamento \textit{content-aware} que considera conjuntamente estado de recursos e disponibilidade de \textit{cache}.
+Cenários onde conteúdo não está garantidamente disponível em todos os servidores requerem coordenação entre decisões de balanceamento e políticas de \textit{cache}, potencialmente introduzindo \textit{trade-offs} entre escolher servidor com melhor capacidade disponível (que pode precisar buscar conteúdo no servidor origem) versus servidor com menor capacidade mas que já possui conteúdo em \textit{cache}. Esta limitação representa oportunidade significativa para extensão do trabalho, explorando balanceamento \textit{content-aware} que considera conjuntamente estado de recursos e disponibilidade de \textit{cache}.
 
 \section{Trabalhos Futuros}
 
@@ -140,7 +140,7 @@ Expansão do algoritmo para considerar múltiplas métricas simultaneamente: mem
 
 \subsection{Balanceamento Cross-data center}
 
-Extensão do algoritmo para balanceamento não apenas entre servidores de um único \textit{data center}, mas entre múltiplos \textit{data centers} geograficamente distribuídos. Isto introduz trade-offs complexos entre capacidade de recursos (servidor menos carregado pode estar longe) e proximidade geográfica (servidor próximo pode estar mais carregado), requerendo modelagem sofisticada de custos multi-dimensionais.
+Extensão do algoritmo para balanceamento não apenas entre servidores de um único \textit{data center}, mas entre múltiplos \textit{data centers} geograficamente distribuídos. Isto introduz \textit{trade-offs} complexos entre capacidade de recursos (servidor menos carregado pode estar longe) e proximidade geográfica (servidor próximo pode estar mais carregado), requerendo modelagem sofisticada de custos multi-dimensionais.
 
 \subsection{Adaptação para Edge Computing e 5G}
 
@@ -158,29 +158,29 @@ Integração de estratégias de \textit{cache} inteligente que considerem não a
 
 Estudo econômico comparando custos operacionais (energia, largura de banda, depreciação de \textit{hardware}) sob diferentes estratégias de balanceamento. Balanceamento ótimo pode não ser aquele que maximiza QoE absoluta, mas que maximiza QoE por unidade de custo, considerando realidades econômicas de operação de CDN.
 
-\subsection{Content Steering com Múltiplas CDNs}
+\subsection{\textit{Content Steering} com Múltiplas CDNs}
 
 Extensão do algoritmo de monitoramento de memória para cenários de \textit{Content Steering} em MPEG-DASH, onde clientes podem alternar dinamicamente entre múltiplas CDNs durante uma sessão de \textit{streaming}. Este trabalho focou em balanceamento intra-CDN, operando dentro de um único Ponto de Presença (PoP). Uma direção promissora é aplicar princípios similares de monitoramento de recursos para decisões inter-CDN, onde cada CDN possui seu próprio balanceador de carga interno, mas um sistema de \textit{steering} de nível superior decide qual CDN utilizar com base em métricas agregadas de capacidade.
 
-Content Steering, padronizado recentemente no DASH-IF, permite que clientes recebam instruções sobre quais CDNs priorizar através de documentos de steering atualizados dinamicamente. Integrar monitoramento de memória e carga neste contexto permitiria \textit{steering content-aware} e \textit{resource-aware}, direcionando tráfego não apenas baseado em proximidade geográfica ou custo, mas também em disponibilidade real de recursos em cada CDN. Isto é especialmente relevante para provedores de \textit{streaming} que utilizam múltiplas CDNs simultaneamente para redundância e otimização de custos.
+\textit{Content Steering}, padronizado recentemente no DASH-IF, permite que clientes recebam instruções sobre quais CDNs priorizar através de documentos de steering atualizados dinamicamente. Integrar monitoramento de memória e carga neste contexto permitiria \textit{steering content-aware} e \textit{resource-aware}, direcionando tráfego não apenas baseado em proximidade geográfica ou custo, mas também em disponibilidade real de recursos em cada CDN. Isto é especialmente relevante para provedores de \textit{streaming} que utilizam múltiplas CDNs simultaneamente para redundância e otimização de custos.
 
 \subsection{Direct Server Return (DSR)}
 
 Investigação de arquiteturas de balanceamento baseadas em \textit{Direct Server Return}, onde o balanceador de carga processa apenas requisições de entrada (caminho de ida), mas respostas são enviadas diretamente dos servidores aos clientes, evitando o balanceador no caminho de retorno. Em \textit{streaming} de vídeo, onde respostas (segmentos de vídeo) são substancialmente maiores que requisições, DSR pode reduzir dramaticamente carga no balanceador e latência percebida.
 
-Aplicar monitoramento de memória em arquitetura DSR introduz desafios interessantes: o balanceador não observa o tráfego de resposta, não podendo medir diretamente taxa de transferência ou sucesso de entregas. Seria necessário confiar exclusivamente em métricas do lado do servidor (memória, disco, \textit{CPU}) e potencialmente informações agregadas reportadas periodicamente. Avaliar trade-offs entre benefícios de DSR (menor latência, maior vazão) e complexidade de monitoramento é direção valiosa, especialmente para CDNs de ultra-larga escala onde o próprio balanceador pode tornar-se gargalo.
+Aplicar monitoramento de memória em arquitetura DSR introduz desafios interessantes: o balanceador não observa o tráfego de resposta, não podendo medir diretamente taxa de transferência ou sucesso de entregas. Seria necessário confiar exclusivamente em métricas do lado do servidor (memória, disco, \textit{CPU}) e potencialmente informações agregadas reportadas periodicamente. Avaliar \textit{trade-offs} entre benefícios de DSR (menor latência, maior vazão) e complexidade de monitoramento é direção valiosa, especialmente para CDNs de ultra-larga escala onde o próprio balanceador pode tornar-se gargalo.
 
 \subsection{\textit{Software}-Defined Networking (SDN)}
 
 Exploração de como princípios de \textit{Software-Defined Networking} podem potencializar balanceamento dinâmico baseado em recursos. Em arquiteturas SDN, \textit{switches} são programáveis através de controladores centralizados, permitindo reconfiguração de fluxos de tráfego em tempo real sem intervenção manual. Este paradigma alinha-se naturalmente com balanceamento adaptativo baseado em monitoramento.
 
-Uma direção promissora é instrumentar \textit{switches} SDN com informações de carga dos servidores, permitindo decisões de encaminhamento no próprio switch baseadas em métricas atuais. O controlador SDN poderia receber métricas de memória e disco dos servidores (via MQTT ou outro protocolo), calcular pesos probabilísticos usando o algoritmo proposto, e programar tabelas de fluxo nos \textit{switches} para distribuir tráfego proporcionalmente. Isto move decisões de balanceamento para mais próximo da borda da rede, potencialmente reduzindo latência de decisão e eliminando saltos adicionais através de balanceadores dedicados.
+Uma direção promissora é instrumentar \textit{switches} SDN com informações de carga dos servidores, permitindo decisões de encaminhamento no próprio \textit{switch} baseadas em métricas atuais. O controlador SDN poderia receber métricas de memória e disco dos servidores (via MQTT ou outro protocolo), calcular pesos probabilísticos usando o algoritmo proposto, e programar tabelas de fluxo nos \textit{switches} para distribuir tráfego proporcionalmente. Isto move decisões de balanceamento para mais próximo da borda da rede, potencialmente reduzindo latência de decisão e eliminando saltos adicionais através de balanceadores dedicados.
 
 Adicionalmente, SDN permite experimentação com esquemas de balanceamento sofisticados como \textit{flow-based routing} (diferentes fluxos para diferentes servidores) versus \textit{packet-based routing} (cada pacote pode ir para servidor diferente, requerendo estados complexos), e \textit{elephant vs. mice flow handling} (grandes sessões de \textit{streaming} tratadas diferentemente de pequenas requisições). A integração de monitoramento de recursos com SDN representa fronteira empolgante para balanceamento de carga de próxima geração.
 
 \section{Reprodutibilidade dos Experimentos}
 
-Todo o código-fonte, scripts de configuração, infraestrutura experimental, e dados utilizados estão disponibilizados publicamente em repositório Git no endereço:
+Todo o código-fonte, \textit{scripts} de configuração, infraestrutura experimental, e dados utilizados estão disponibilizados publicamente em repositório Git no endereço:
 
 \begin{center}
 \url{https://github.com/peedrofernandes/memory-oriented-load-balancer.git}
@@ -195,7 +195,7 @@ O repositório está organizado de forma a facilitar a reprodução exata de cad
     \item Sistema de monitoramento de recursos em \textit{Rust}
     \item Infraestrutura de comunicação via MQTT
     \item Arquivo de vídeo de teste codificado em múltiplas qualidades
-    \item Scripts de orquestração com \textit{Docker Compose}
+    \item \textit{Scripts} de orquestração com \textit{Docker Compose}
     \item Ferramentas de análise e geração de gráficos
 \end{itemize}
 
@@ -235,7 +235,7 @@ Para reproduzir os experimentos específicos, foram criadas \textit{branches} de
     \end{itemize}
 \end{itemize}
 
-Cada \textit{branch} contém configurações pré-ajustadas (arquivos \texttt{docker-compose.yml}, parâmetros de gerador de carga, configurações de servidores) correspondentes exatamente às condições experimentais descritas no Capítulo~\ref{cap:Resultados}. Para reproduzir um cenário específico, basta fazer \textit{checkout} da \textit{branch} correspondente e executar os scripts de orquestração fornecidos.
+Cada \textit{branch} contém configurações pré-ajustadas (arquivos \texttt{docker-compose.yml}, parâmetros de gerador de carga, configurações de servidores) correspondentes exatamente às condições experimentais descritas no Capítulo~\ref{cap:Resultados}. Para reproduzir um cenário específico, basta fazer \textit{checkout} da \textit{branch} correspondente e executar os \textit{scripts} de orquestração fornecidos.
 
 Esta organização permite não apenas validação independente dos resultados apresentados, mas também facilita experimentação com variações dos cenários (diferentes números de usuários, outras configurações de heterogeneidade, intervalos de atualização alternativos) ou adaptação do sistema para outros contextos de pesquisa. A documentação completa, incluindo instruções detalhadas de execução e requisitos de sistema, está disponível no arquivo \texttt{README.md} do repositório.
 

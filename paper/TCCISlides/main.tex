@@ -283,7 +283,7 @@ de conteúdo por meio de monitoramento sistemático de memória}
 
 % \begin{frame}{Alocação de Dados e Balanceamento de Carga Dinâmico para Servidores de Vídeo Distribuídos}
 
-% O trabalho \cite{dataAllocationAndDynamicLoadBalancingForDistributedVideoStorageServer1999} propõe uma solução de duas fases para aumentar a disponibilidade em um cluster de servidores de vídeo.
+% O trabalho \cite{dataAllocationAndDynamicLoadBalancingForDistributedVideoStorageServer1999} propõe uma solução de duas fases para aumentar a disponibilidade em um \textit{cluster} de servidores de vídeo.
 
 % \begin{itemize}
 %     \item \textbf{Fase 1: Alocação Inicial de Dados} — Distribui réplicas de vídeo com base em probabilidades de acesso esperadas para balanceamento de carga estático;
@@ -333,9 +333,9 @@ Balanceadores de carga são cruciais em sistemas distribuídos, incluindo CDNs.
 \begin{itemize}
     \item \textbf{Vantagem}: Abordagem \textit{stateless} do HTTP é escalável, contrastando com RTP \cite{sodagar2011mpegdash};
     \item \textbf{Orientado ao Cliente}: Servidor disponibiliza; cliente gerencia a inteligência da sessão \cite{stockhammer2011dynamic};
-    \item \textbf{MPD (Media Presentation Description)}: Manifesto XML com URLs e versões do conteúdo (Períodos, Adaptation Sets, Representações) \cite{sodagar2011mpegdash};
+    \item \textbf{MPD (\textit{Media Presentation Description})}: Manifesto XML com URLs e versões do conteúdo (Períodos, Adaptation Sets, Representações) \cite{sodagar2011mpegdash};
     \item \textbf{Segmentos}: Conteúdo dividido em blocos, requisitados via HTTP GET, facilmente \textit{cacheáveis} por CDNs \cite{stockhammer2011dynamic};
-    \item \textbf{Content Steering}: Cliente decide \textit{de onde} buscar o conteúdo via múltiplas URLs base no MPD \cite{sodagar2011mpegdash};
+    \item \textbf{\textit{Content Steering}}: Cliente decide de onde buscar o conteúdo via múltiplas URLs base no MPD \cite{sodagar2011mpegdash};
 \end{itemize}
 \end{frame}
 

@@ -22,7 +22,7 @@ As hipóteses estabelecidas no Capítulo~\ref{cap:Proposta} foram integralmente 
 
 \textbf{Validação:} Confirmada inequivocamente. Reduções de latência de 70-85\%, eliminação ou drástica redução de travamentos (de 7-8 para 0-4), e manutenção de qualidade alta e consistente (720P-1080P vs. 144P) demonstram superioridade clara nos Cenários 1 e 3.
 
-\textbf{Hipótese 2:} \textit{O intervalo de atualização de 6 segundos forneceria melhores resultados que o intervalo de 30 segundos.}
+\textbf{Hipótese 2:} \textit{Intervalos de atualização de dados de carga mais curtos forneceriam melhores resultados que intervalos mais longos.}
 
 \textbf{Validação:} Confirmada, com ressalva importante. O intervalo de 6 segundos efetivamente apresentou o melhor desempenho absoluto em todos os cenários heterogêneos. No entanto, o resultado mais significativo foi que o intervalo de 30 segundos, apesar de usar dados cinco vezes mais antigos, ainda superou substancialmente as estratégias convencionais, demonstrando robustez excepcional do mecanismo de interpretação de dados de uso de memória volátil e taxa de leitura de memória secundária moderadamente desatualizados.
 
@@ -138,11 +138,11 @@ Incorporação de técnicas de \textit{machine learning} para predição de carg
 
 Expansão do algoritmo para considerar múltiplas métricas simultaneamente: memória, disco, \textit{CPU}, largura de banda de rede, latência geográfica para o usuário. Desenvolvimento de função objetivo multi-critério que pondere estes fatores apropriadamente, potencialmente utilizando técnicas de otimização multi-objetivo (\textit{Pareto}) ou aprendizado por reforço para aprender pesos ótimos dinamicamente.
 
-\subsection{Balanceamento Cross-data center}
+\subsection{Balanceamento \textit{Cross-data center}}
 
 Extensão do algoritmo para balanceamento não apenas entre servidores de um único \textit{data center}, mas entre múltiplos \textit{data centers} geograficamente distribuídos. Isto introduz \textit{trade-offs} complexos entre capacidade de recursos (servidor menos carregado pode estar longe) e proximidade geográfica (servidor próximo pode estar mais carregado), requerendo modelagem sofisticada de custos multi-dimensionais.
 
-\subsection{Adaptação para Edge Computing e 5G}
+\subsection{Adaptação para \textit{Edge Computing} e 5G}
 
 Exploração de como o algoritmo pode ser adaptado para ambientes de \textit{edge computing} e redes \textit{5G}, onde recursos computacionais estão distribuídos em torres de celular e pontos de presença de borda. Nestes contextos, mobilidade dos usuários, \textit{handoffs} entre células, e latências ultra-baixas introduzem desafios adicionais.
 
@@ -235,7 +235,7 @@ Para reproduzir os experimentos específicos, foram criadas \textit{branches} de
     \end{itemize}
 \end{itemize}
 
-Cada \textit{branch} contém configurações pré-ajustadas (arquivos \texttt{docker-compose.yml}, parâmetros de gerador de carga, configurações de servidores) correspondentes exatamente às condições experimentais descritas no Capítulo~\ref{cap:Resultados}. Para reproduzir um cenário específico, basta fazer \textit{checkout} da \textit{branch} correspondente e executar os \textit{scripts} de orquestração fornecidos.
+Cada \textit{branch} contém configurações pré-ajustadas (arquivos \texttt{docker-compose.yml}, parâmetros de gerador de carga, configurações de servidores) correspondentes exatamente às condições experimentais descritas no Capítulo \ref{cap:ExperimentosEResultados}. Para reproduzir um cenário específico, basta fazer \textit{checkout} da \textit{branch} correspondente e executar os \textit{scripts} de orquestração fornecidos.
 
 Esta organização permite não apenas validação independente dos resultados apresentados, mas também facilita experimentação com variações dos cenários (diferentes números de usuários, outras configurações de heterogeneidade, intervalos de atualização alternativos) ou adaptação do sistema para outros contextos de pesquisa. A documentação completa, incluindo instruções detalhadas de execução e requisitos de sistema, está disponível no arquivo \texttt{README.md} do repositório.
 

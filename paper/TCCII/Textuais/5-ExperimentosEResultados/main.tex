@@ -1,4 +1,4 @@
-\chapter{Experimentos e Resultados} \label{cap:Resultados}
+\chapter{Experimentos e Resultados} \label{cap:ExperimentosEResultados}
 
 Este capítulo apresenta os resultados obtidos através da execução experimental do algoritmo de balanceamento de carga proposto, comparando-o com as estratégias convencionais de \textit{Round-Robin} e Seleção Aleatória. Os experimentos foram conduzidos nos quatro cenários definidos no Capítulo~\ref{cap:Proposta}, variando a carga do sistema (100 e 1000 usuários simultâneos) e a configuração dos servidores (homogênea e heterogênea).
 
@@ -227,7 +227,7 @@ No Cenário 3, sob alta concorrência e heterogeneidade, o padrão se intensific
 
 Nos cenários homogêneos (Cenários 2 e 4), as curvas de qualidade das quatro estratégias são muito próximas: em geral, todas mantêm a reprodução em resoluções altas, com algumas oscilações no cenário de alta concorrência. Nesses ambientes, como esperado, a distribuição uniforme de requisições é naturalmente adequada, e o ganho proporcionado pelo algoritmo proposto em termos de qualidade percebida é pequeno, ainda que ele mantenha desempenho comparável.
 
-\subsection{Bitrate}
+\subsection{\textit{Bitrate}}
 
 O \textit{bitrate} por segmento representa a taxa de transferência medida pelo \textit{player} MPEG-DASH para cada requisição de segmento, em \si{\kilo\bit\per\second}. Esta métrica quantifica a capacidade efetiva da infraestrutura em fornecer dados ao cliente ao longo do tempo. As Figuras~\ref{fig:bitrate-scenario-1} a~\ref{fig:bitrate-scenario-4} apresentam a evolução do \textit{bitrate} por cenário e estratégia de balanceamento.
 
